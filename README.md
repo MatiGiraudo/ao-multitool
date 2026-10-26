@@ -74,8 +74,10 @@ Si ya existe una hoja con el mismo nombre de archivo, se actualiza en lugar de d
 
 ## Arquitectura
 
-El código está organizado con screaming architecture, arquitectura hexagonal / clean architecture, DDD y SOLID. Está explicado paso a paso, con ejemplos de este mismo código, en **[docs/ARQUITECTURA.md](docs/ARQUITECTURA.md)**. Ahí también está la receta para agregar el próximo módulo (Hechizos, Cabezas, NPCs…).
+El código está organizado con screaming architecture, arquitectura hexagonal / clean architecture, DDD y SOLID. Está explicado paso a paso, con ejemplos de este mismo código, en **[docs/ARQUITECTURA.md](docs/ARQUITECTURA.md)**. Ahí también está la receta para agregar el próximo módulo (NPCs, Mapas…).
 
 ## Qué falta
 
-El plan de las herramientas que todavía no están (apariencias, FX, hechizos, NPCs, mapas), con el orden recomendado y los archivos de cada una, está en **[docs/ROADMAP.md](docs/ROADMAP.md)**.
+El plan de lo que todavía no está (NPCs, mapas, diagnóstico), fase por fase y con lo que ya se hizo marcado, está en **[docs/ROADMAP.md](docs/ROADMAP.md)**.
+
+Hay además una hoja de ruta anterior, escrita antes de empezar, con las dependencias entre módulos y qué define cada uno: **[docs/HOJA_DE_RUTA.md](docs/HOJA_DE_RUTA.md)**. Lo que propone para cuerpos, cabezas, FX y hechizos quedó resuelto de otra manera; conviene leerla sabiendo eso.

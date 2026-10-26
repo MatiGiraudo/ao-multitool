@@ -265,7 +265,9 @@ que sigue, y lo podés leer entero en `src/hechizos/`, que es el último que se 
 7. **Página**: `src/app/hechizos/page.tsx` montando sus proveedores, más una línea en `app/_componentes/secciones.ts`.
 8. **Tests**: arrancá por el dominio.
 
-Los módulos que siguen (NPCs y finalmente Mapas) usan exactamente el mismo molde.
+Los módulos que siguen (NPCs y finalmente Mapas) usan exactamente el mismo molde. En qué orden
+hacerlos está en [ROADMAP.md](ROADMAP.md), y qué define cada uno, en la hoja de ruta anterior,
+[HOJA_DE_RUTA.md](HOJA_DE_RUTA.md).
 
 **Si el módulo nuevo necesita mirar a otro** (un hechizo apunta a un FX, un NPC va a apuntar a un
 cuerpo y a objetos), no lo importes: pedí un `CatalogoPorNumero` (`compartido/dominio/`). Lo
