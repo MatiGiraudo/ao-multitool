@@ -27,6 +27,8 @@ Abrí http://localhost:3000. La app redirige a **Animaciones**.
 | `npm test` | Tests del dominio y de los casos de uso |
 | `npm run typecheck` | Chequeo de tipos de TypeScript |
 
+Si abrís la app desde otra dirección que no sea `localhost` (por ejemplo desde WSL, Docker o una VM, con una IP como `172.19.0.1`), ya está permitido para las redes privadas habituales. Si usás un nombre o una IP distinta, agregala con `AO_DEV_ORIGINS=mi-pc.local npm run dev`.
+
 ## Dónde quedan tus datos
 
 Todo lo que hacés se guarda solo, unos 400 ms después de cada cambio, en la carpeta `data/`:
