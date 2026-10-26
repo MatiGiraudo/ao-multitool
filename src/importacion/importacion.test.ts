@@ -53,6 +53,17 @@ Tile_Ancho=64
 Tile_Alto=48
 `;
 
+const GRAFICOS_INI_DE_UNA_LINEA = `[INIT]
+NumGrh=4
+Version=114
+
+[Graphics]
+Grh1=1-12-0-0-32-64
+Grh2=1-12-32-0-32-64
+Grh3=2-1-2-240
+Grh4=1-99-10-20-11-30
+`;
+
 const OBJ_DAT = `[OBJ1]
 Name=Daga
 ObjType=2
@@ -130,6 +141,31 @@ describe("LectorGraficosIni", () => {
 
   it("avisa si el archivo no es un Graficos.ini", () => {
     expect(() => new LectorGraficosIni().leer("[OBJ1]\nName=Daga")).toThrow();
+  });
+});
+
+describe("LectorGraficosIni, formato de una línea", () => {
+  const tabla = TablaDeGrh.desde(new LectorGraficosIni().leer(GRAFICOS_INI_DE_UNA_LINEA));
+
+  it("lee los campos por posición, con el tamaño ya en píxeles", () => {
+    expect(tabla.obtener(1)).toMatchObject({ archivo: "12", x: 0, y: 0, ancho: 32, alto: 64 });
+    // 11×30 son píxeles: si se leyeran como tiles quedaría un sprite de 352×960.
+    expect(tabla.obtener(4)).toMatchObject({ archivo: "99", x: 10, y: 20, ancho: 11, alto: 30 });
+  });
+
+  it("resuelve un GRH animado igual que el formato por secciones", () => {
+    expect(tabla.recortes(3)).toEqual({
+      archivo: "12",
+      rects: [
+        { x: 0, y: 0, ancho: 32, alto: 64 },
+        { x: 32, y: 0, ancho: 32, alto: 64 },
+      ],
+      msPorFrame: 120,
+    });
+  });
+
+  it("lista los archivos que hacen falta", () => {
+    expect(tabla.archivos()).toEqual(["12", "99"]);
   });
 });
 

@@ -49,6 +49,26 @@ export class ArchivoIni {
     return out.sort((a, b) => a.numero - b.numero);
   }
 
+  /**
+   * Las claves numeradas de un prefijo, con su número y su valor: "Grh12=1-5-0-0-32-32" → 12.
+   *
+   * Es la contracara de `numeradas`: hay archivos que, en vez de una sección por elemento, traen
+   * todo junto en una sola sección, una clave por línea. Busca en todas las secciones, así no hay
+   * que saber si la sección se llama [Graphics], [Graficos] u otra cosa.
+   */
+  clavesNumeradas(prefijo: string): { numero: number; valor: string }[] {
+    const p = prefijo.toLowerCase();
+    const out: { numero: number; valor: string }[] = [];
+    for (const claves of this.secciones.values()) {
+      for (const [clave, valor] of claves) {
+        if (!clave.startsWith(p)) continue;
+        const n = Number(clave.slice(p.length));
+        if (Number.isInteger(n) && n > 0) out.push({ numero: n, valor });
+      }
+    }
+    return out.sort((a, b) => a.numero - b.numero);
+  }
+
   texto(seccion: string, clave: string, porDefecto = ""): string {
     return this.secciones.get(seccion.toLowerCase())?.get(clave.toLowerCase()) ?? porDefecto;
   }
