@@ -4,7 +4,7 @@ import { HojaDeSprites } from "@/graficos/dominio/HojaDeSprites";
 import type { HojaRepositorio } from "@/graficos/dominio/HojaRepositorio";
 import type { Grilla } from "@/graficos/dominio/Grilla";
 import type { AlmacenDeImagenes, DatosAnimacionImportada, ProcesadorDeImagenes } from "@/graficos/aplicacion/puertos";
-import type { CatalogoGrafico } from "@/objetos/dominio/CatalogoGrafico";
+import type { CatalogoGrafico } from "@/compartido/dominio/CatalogoGrafico";
 import type { ImportarObjetos, ResultadoDeImportacion } from "@/objetos/aplicacion/casosDeUso";
 import type { ObjetoImportado } from "@/objetos/aplicacion/puertos";
 

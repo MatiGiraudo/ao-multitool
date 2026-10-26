@@ -1,16 +1,15 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useImagen } from "@/compartido/ui/utilidades";
-import type { HojaDeSprites } from "@/graficos/dominio/HojaDeSprites";
-import { DibujoDeFrame } from "@/graficos/ui/DibujoDeFrame";
-import { useGraficos } from "@/graficos/ui/ProveedorDeGraficos";
-import { Referencia, type ReferenciaGrafica } from "../dominio/ReferenciaGrafica";
-import { useObjetos } from "./ProveedorDeObjetos";
+import type { HojaDeSprites } from "../dominio/HojaDeSprites";
+import { DibujoDeFrame } from "./DibujoDeFrame";
+import { useGraficos } from "./ProveedorDeGraficos";
+import { Referencia, type ReferenciaGrafica } from "@/compartido/dominio/ReferenciaGrafica";
 
 /** Ventana para elegir una animación de cualquier hoja. */
 export function SelectorDeAnimacion(p: { titulo: string; actual: ReferenciaGrafica | null; onElegir(r: ReferenciaGrafica): void; onCerrar(): void }) {
   const graficos = useGraficos();
-  const { resolver } = useObjetos();
+  const resolver = graficos.resolver;
   const [filtro, setFiltro] = useState("");
   const buscador = useRef<HTMLInputElement>(null);
   const actual = resolver(p.actual);

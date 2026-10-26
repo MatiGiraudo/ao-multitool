@@ -1,29 +1,24 @@
 "use client";
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, useContext, useMemo, type ReactNode } from "react";
+import type { CatalogoGrafico } from "@/compartido/dominio/CatalogoGrafico";
+import type { ReferenciaGrafica } from "@/compartido/dominio/ReferenciaGrafica";
 import { useAplicacion } from "@/compartido/ui/Aplicacion";
-import type { Animacion } from "@/graficos/dominio/Animacion";
-import type { HojaDeSprites } from "@/graficos/dominio/HojaDeSprites";
-import { useGraficos } from "@/graficos/ui/ProveedorDeGraficos";
-import type { CatalogoGrafico } from "../dominio/CatalogoGrafico";
+import { useColeccionEditable, type EstadoGuardado } from "@/compartido/ui/useColeccionEditable";
+import { useGraficos, type GraficoResuelto } from "@/graficos/ui/ProveedorDeGraficos";
 import type { Objeto } from "../dominio/Objeto";
-import type { ReferenciaGrafica } from "../dominio/ReferenciaGrafica";
 
 /*
- * Estado de Objetos en la interfaz. Igual que Gráficos: cambios al instante en memoria
- * y guardado en disco poco después.
+ * Estado de Objetos en la interfaz. La edición optimista con guardado diferido la aporta
+ * `useColeccionEditable`; acá quedan sólo las operaciones propias de objetos.
  *
  * Nota de arquitectura: la INTERFAZ de Objetos sí usa la interfaz de Gráficos (para dibujar),
  * pero el DOMINIO de Objetos no conoce a Gráficos: sólo ve el CatalogoGrafico.
  */
 
-export interface GraficoResuelto {
-  hoja: HojaDeSprites;
-  animacion: Animacion;
-}
-
 interface ValorObjetos {
   objetos: readonly Objeto[];
   cargando: boolean;
+  estadoGuardado: EstadoGuardado;
   catalogo: CatalogoGrafico;
   /** De una referencia del objeto a la hoja y animación reales, para dibujarlas. */
   resolver(ref: ReferenciaGrafica | null | undefined): GraficoResuelto | null;
@@ -40,91 +35,57 @@ const Contexto = createContext<ValorObjetos | null>(null);
 
 export function ProveedorDeObjetos({ children }: { children: ReactNode }) {
   const { casos, intentar } = useAplicacion();
-  const graficos = useGraficos();
   const c = casos.objetos;
-  const [objetos, setObjetos] = useState<Objeto[]>([]);
-  const [cargando, setCargando] = useState(true);
-  const pendientes = useRef(new Map<string, { o: Objeto; timer: ReturnType<typeof setTimeout> }>());
 
-  const recargar = useCallback(async () => {
-    const l = await intentar(() => c.listar.ejecutar());
-    if (l) setObjetos(l);
-    setCargando(false);
-  }, [c, intentar]);
-  useEffect(() => {
-    void recargar();
-  }, [recargar]);
+  // El catálogo y la traducción de referencias los arma Gráficos: acá sólo se usan.
+  const { catalogo, resolver } = useGraficos();
 
-  const catalogo = useMemo(() => casos.crearCatalogo(graficos.hojas), [casos, graficos.hojas]);
-
-  const poner = useCallback((o: Objeto) => setObjetos((xs) => (xs.some((x) => x.clave === o.clave) ? xs.map((x) => (x.clave === o.clave ? o : x)) : [...xs, o])), []);
-
-  const guardarTodo = useCallback(async () => {
-    const ps = [...pendientes.current.values()];
-    pendientes.current.clear();
-    for (const p of ps) {
-      clearTimeout(p.timer);
-      await intentar(() => c.guardar.ejecutar(p.o));
-    }
-  }, [c, intentar]);
+  const coleccion = useColeccionEditable<Objeto>({
+    claveDe: (o) => o.clave,
+    listar: () => c.listar.ejecutar(),
+    guardar: (o) => c.guardar.ejecutar(o),
+  });
+  const { items, cargando, estadoGuardado, actualizar, poner, quitar, cancelarPendiente, guardarPendientes, recargar } = coleccion;
 
   const valor = useMemo<ValorObjetos>(
     () => ({
-      objetos,
+      objetos: items,
       cargando,
+      estadoGuardado,
       catalogo,
-      resolver(ref) {
-        const a = catalogo.resolver(ref);
-        if (!a) return null;
-        const hoja = graficos.hoja(a.hojaId);
-        const animacion = hoja?.animacion(a.animacionId);
-        return hoja && animacion ? { hoja, animacion } : null;
-      },
-      actualizar(o) {
-        poner(o);
-        const prev = pendientes.current.get(o.clave);
-        if (prev) clearTimeout(prev.timer);
-        pendientes.current.set(o.clave, {
-          o,
-          timer: setTimeout(() => {
-            pendientes.current.delete(o.clave);
-            void intentar(() => c.guardar.ejecutar(o));
-          }, 400),
-        });
-      },
+      resolver,
+      actualizar,
+      recargar,
       async crear() {
-        await guardarTodo();
+        await guardarPendientes();
         const o = await intentar(() => c.crear.ejecutar());
         if (o) poner(o);
         return o;
       },
       async duplicar(o) {
-        await guardarTodo();
+        await guardarPendientes();
         const d = await intentar(() => c.duplicar.ejecutar(o));
         if (d) poner(d);
         return d;
       },
       async eliminar(clave) {
-        const p = pendientes.current.get(clave);
-        if (p) clearTimeout(p.timer);
-        pendientes.current.delete(clave);
+        cancelarPendiente(clave);
         const ok = await intentar(async () => (await c.eliminar.ejecutar(clave), true));
-        if (ok) setObjetos((xs) => xs.filter((x) => x.clave !== clave));
+        if (ok) quitar(clave);
         return !!ok;
       },
       async importar(texto) {
-        await guardarTodo();
+        await guardarPendientes();
         const r = await intentar(() => c.importar.ejecutar(texto, catalogo));
         if (r) await recargar();
         return r;
       },
       async exportar() {
-        await guardarTodo();
+        await guardarPendientes();
         return intentar(() => c.exportar.ejecutar(catalogo));
       },
-      recargar,
     }),
-    [objetos, cargando, catalogo, graficos, c, intentar, poner, guardarTodo, recargar],
+    [items, cargando, estadoGuardado, catalogo, resolver, actualizar, poner, quitar, cancelarPendiente, guardarPendientes, recargar, c, intentar],
   );
 
   return <Contexto.Provider value={valor}>{children}</Contexto.Provider>;

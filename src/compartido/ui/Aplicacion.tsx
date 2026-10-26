@@ -12,6 +12,13 @@ interface ValorAplicacion {
   avisar: (mensaje: string) => void;
   /** Ejecuta una acción y muestra el error como aviso si falla. Devuelve undefined en ese caso. */
   intentar: <T>(fn: () => Promise<T>) => Promise<T | undefined>;
+  /**
+   * Cada pantalla que mantiene una colección se anota acá (lo hace `useColeccionEditable` solo).
+   * Devuelve la función para desanotarse al desmontarse.
+   */
+  registrarRecarga: (recargar: () => Promise<void>) => () => void;
+  /** Refresca todo lo que esté montado. Lo usan las operaciones que cruzan módulos, como importar un proyecto. */
+  recargarTodo: () => Promise<void>;
 }
 
 const Contexto = createContext<ValorAplicacion | null>(null);
@@ -38,7 +45,23 @@ export function ProveedorDeAplicacion({ children }: { children: ReactNode }) {
     [avisar],
   );
 
-  const valor = useMemo(() => ({ casos: contenedorCliente(), avisar, intentar }), [avisar, intentar]);
+  const recargas = useRef(new Set<() => Promise<void>>());
+
+  const registrarRecarga = useCallback((recargar: () => Promise<void>) => {
+    recargas.current.add(recargar);
+    return () => {
+      recargas.current.delete(recargar);
+    };
+  }, []);
+
+  const recargarTodo = useCallback(async () => {
+    await Promise.all([...recargas.current].map((f) => f()));
+  }, []);
+
+  const valor = useMemo(
+    () => ({ casos: contenedorCliente(), avisar, intentar, registrarRecarga, recargarTodo }),
+    [avisar, intentar, registrarRecarga, recargarTodo],
+  );
 
   return (
     <Contexto.Provider value={valor}>

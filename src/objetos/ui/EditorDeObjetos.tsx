@@ -1,16 +1,19 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { useAplicacion } from "@/compartido/ui/Aplicacion";
+import { CamposDeAtributos, CasillasDeBanderas } from "@/compartido/ui/CamposDeAtributos";
 import { BotonArchivo, BotonConfirmar } from "@/compartido/ui/componentes";
 import { copiar, descargar, useImagen } from "@/compartido/ui/utilidades";
 import { DibujoDeFrame } from "@/graficos/ui/DibujoDeFrame";
 import { useGraficos } from "@/graficos/ui/ProveedorDeGraficos";
-import { DIRECCIONES } from "../dominio/Direccion";
+import { DIRECCIONES } from "@/compartido/dominio/Direccion";
 import type { Objeto } from "../dominio/Objeto";
-import { Autovinculador, ValidadorDeObjetos, type Problema } from "../dominio/servicios";
+import { Autovinculador } from "@/compartido/dominio/Autovinculador";
+import type { Problema } from "@/compartido/dominio/Problema";
+import { ValidadorDeObjetos } from "../dominio/servicios";
 import { banderasPermitidas, TIPOS_DE_OBJETO, type TipoDeObjetoId } from "../dominio/TipoDeObjeto";
 import { useObjetos } from "./ProveedorDeObjetos";
-import { RanuraGrafica } from "./RanuraGrafica";
+import { RanuraGrafica } from "@/graficos/ui/RanuraGrafica";
 import { VistaPreviaDeObjeto } from "./VistaPreviaDeObjeto";
 
 /** Pantalla de Objetos: lista | ficha | vista previa y JSON. */
@@ -238,45 +241,17 @@ function Ficha({ objeto: o, onBorrado, onDuplicado }: { objeto: Objeto; onBorrad
             <textarea id="o_desc" rows={2} value={o.descripcion} onChange={(e) => cambiar(() => o.conDescripcion(e.target.value))} />
           </label>
         </div>
-        <div className="flags">
+        <CasillasDeBanderas idPrefijo="of" definiciones={banderasPermitidas(t)} activa={(c) => o.tieneBandera(c)} onCambiar={(c, activa) => cambiar(() => o.conBandera(c, activa))}>
           <label>
             <input id="o_apilable" type="checkbox" checked={o.apilable} onChange={(e) => cambiar(() => o.conApilable(e.target.checked))} /> Apilable
           </label>
-          {banderasPermitidas(t).map((b) => (
-            <label key={b.clave}>
-              <input id={`of_${b.clave}`} type="checkbox" checked={o.tieneBandera(b.clave)} onChange={(e) => cambiar(() => o.conBandera(b.clave, e.target.checked))} /> {b.etiqueta}
-            </label>
-          ))}
-        </div>
+        </CasillasDeBanderas>
       </div>
 
       {t.atributos.length > 0 && (
         <div className="fset">
           <h3>Atributos de {t.nombre.toLowerCase()}</h3>
-          <div className="form-grid">
-            {t.atributos.map((a) => (
-              <label key={a.clave} className="f">
-                {a.etiqueta}
-                {a.clase === "opcion" ? (
-                  <select id={`os_${a.clave}`} value={String(o.atributos[a.clave] ?? "")} onChange={(e) => cambiar(() => o.conAtributo(a.clave, e.target.value || null))}>
-                    <option value="">—</option>
-                    {a.opciones?.map(([v, l]) => (
-                      <option key={v} value={v}>
-                        {l}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    id={`os_${a.clave}`}
-                    type={a.clase === "numero" ? "number" : "text"}
-                    value={o.atributos[a.clave] ?? ""}
-                    onChange={(e) => cambiar(() => o.conAtributo(a.clave, e.target.value === "" ? null : e.target.value))}
-                  />
-                )}
-              </label>
-            ))}
-          </div>
+          <CamposDeAtributos idPrefijo="os" definiciones={t.atributos} valores={o.atributos} onCambiar={(clave, valor) => cambiar(() => o.conAtributo(clave, valor))} />
         </div>
       )}
 

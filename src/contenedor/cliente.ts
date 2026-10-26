@@ -19,6 +19,31 @@ import { CanvasProcesadorDeImagenes } from "@/graficos/infraestructura/navegador
 import { HttpAlmacenDeImagenes } from "@/graficos/infraestructura/navegador/HttpAlmacenDeImagenes";
 import { HttpHojaRepositorio } from "@/graficos/infraestructura/navegador/HttpHojaRepositorio";
 import {
+  CrearApariencia,
+  DuplicarApariencia,
+  EliminarApariencia,
+  ExportarApariencias,
+  GuardarApariencia,
+  ImportarApariencias,
+  ListarApariencias,
+} from "@/apariencias/aplicacion/casosDeUso";
+import { ESPECIE_CABEZA } from "@/apariencias/dominio/Cabeza";
+import { ESPECIE_CUERPO } from "@/apariencias/dominio/Cuerpo";
+import { FormatoAoBodies } from "@/apariencias/infraestructura/FormatoAoBodies";
+import { FormatoAoHeads } from "@/apariencias/infraestructura/FormatoAoHeads";
+import { HttpCabezaRepositorio, HttpCuerpoRepositorio } from "@/apariencias/infraestructura/navegador/HttpApariencias";
+import {
+  CrearEfecto,
+  DuplicarEfecto,
+  EliminarEfecto,
+  ExportarEfectos,
+  GuardarEfecto,
+  ImportarEfectos,
+  ListarEfectos,
+} from "@/fx/aplicacion/casosDeUso";
+import { FormatoAoFx } from "@/fx/infraestructura/FormatoAoFx";
+import { HttpEfectoRepositorio } from "@/fx/infraestructura/navegador/HttpEfectoRepositorio";
+import {
   AutovincularEquipado,
   CrearObjeto,
   DuplicarObjeto,
@@ -28,9 +53,25 @@ import {
   ImportarObjetos,
   ListarObjetos,
 } from "@/objetos/aplicacion/casosDeUso";
-import { CatalogoGraficoDesdeHojas } from "@/objetos/infraestructura/CatalogoGraficoDesdeHojas";
+import { CatalogoGraficoDesdeHojas } from "@/graficos/infraestructura/CatalogoGraficoDesdeHojas";
 import { FormatoAoObjs } from "@/objetos/infraestructura/FormatoAoObjs";
 import { HttpObjetoRepositorio } from "@/objetos/infraestructura/navegador/HttpObjetoRepositorio";
+import {
+  CrearHechizo,
+  DuplicarHechizo,
+  EliminarHechizo,
+  ExportarHechizos,
+  GuardarHechizo,
+  ImportarHechizos,
+  ListarHechizos,
+} from "@/hechizos/aplicacion/casosDeUso";
+import { FormatoAoSpells } from "@/hechizos/infraestructura/FormatoAoSpells";
+import { HttpHechizoRepositorio } from "@/hechizos/infraestructura/navegador/HttpHechizoRepositorio";
+import { ImportarHechizosClasicos, ImportarObjetosClasicos, ImportarTablaDeGrh } from "@/importacion/aplicacion/casosDeUso";
+import { LectorGraficosIni } from "@/importacion/infraestructura/LectorGraficosIni";
+import { LectorHechizosDat } from "@/importacion/infraestructura/LectorHechizosDat";
+import { LectorObjDat } from "@/importacion/infraestructura/LectorObjDat";
+import { HttpTablaDeGrh } from "@/importacion/infraestructura/navegador/HttpTablaDeGrh";
 import { ImportarProyectoLegado } from "@/proyecto/aplicacion/ImportarProyectoLegado";
 import { LectorAoProj } from "@/proyecto/infraestructura/LectorAoProj";
 
@@ -46,6 +87,15 @@ function crear() {
   const formatoAnim = new FormatoAoAnim();
   const objetos = new HttpObjetoRepositorio();
   const formatoObjs = new FormatoAoObjs();
+  const efectos = new HttpEfectoRepositorio();
+  const formatoFx = new FormatoAoFx();
+  const cuerpos = new HttpCuerpoRepositorio();
+  const formatoCuerpos = new FormatoAoBodies();
+  const cabezas = new HttpCabezaRepositorio();
+  const formatoCabezas = new FormatoAoHeads();
+  const tablaDeGrh = new HttpTablaDeGrh();
+  const hechizos = new HttpHechizoRepositorio();
+  const formatoHechizos = new FormatoAoSpells();
   const importarObjetos = new ImportarObjetos(objetos, formatoObjs, ids);
   const fabricaDeCatalogo = (hs: readonly HojaDeSprites[]) => new CatalogoGraficoDesdeHojas(hs);
 
@@ -76,6 +126,47 @@ function crear() {
       autovincular: new AutovincularEquipado(objetos),
       exportar: new ExportarObjetos(objetos, formatoObjs),
       importar: importarObjetos,
+    },
+    fx: {
+      listar: new ListarEfectos(efectos),
+      crear: new CrearEfecto(efectos, ids),
+      guardar: new GuardarEfecto(efectos),
+      duplicar: new DuplicarEfecto(efectos, ids),
+      eliminar: new EliminarEfecto(efectos),
+      exportar: new ExportarEfectos(efectos, formatoFx),
+      importar: new ImportarEfectos(efectos, formatoFx, ids),
+    },
+    cuerpos: {
+      listar: new ListarApariencias(cuerpos),
+      crear: new CrearApariencia(cuerpos, ids, ESPECIE_CUERPO),
+      guardar: new GuardarApariencia(cuerpos),
+      duplicar: new DuplicarApariencia(cuerpos, ids, ESPECIE_CUERPO),
+      eliminar: new EliminarApariencia(cuerpos),
+      exportar: new ExportarApariencias(cuerpos, formatoCuerpos),
+      importar: new ImportarApariencias(cuerpos, formatoCuerpos, ids, ESPECIE_CUERPO),
+    },
+    cabezas: {
+      listar: new ListarApariencias(cabezas),
+      crear: new CrearApariencia(cabezas, ids, ESPECIE_CABEZA),
+      guardar: new GuardarApariencia(cabezas),
+      duplicar: new DuplicarApariencia(cabezas, ids, ESPECIE_CABEZA),
+      eliminar: new EliminarApariencia(cabezas),
+      exportar: new ExportarApariencias(cabezas, formatoCabezas),
+      importar: new ImportarApariencias(cabezas, formatoCabezas, ids, ESPECIE_CABEZA),
+    },
+    hechizos: {
+      listar: new ListarHechizos(hechizos),
+      crear: new CrearHechizo(hechizos, ids),
+      guardar: new GuardarHechizo(hechizos),
+      duplicar: new DuplicarHechizo(hechizos, ids),
+      eliminar: new EliminarHechizo(hechizos),
+      exportar: new ExportarHechizos(hechizos, formatoHechizos),
+      importar: new ImportarHechizos(hechizos, formatoHechizos, ids),
+    },
+    clasico: {
+      tablaDeGrh: new ImportarTablaDeGrh(new LectorGraficosIni(), tablaDeGrh, hojas),
+      objetos: new ImportarObjetosClasicos(new LectorObjDat(), tablaDeGrh, hojas, importarObjetos, fabricaDeCatalogo, ids),
+      hechizos: new ImportarHechizosClasicos(new LectorHechizosDat(), new ImportarHechizos(hechizos, formatoHechizos, ids)),
     },
     proyecto: {
       importarLegado: new ImportarProyectoLegado(new LectorAoProj(), hojas, imagenes, procesador, importarObjetos, fabricaDeCatalogo, ids),

@@ -1,6 +1,8 @@
-import type { Direccion } from "../dominio/Direccion";
-import { Objeto, type ValorDeAtributo } from "../dominio/Objeto";
-import type { ReferenciaGrafica } from "../dominio/ReferenciaGrafica";
+import { referenciaValida } from "@/compartido/infraestructura/ReferenciaDto";
+import type { Direccion } from "@/compartido/dominio/Direccion";
+import type { ValorDeAtributo } from "@/compartido/dominio/Atributos";
+import { Objeto } from "../dominio/Objeto";
+import type { ReferenciaGrafica } from "@/compartido/dominio/ReferenciaGrafica";
 import type { TipoDeObjetoId } from "../dominio/TipoDeObjeto";
 
 /** Forma plana de un objeto para guardarlo en disco y mandarlo por HTTP. */
@@ -21,17 +23,6 @@ export interface ObjetoDto {
     equipado: Partial<Record<Direccion, ReferenciaGrafica>>;
   };
   esEjemplo?: boolean;
-}
-
-function refValida(r: unknown): ReferenciaGrafica | null {
-  if (!r || typeof r !== "object") return null;
-  const x = r as Record<string, unknown>;
-  const frame = Math.max(0, Math.floor(Number(x.frame) || 0));
-  if (x.tipo === "vinculada" && typeof x.hojaId === "string" && typeof x.animacionId === "string")
-    return { tipo: "vinculada", hojaId: x.hojaId, animacionId: x.animacionId, frame };
-  if (x.tipo === "pendiente" && typeof x.nombreHoja === "string" && typeof x.nombreAnimacion === "string")
-    return { tipo: "pendiente", nombreHoja: x.nombreHoja, nombreAnimacion: x.nombreAnimacion, frame };
-  return null;
 }
 
 export const ObjetoMapper = {
@@ -55,7 +46,7 @@ export const ObjetoMapper = {
   aDominio(d: ObjetoDto): Objeto {
     const equipado: Partial<Record<Direccion, ReferenciaGrafica>> = {};
     for (const [k, v] of Object.entries(d.graficos?.equipado ?? {})) {
-      const r = refValida(v);
+      const r = referenciaValida(v);
       if (r) equipado[k as Direccion] = r;
     }
     return Objeto.reconstituir({
@@ -69,7 +60,7 @@ export const ObjetoMapper = {
       nivelMinimo: Number(d.nivelMinimo) || 0,
       banderas: Array.isArray(d.banderas) ? d.banderas.map(String) : [],
       atributos: d.atributos ?? {},
-      graficos: { icono: refValida(d.graficos?.icono), suelo: refValida(d.graficos?.suelo), equipado },
+      graficos: { icono: referenciaValida(d.graficos?.icono), suelo: referenciaValida(d.graficos?.suelo), equipado },
       esEjemplo: !!d.esEjemplo,
     });
   },

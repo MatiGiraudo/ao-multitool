@@ -1,13 +1,15 @@
 "use client";
 import { useState } from "react";
 import { useImagen } from "@/compartido/ui/utilidades";
-import { DibujoDeFrame } from "@/graficos/ui/DibujoDeFrame";
-import { useGraficos } from "@/graficos/ui/ProveedorDeGraficos";
-import { Referencia, type ReferenciaGrafica } from "../dominio/ReferenciaGrafica";
-import { useObjetos } from "./ProveedorDeObjetos";
+import { DibujoDeFrame } from "./DibujoDeFrame";
+import { useGraficos } from "./ProveedorDeGraficos";
+import { Referencia, type ReferenciaGrafica } from "@/compartido/dominio/ReferenciaGrafica";
 import { SelectorDeAnimacion } from "./SelectorDeAnimacion";
 
-/** Un "enchufe" de gráfico del objeto: icono, suelo o una dirección de equipado. */
+/**
+ * Un "enchufe" de gráfico: muestra a qué animación apunta una ReferenciaGrafica y deja cambiarla.
+ * Lo usa cualquier módulo que vincule gráficos (objetos, y más adelante apariencias, FX, NPCs).
+ */
 export function RanuraGrafica(p: {
   id: string;
   etiqueta: string;
@@ -17,8 +19,8 @@ export function RanuraGrafica(p: {
   conFrame: boolean;
   onCambiar(r: ReferenciaGrafica | null): void;
 }) {
-  const { resolver } = useObjetos();
   const graficos = useGraficos();
+  const { resolver } = graficos;
   const [abierto, setAbierto] = useState(false);
   const r = resolver(p.referencia);
   const img = useImagen(graficos.urlImagen(r?.hoja));

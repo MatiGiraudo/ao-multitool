@@ -1,13 +1,8 @@
-import type { CatalogoGrafico } from "../dominio/CatalogoGrafico";
-import type { Direccion } from "../dominio/Direccion";
-import type { Objeto, ValorDeAtributo } from "../dominio/Objeto";
-
-/** Una referencia gráfica tal como viaja en un archivo: por nombres, no por ids internos. */
-export interface ReferenciaPorNombre {
-  hoja: string;
-  animacion: string;
-  frame: number;
-}
+import type { ReferenciaPorNombre } from "@/compartido/aplicacion/ReferenciaPorNombre";
+import type { CatalogoGrafico } from "@/compartido/dominio/CatalogoGrafico";
+import type { Direccion } from "@/compartido/dominio/Direccion";
+import type { ValorDeAtributo } from "@/compartido/dominio/Atributos";
+import type { Objeto } from "../dominio/Objeto";
 
 export interface ObjetoImportado {
   numero: number;

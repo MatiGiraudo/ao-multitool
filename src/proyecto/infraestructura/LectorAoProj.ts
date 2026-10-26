@@ -2,8 +2,8 @@ import { ErrorDeDominio } from "@/compartido/dominio/ErrorDeDominio";
 import { Frame } from "@/graficos/dominio/Frame";
 import { Grilla } from "@/graficos/dominio/Grilla";
 import type { Ancla } from "@/graficos/dominio/Ancla";
-import type { ReferenciaPorNombre } from "@/objetos/aplicacion/puertos";
-import { DIRECCIONES, type Direccion } from "@/objetos/dominio/Direccion";
+import type { ReferenciaPorNombre } from "@/compartido/aplicacion/ReferenciaPorNombre";
+import { DIRECCIONES, type Direccion } from "@/compartido/dominio/Direccion";
 import type { HojaLegada, LectorDeProyectoLegado, ProyectoLegado } from "../aplicacion/ImportarProyectoLegado";
 
 /*

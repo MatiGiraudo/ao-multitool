@@ -4,9 +4,10 @@ import { Animacion } from "@/graficos/dominio/Animacion";
 import { HojaDeSprites } from "@/graficos/dominio/HojaDeSprites";
 import { ImportarObjetos, ExportarObjetos, CrearObjeto } from "./aplicacion/casosDeUso";
 import { Objeto } from "./dominio/Objeto";
-import { Referencia } from "./dominio/ReferenciaGrafica";
-import { Autovinculador, ValidadorDeObjetos } from "./dominio/servicios";
-import { CatalogoGraficoDesdeHojas } from "./infraestructura/CatalogoGraficoDesdeHojas";
+import { Referencia } from "@/compartido/dominio/ReferenciaGrafica";
+import { Autovinculador } from "@/compartido/dominio/Autovinculador";
+import { autovincularEquipado, ValidadorDeObjetos } from "./dominio/servicios";
+import { CatalogoGraficoDesdeHojas } from "@/graficos/infraestructura/CatalogoGraficoDesdeHojas";
 import { FormatoAoObjs } from "./infraestructura/FormatoAoObjs";
 import { MemoriaObjetoRepositorio } from "./infraestructura/memoria";
 
@@ -38,7 +39,7 @@ describe("Servicios de dominio", () => {
   const catalogo = new CatalogoGraficoDesdeHojas([hojaCaminar()]);
 
   it("autovincula las 4 direcciones por sufijo", () => {
-    const r = Autovinculador.vincular(Objeto.crear("k", 1).conTipo("armadura"), "h1", catalogo);
+    const r = autovincularEquipado(Objeto.crear("k", 1).conTipo("armadura"), "h1", catalogo);
     expect(r.cantidad).toBe(4);
     expect(Autovinculador.hojaSugerida(catalogo)).toBe("h1");
   });
@@ -60,7 +61,7 @@ describe("Importar y exportar objetos (ao-objs)", () => {
 
     let o = await new CrearObjeto(repo, ids).ejecutar();
     o = o.renombrado("Túnica").conTipo("armadura").conIcono(Referencia.vinculada("h1", "a-icono"));
-    o = Autovinculador.vincular(o, "h1", catalogo).objeto;
+    o = autovincularEquipado(o, "h1", catalogo).objeto;
     await repo.guardar(o);
 
     const { contenido } = await new ExportarObjetos(repo, formato).ejecutar(catalogo);

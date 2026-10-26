@@ -1,3 +1,5 @@
+import { num, type DefinicionDeAtributo, type DefinicionDeBandera } from "@/compartido/dominio/Atributos";
+
 /*
  * Catálogo de tipos de objeto de AO y qué atributos tiene cada uno.
  * Es conocimiento del negocio, por eso vive en el dominio.
@@ -19,18 +21,6 @@ export type TipoDeObjetoId =
   | "oro"
   | "otro";
 
-export interface DefinicionDeAtributo {
-  clave: string;
-  etiqueta: string;
-  clase: "numero" | "texto" | "opcion";
-  opciones?: readonly (readonly [valor: string, etiqueta: string])[];
-}
-
-export interface DefinicionDeBandera {
-  clave: string;
-  etiqueta: string;
-}
-
 export interface TipoDeObjeto {
   id: TipoDeObjetoId;
   nombre: string;
@@ -40,7 +30,6 @@ export interface TipoDeObjeto {
   banderas: readonly DefinicionDeBandera[];
 }
 
-const num = (clave: string, etiqueta: string): DefinicionDeAtributo => ({ clave, etiqueta, clase: "numero" });
 const defensa = [num("minDef", "Defensa mín."), num("maxDef", "Defensa máx.")];
 
 export const BANDERAS_COMUNES: readonly DefinicionDeBandera[] = [

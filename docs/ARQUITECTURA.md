@@ -12,15 +12,19 @@ Abrí `src/` y lo primero que ves es:
 src/
 ├── graficos/     ← hojas de sprites y animaciones
 ├── objetos/      ← ítems del juego
+├── apariencias/  ← cuerpos y cabezas de los personajes
+├── fx/           ← efectos visuales
+├── hechizos/     ← los hechizos y lo que hacen
 ├── proyecto/     ← operaciones que cruzan varios módulos (importar un proyecto)
-├── compartido/   ← piezas chicas que usan todos
+├── importacion/  ← traer los archivos del AO original (otro módulo que coordina)
+├── compartido/   ← el vocabulario y los adaptadores que usan todos (sección 3.7)
 ├── contenedor/   ← donde se conectan las piezas (ver sección 4)
 └── app/          ← Next.js: rutas, páginas y API
 ```
 
 La idea es que, al mirar las carpetas, se entienda **de qué trata el sistema** (gráficos, objetos) y no **con qué está hecho** (controllers, services, components). Next.js queda arrinconado en `app/`: es un detalle de entrega, no el centro del proyecto.
 
-Cuando agregues Hechizos, va a aparecer una carpeta `src/hechizos/`. El proyecto "grita" un módulo más.
+Cuando agregues NPCs, va a aparecer una carpeta `src/npcs/`. El proyecto "grita" un módulo más.
 
 ---
 
@@ -64,7 +68,8 @@ Son datos que se identifican **por su valor**: dos rectángulos con las mismas c
 
 - `graficos/dominio/Rect.ts`: un recorte de la imagen. Nunca es negativo ni de tamaño 0, y eso se garantiza al crearlo.
 - `graficos/dominio/Tamanio.ts`, `Frame.ts`, `Grilla.ts`.
-- `objetos/dominio/ReferenciaGrafica.ts`: "este objeto usa tal animación".
+- `compartido/dominio/ReferenciaGrafica.ts`: "esto usa tal animación". Vive en `compartido/` porque lo
+  necesitan todos los módulos que vinculan gráficos, no sólo Objetos (sección 3.7).
 
 Todos son **inmutables**: `rect.desplazado(5, 0)` no modifica `rect`, devuelve uno nuevo. Esto evita una familia entera de bugs ("¿quién me cambió este valor?") y además encaja perfecto con React, que detecta cambios comparando referencias.
 
@@ -88,20 +93,42 @@ Un agregado es un grupo de objetos que se guarda y se valida **como una unidad**
 
 ### 3.5 Servicios de dominio
 
-Algunas reglas no le pertenecen a una sola entidad. Las encontrás en `objetos/dominio/servicios.ts`:
+Algunas reglas no le pertenecen a una sola entidad:
 
-- `ValidadorDeObjetos`: "ID repetido" necesita mirar **todos** los objetos, no uno solo.
-- `Autovinculador`: necesita un objeto **y** el catálogo de animaciones.
+- `objetos/dominio/servicios.ts` → `ValidadorDeObjetos`: "ID repetido" necesita mirar **todos** los objetos, no uno solo.
+- `compartido/dominio/Autovinculador.ts`: adivina qué animación va en cada dirección mirando los sufijos
+  del nombre. No sabe a qué entidad se lo aplican: quien lo llama le pasa un `aplicar` que dice dónde
+  guardar cada dirección (para un objeto, `conEquipado`). Por eso lo van a reusar cuerpos, cabezas y NPCs.
 
 ### 3.6 Contextos delimitados y capa anticorrupción
 
 Gráficos y Objetos son dos **contextos delimitados**: cada uno tiene su propio modelo. Lo importante es que **el dominio de Objetos no importa nada de Gráficos**:
 
 - Un objeto guarda una `ReferenciaGrafica`, que tiene ids y nombres, nunca una `Animacion`.
-- Cuando Objetos necesita saber algo de los gráficos, usa su propio puerto `CatalogoGrafico` (`objetos/dominio/CatalogoGrafico.ts`).
-- El único archivo que traduce entre los dos mundos es `objetos/infraestructura/CatalogoGraficoDesdeHojas.ts`. Eso es una **capa anticorrupción**: si Gráficos cambia por dentro, sólo se toca ese archivo.
+- Cuando Objetos necesita saber algo de los gráficos, mira el puerto `CatalogoGrafico` (`compartido/dominio/CatalogoGrafico.ts`): hojas, animaciones y cuántos frames tiene cada una, nada más.
+- El único archivo que traduce entre los dos mundos es `graficos/infraestructura/CatalogoGraficoDesdeHojas.ts`. Eso es una **capa anticorrupción**, y fijate de qué lado está: lo implementa **Gráficos**, que es quien conoce sus hojas. Así la flecha va de un módulo al vocabulario compartido, y nunca de un módulo a otro.
 
 Un detalle útil: si importás objetos cuyas hojas todavía no cargaste, la referencia queda como `pendiente` (con nombres). En cuanto cargás esa hoja, el catálogo la resuelve sola.
+
+### 3.7 El núcleo compartido (shared kernel)
+
+En `compartido/dominio/` vive el vocabulario que **todos** los contextos hablan:
+
+| Pieza | Qué es |
+|---|---|
+| `ReferenciaGrafica` | "esto usa tal animación, en tal frame" |
+| `Direccion` | las cuatro direcciones de AO y los sufijos con que se las reconoce |
+| `CatalogoGrafico` | el puerto para mirar los gráficos sin conocer al módulo Gráficos |
+| `Autovinculador` | adivinar las cuatro direcciones por el nombre |
+| `Problema` | cómo se cuenta un problema encontrado por un validador |
+| `ColeccionRepositorio` | la forma que tienen todos los puertos de persistencia |
+
+La regla que lo mantiene sano: **`compartido/` no importa a ningún módulo**. Si una pieza necesita
+saber de hojas, de objetos o de mapas, no va acá: va en el módulo dueño de ese concepto, implementando
+lo que `compartido/` define. Por eso `CatalogoGraficoDesdeHojas` quedó en `graficos/`.
+
+DDD llama a esto *shared kernel*, y es el punto medio entre copiar el mismo tipo en cinco módulos y
+hacer que cinco módulos se importen entre sí.
 
 ---
 
@@ -131,6 +158,13 @@ Ese puerto tiene **tres adaptadores**:
 | `MemoriaHojaRepositorio` | tests | Guarda en un `Map` |
 
 El caso de uso `GuardarHoja` (en `graficos/aplicacion/casosDeUso.ts`) recibe un `HojaRepositorio` y **no sabe cuál de los tres es**. En el navegador le llega el HTTP; en los tests, el de memoria. Por eso los tests corren en milisegundos y sin servidor.
+
+**Lo mismo, pero una sola vez.** `ObjetoRepositorio` resultó ser `ColeccionRepositorio<Objeto>`: las
+mismas cuatro operaciones que van a necesitar apariencias, FX, hechizos y NPCs. Por eso los tres
+adaptadores están escritos en `compartido/infraestructura/` de forma genérica
+(`ArchivosColeccionRepositorio`, `HttpColeccionRepositorio`, `MemoriaColeccionRepositorio`) y cada
+módulo sólo dice cuál es su archivo, su URL y cómo se traduce su DTO. Un repositorio de módulo son
+diez líneas, y la cola de escrituras y la escritura atómica ya vienen resueltas.
 
 Otros puertos del proyecto:
 
@@ -183,10 +217,12 @@ Si mañana querés guardar en SQLite, escribís un `SqliteHojaRepositorio implem
 ## 6. La interfaz (React)
 
 - **Proveedores** (`ProveedorDeAplicacion`, `ProveedorDeGraficos`, `ProveedorDeObjetos`): hacen la inyección de dependencias en React. Los componentes piden casos de uso al contexto en vez de crearlos.
+- **Cada página monta lo que usa**: el layout raíz sólo tiene `ProveedorDeAplicacion` y el encabezado; los proveedores de módulo los pone la página (`app/objetos/page.tsx` monta Gráficos y Objetos). Así una pestaña no carga los datos de las otras.
 - **Componentes contenedores y de presentación**:
   - `EditorDeHojas` y `EditorDeObjetos` manejan el estado de la pantalla.
   - `LienzoDeHoja`, `ListaDeFrames`, `RanuraGrafica` y el resto reciben datos y avisan lo que hizo el usuario, pero no guardan nada por su cuenta.
-- **Edición optimista con guardado diferido**: el cambio se ve al instante y se guarda poco después. Si cerrás la pestaña con cambios pendientes, el navegador te avisa.
+- **Edición optimista con guardado diferido** (`compartido/ui/useColeccionEditable.ts`): el cambio se ve al instante y se guarda 400 ms después del último. Si cerrás la pestaña con cambios pendientes, el navegador te avisa. Las dos pantallas usan el mismo hook, y la regla al usarlo es una sola: antes de cualquier operación que vuelva a leer del servidor (crear, duplicar, importar, exportar) hay que llamar a `guardarPendientes()`.
+- **Refrescar todo sin conocer a nadie**: cada colección se anota en `ProveedorDeAplicacion` con `registrarRecarga`, así "Importar proyecto del indexador web…" refresca lo que esté montado sin importar un solo módulo.
 - **Composición entre módulos en la página**: `app/animaciones/PantallaAnimaciones.tsx` le pasa a `EditorDeHojas` un `renderUso` que muestra «Usada por: …» con datos de Objetos. Gráficos no sabe que Objetos existe; la página los junta.
 
 La interfaz de Objetos **sí** usa piezas de la interfaz de Gráficos (`DibujoDeFrame`, `useGraficos`) para dibujar. Es una decisión consciente: el desacople estricto está en el dominio, que es donde más importa.
@@ -205,23 +241,33 @@ No necesitan navegador ni servidor: es el beneficio directo de los puertos.
 
 ---
 
-## 8. Receta: agregar el módulo Hechizos
+## 8. Receta: agregar un módulo
+
+El plan completo de las herramientas que faltan está en **[ROADMAP.md](ROADMAP.md)**. El molde es el
+que sigue, y lo podés leer entero en `src/hechizos/`, que es el último que se escribió así:
 
 1. **Dominio** (`src/hechizos/dominio/`):
-   - `Hechizo.ts`: la entidad, con `clave`, `numero`, nombre, maná, energía, daño o curación, objetivo y palabras mágicas. Métodos inmutables `conManá(n)`, etc., con validaciones.
-   - Una `ReferenciaGrafica` para el FX. Reusá la idea de Objetos: el hechizo **no** importa `Animacion`, sólo guarda ids y nombres.
-   - `HechizoRepositorio.ts`: el puerto.
+   - `Hechizo.ts`: la entidad, con `clave`, `numero`, nombre, maná, energía, objetivo y palabras mágicas. Métodos inmutables `conMana(n)`, etc., con validaciones.
+   - `TipoDeHechizo.ts`: qué puede hacer un hechizo y qué datos necesita cada efecto, **como dato** (igual que `TIPOS_DE_OBJETO`). Los atributos se declaran con las definiciones de `compartido/dominio/Atributos.ts`, así la ficha los dibuja sola.
+   - Al FX lo apunta por número, como en el juego, y para saber si ese número existe pide un `CatalogoPorNumero`: el dominio no conoce al módulo FX.
+   - `HechizoRepositorio.ts`: el puerto, que es `ColeccionRepositorio<Hechizo>`.
+   - `servicios.ts`: el validador, devolviendo `Problema[]`.
 2. **Aplicación** (`src/hechizos/aplicacion/`): `CrearHechizo`, `GuardarHechizo`, `ExportarHechizos`, `ImportarHechizos`, más un puerto `FormatoDeHechizos`.
 3. **Infraestructura**:
-   - `HechizoDto.ts` con su mapper.
-   - `servidor/ArchivosHechizoRepositorio.ts` (`data/hechizos/hechizos.json`).
-   - `navegador/HttpHechizoRepositorio.ts`.
-   - `memoria.ts`.
+   - `HechizoDto.ts` con su mapper (`aDto` / `aDominio`: es lo único que piden los adaptadores genéricos).
+   - `servidor/ArchivosHechizoRepositorio.ts`: extiende `ArchivosColeccionRepositorio` y pasa `data/hechizos/hechizos.json`.
+   - `navegador/HttpHechizoRepositorio.ts`: extiende `HttpColeccionRepositorio` con `/api/hechizos`.
+   - `memoria.ts`: extiende `MemoriaColeccionRepositorio`.
    - `FormatoAoSpells.ts`.
-4. **API**: `src/app/api/hechizos/route.ts` y `[clave]/route.ts`, copiando el estilo de `api/objetos`.
+4. **API**: `src/app/api/hechizos/route.ts` y `[clave]/route.ts`, armados con `rutasDeLaColeccion` y `rutasDeUnItem`. Son tres líneas cada uno.
 5. **Contenedores**: sumá los casos de uso a `contenedor/servidor.ts` y `contenedor/cliente.ts`.
-6. **UI**: `ProveedorDeHechizos` y `EditorDeHechizos` (lista, ficha y vista previa del FX reusando `DibujoDeFrame`).
-7. **Página**: `src/app/hechizos/page.tsx`, más una pestaña en `app/_componentes/Encabezado.tsx`.
+6. **UI**: `ProveedorDeHechizos` sobre `useColeccionEditable`, y `EditorDeHechizos` (lista, ficha y vista previa del FX reusando `RanuraGrafica` y `DibujoDeFrame`).
+7. **Página**: `src/app/hechizos/page.tsx` montando sus proveedores, más una línea en `app/_componentes/secciones.ts`.
 8. **Tests**: arrancá por el dominio.
 
-Los módulos que siguen (Cuerpos, Cabezas, FX, NPCs y finalmente Mapas) siguen exactamente el mismo molde.
+Los módulos que siguen (NPCs y finalmente Mapas) usan exactamente el mismo molde.
+
+**Si el módulo nuevo necesita mirar a otro** (un hechizo apunta a un FX, un NPC va a apuntar a un
+cuerpo y a objetos), no lo importes: pedí un `CatalogoPorNumero` (`compartido/dominio/`). Lo
+implementa el módulo dueño de los datos, y la página es la que los junta — `app/hechizos/` es el
+ejemplo completo, con el catálogo para validar y el `renderFx` para mostrar el efecto elegido.

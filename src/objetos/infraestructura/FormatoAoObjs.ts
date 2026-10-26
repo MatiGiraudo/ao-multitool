@@ -1,9 +1,11 @@
 import { ErrorDeDominio } from "@/compartido/dominio/ErrorDeDominio";
-import type { CatalogoGrafico } from "../dominio/CatalogoGrafico";
-import { DIRECCIONES, type Direccion } from "../dominio/Direccion";
-import type { Objeto, ValorDeAtributo } from "../dominio/Objeto";
-import type { ReferenciaGrafica } from "../dominio/ReferenciaGrafica";
-import type { FormatoDeObjetos, ObjetoImportado, ReferenciaPorNombre } from "../aplicacion/puertos";
+import type { CatalogoGrafico } from "@/compartido/dominio/CatalogoGrafico";
+import { DIRECCIONES, type Direccion } from "@/compartido/dominio/Direccion";
+import type { ValorDeAtributo } from "@/compartido/dominio/Atributos";
+import type { Objeto } from "../dominio/Objeto";
+import type { ReferenciaGrafica } from "@/compartido/dominio/ReferenciaGrafica";
+import type { ReferenciaPorNombre } from "@/compartido/aplicacion/ReferenciaPorNombre";
+import type { FormatoDeObjetos, ObjetoImportado } from "../aplicacion/puertos";
 
 /** Formato "ao-objs" v1: el mismo que exportaba el indexador web. Es el contrato con Unity. */
 

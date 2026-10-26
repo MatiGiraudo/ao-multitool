@@ -4,9 +4,10 @@ import { useCadaFrame, useImagen, usePrefiereMenosMovimiento } from "@/compartid
 import { posicionEnCaja } from "@/graficos/dominio/Ancla";
 import { dibujarFrameAjustado } from "@/graficos/ui/DibujoDeFrame";
 import { useGraficos } from "@/graficos/ui/ProveedorDeGraficos";
-import { DIRECCIONES, type Direccion } from "../dominio/Direccion";
+import { DIRECCIONES, type Direccion } from "@/compartido/dominio/Direccion";
 import type { Objeto } from "../dominio/Objeto";
-import { useObjetos, type GraficoResuelto } from "./ProveedorDeObjetos";
+import type { GraficoResuelto } from "@/graficos/ui/ProveedorDeGraficos";
+import { useObjetos } from "./ProveedorDeObjetos";
 
 /** Cómo se ve el objeto en el inventario, tirado en el suelo y equipado. */
 export function VistaPreviaDeObjeto({ objeto }: { objeto: Objeto }) {

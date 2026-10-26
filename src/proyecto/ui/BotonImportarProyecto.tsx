@@ -2,14 +2,10 @@
 import { useState } from "react";
 import { useAplicacion } from "@/compartido/ui/Aplicacion";
 import { BotonArchivo } from "@/compartido/ui/componentes";
-import { useGraficos } from "@/graficos/ui/ProveedorDeGraficos";
-import { useObjetos } from "@/objetos/ui/ProveedorDeObjetos";
 
 /** Trae el "proyecto-ao.json" del indexador web: hojas con sus imágenes, animaciones y objetos. */
 export function BotonImportarProyecto() {
-  const { casos, avisar, intentar } = useAplicacion();
-  const graficos = useGraficos();
-  const objetos = useObjetos();
+  const { casos, avisar, intentar, recargarTodo } = useAplicacion();
   const [ocupado, setOcupado] = useState(false);
   return (
     <BotonArchivo
@@ -17,8 +13,7 @@ export function BotonImportarProyecto() {
       onArchivo={async (f) => {
         setOcupado(true);
         const r = await intentar(async () => casos.proyecto.importarLegado.ejecutar(await f.text()));
-        await graficos.recargar();
-        await objetos.recargar();
+        await recargarTodo();
         setOcupado(false);
         if (r)
           avisar(

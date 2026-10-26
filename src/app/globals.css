@@ -664,6 +664,10 @@ canvas.pixel,
   gap: 12px;
   align-items: center;
 }
+/* Fichas sin miniatura (un hechizo no tiene gráfico propio): sin la columna de la imagen. */
+.ohead.sin-icono {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
 .ohead canvas {
   width: 56px;
   height: 56px;

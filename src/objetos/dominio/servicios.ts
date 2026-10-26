@@ -1,18 +1,16 @@
-import { DIRECCIONES, type Direccion } from "./Direccion";
-import type { AnimacionDelCatalogo, CatalogoGrafico } from "./CatalogoGrafico";
+import { Autovinculador } from "@/compartido/dominio/Autovinculador";
+import type { CatalogoGrafico } from "@/compartido/dominio/CatalogoGrafico";
+import { DIRECCIONES } from "@/compartido/dominio/Direccion";
+import type { Problema } from "@/compartido/dominio/Problema";
 import type { Objeto } from "./Objeto";
-import { Referencia } from "./ReferenciaGrafica";
 
 /*
- * Servicios de dominio: reglas que involucran a más de un objeto (o a un objeto y al catálogo),
- * así que no le pertenecen a una sola entidad.
+ * Servicio de dominio: reglas que involucran a más de un objeto (o a un objeto y al catálogo),
+ * así que no le pertenecen a la entidad.
+ *
+ * El autovínculo por dirección y el tipo Problema viven en `compartido/dominio`: los comparten
+ * todos los módulos que vinculan gráficos.
  */
-
-export interface Problema {
-  gravedad: "error" | "aviso";
-  mensaje: string;
-}
-
 export const ValidadorDeObjetos = {
   problemas(objeto: Objeto, todos: readonly Objeto[], catalogo: CatalogoGrafico): Problema[] {
     const out: Problema[] = [];
@@ -29,43 +27,11 @@ export const ValidadorDeObjetos = {
   },
 };
 
-export const Autovinculador = {
-  /** Qué animación de la hoja corresponde a cada dirección, según los sufijos del nombre. */
-  coincidencias(catalogo: CatalogoGrafico, hojaId: string): Partial<Record<Direccion, AnimacionDelCatalogo>> {
-    const hoja = catalogo.hojas().find((h) => h.hojaId === hojaId);
-    const out: Partial<Record<Direccion, AnimacionDelCatalogo>> = {};
-    if (!hoja) return out;
-    for (const d of DIRECCIONES) {
-      const a = hoja.animaciones.find((x) => d.sufijos.test(x.nombreAnimacion));
-      if (a) out[d.valor] = a;
-    }
-    return out;
-  },
-
-  /** La hoja con más direcciones reconocibles (para preseleccionarla). */
-  hojaSugerida(catalogo: CatalogoGrafico): string | null {
-    let mejor: string | null = null,
-      max = -1;
-    for (const h of catalogo.hojas()) {
-      const n = Object.keys(this.coincidencias(catalogo, h.hojaId)).length;
-      if (n > max) {
-        max = n;
-        mejor = h.hojaId;
-      }
-    }
-    return mejor;
-  },
-
-  vincular(objeto: Objeto, hojaId: string, catalogo: CatalogoGrafico): { objeto: Objeto; cantidad: number } {
-    const c = this.coincidencias(catalogo, hojaId);
-    let o = objeto,
-      cantidad = 0;
-    for (const d of DIRECCIONES) {
-      const a = c[d.valor];
-      if (!a) continue;
-      o = o.conEquipado(d.valor, Referencia.vinculada(a.hojaId, a.animacionId));
-      cantidad++;
-    }
-    return { objeto: o, cantidad };
-  },
-};
+/**
+ * Autovínculo del equipado. El `Autovinculador` compartido sabe qué animación va en cada dirección,
+ * pero no sabe dónde las guarda un objeto: eso lo dice el `conEquipado` de acá.
+ */
+export function autovincularEquipado(objeto: Objeto, hojaId: string, catalogo: CatalogoGrafico): { objeto: Objeto; cantidad: number } {
+  const { entidad, cantidad } = Autovinculador.vincular(objeto, hojaId, catalogo, (o, direccion, referencia) => o.conEquipado(direccion, referencia));
+  return { objeto: entidad, cantidad };
+}

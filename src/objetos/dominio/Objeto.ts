@@ -1,9 +1,14 @@
-import { asegurar, ErrorDeDominio } from "@/compartido/dominio/ErrorDeDominio";
-import { DIRECCIONES, type Direccion } from "./Direccion";
-import type { ReferenciaGrafica } from "./ReferenciaGrafica";
+import {
+  atributosVigentes,
+  banderasVigentes,
+  conAtributo as aplicarAtributo,
+  type ValorDeAtributo,
+} from "@/compartido/dominio/Atributos";
+import { asegurar } from "@/compartido/dominio/ErrorDeDominio";
+import { numeroDeAo } from "@/compartido/dominio/NumeroDeAo";
+import { DIRECCIONES, type Direccion } from "@/compartido/dominio/Direccion";
+import type { ReferenciaGrafica } from "@/compartido/dominio/ReferenciaGrafica";
 import { banderasPermitidas, esTipoValido, tipoDeObjeto, type TipoDeObjeto, type TipoDeObjetoId } from "./TipoDeObjeto";
-
-export type ValorDeAtributo = string | number;
 
 export interface GraficosDeObjeto {
   icono: ReferenciaGrafica | null;
@@ -156,33 +161,15 @@ export class Objeto {
 
   /** `valor` null borra el atributo. */
   conAtributo(clave: string, valor: ValorDeAtributo | null): Objeto {
-    const def = this.tipo.atributos.find((a) => a.clave === clave);
-    if (!def) throw new ErrorDeDominio("Ese atributo no aplica a este tipo de objeto.");
-    const atributos = { ...this.d.atributos };
-    if (valor === null || valor === "") delete atributos[clave];
-    else if (def.clase === "numero") {
-      const n = Number(valor);
-      asegurar(Number.isFinite(n), `${def.etiqueta} tiene que ser un número.`);
-      atributos[clave] = n;
-    } else if (def.clase === "opcion") {
-      asegurar(def.opciones?.some(([v]) => v === valor), `Opción inválida para ${def.etiqueta}.`);
-      atributos[clave] = String(valor);
-    } else atributos[clave] = String(valor);
-    return this.con({ atributos });
+    return this.con({ atributos: aplicarAtributo(this.d.atributos, this.tipo.atributos, clave, valor, "Ese atributo no aplica a este tipo de objeto.") });
   }
 
   /** Atributos y banderas que corresponden al tipo actual (los de otros tipos se conservan pero no cuentan). */
   atributosVigentes(): Record<string, ValorDeAtributo> {
-    const out: Record<string, ValorDeAtributo> = {};
-    for (const a of this.tipo.atributos) {
-      const v = this.d.atributos[a.clave];
-      if (v !== undefined && v !== "") out[a.clave] = v;
-    }
-    return out;
+    return atributosVigentes(this.d.atributos, this.tipo.atributos);
   }
   banderasVigentes(): string[] {
-    const ok = new Set(banderasPermitidas(this.tipo).map((b) => b.clave));
-    return this.d.banderas.filter((b) => ok.has(b));
+    return banderasVigentes(this.d.banderas, banderasPermitidas(this.tipo));
   }
 
   // ---------- gráficos ----------
@@ -218,17 +205,10 @@ export class Objeto {
 }
 
 function validarNumero(n: number): number {
-  asegurar(Number.isInteger(n) && n >= 1, "El ID del objeto tiene que ser un entero mayor a 0.");
-  asegurar(n <= 2_147_483_647, "El ID del objeto es demasiado grande.");
-  return n;
+  return numeroDeAo(n, "El ID del objeto");
 }
 
 function noNegativo(n: number, que: string): number {
   asegurar(Number.isFinite(n) && n >= 0, `${que} no puede ser negativo.`);
   return Math.round(n);
-}
-
-/** El próximo número libre: uno más que el mayor. */
-export function siguienteNumero(objetos: readonly Objeto[]): number {
-  return objetos.reduce((m, o) => Math.max(m, o.numero), 0) + 1;
 }

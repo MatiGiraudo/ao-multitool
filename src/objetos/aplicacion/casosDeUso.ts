@@ -1,12 +1,14 @@
 import type { GeneradorDeIds } from "@/compartido/aplicacion/GeneradorDeIds";
-import type { CatalogoGrafico } from "../dominio/CatalogoGrafico";
-import { DIRECCIONES, type Direccion } from "../dominio/Direccion";
-import { Objeto, siguienteNumero } from "../dominio/Objeto";
+import type { CatalogoGrafico } from "@/compartido/dominio/CatalogoGrafico";
+import { DIRECCIONES, type Direccion } from "@/compartido/dominio/Direccion";
+import { siguienteNumero } from "@/compartido/dominio/NumeroDeAo";
+import { Objeto } from "../dominio/Objeto";
 import type { ObjetoRepositorio } from "../dominio/ObjetoRepositorio";
-import { Referencia, type ReferenciaGrafica } from "../dominio/ReferenciaGrafica";
-import { Autovinculador } from "../dominio/servicios";
+import { referenciaDesdeNombre, type ReferenciaPorNombre } from "@/compartido/aplicacion/ReferenciaPorNombre";
+import type { ReferenciaGrafica } from "@/compartido/dominio/ReferenciaGrafica";
+import { autovincularEquipado } from "../dominio/servicios";
 import { esTipoValido } from "../dominio/TipoDeObjeto";
-import type { FormatoDeObjetos, ObjetoImportado, ReferenciaPorNombre } from "./puertos";
+import type { FormatoDeObjetos, ObjetoImportado } from "./puertos";
 
 export interface ResultadoDeImportacion {
   agregados: number;
@@ -62,7 +64,7 @@ export class EliminarObjeto {
 export class AutovincularEquipado {
   constructor(private readonly repo: ObjetoRepositorio) {}
   async ejecutar(o: Objeto, hojaId: string, catalogo: CatalogoGrafico): Promise<{ objeto: Objeto; cantidad: number }> {
-    const r = Autovinculador.vincular(o, hojaId, catalogo);
+    const r = autovincularEquipado(o, hojaId, catalogo);
     if (r.cantidad) await this.repo.guardar(r.objeto);
     return r;
   }
@@ -97,11 +99,7 @@ export class ImportarObjetos {
   async importar(importados: readonly ObjetoImportado[], catalogo: CatalogoGrafico): Promise<ResultadoDeImportacion> {
     const existentes = await this.repo.listar();
     const porNumero = new Map(existentes.map((o) => [o.numero, o]));
-    const aRef = (r: ReferenciaPorNombre | null | undefined): ReferenciaGrafica | null => {
-      if (!r) return null;
-      const a = catalogo.buscarPorNombre(r.hoja, r.animacion);
-      return a ? Referencia.vinculada(a.hojaId, a.animacionId, r.frame) : Referencia.pendiente(r.hoja, r.animacion, r.frame);
-    };
+    const aRef = (r: ReferenciaPorNombre | null | undefined) => referenciaDesdeNombre(r, catalogo);
     let agregados = 0,
       reemplazados = 0,
       pendientes = 0;

@@ -1,0 +1,19 @@
+[
+  {
+    "clave": "8b2f58877498",
+    "numero": 1,
+    "nombre": "Hechizo nuevo",
+    "descripcion": "",
+    "palabrasMagicas": "",
+    "tipo": "dano",
+    "objetivo": "ambos",
+    "mana": 0,
+    "energia": 0,
+    "skillRequerido": 0,
+    "nivelMinimo": 0,
+    "banderas": [],
+    "atributos": {},
+    "fx": 0,
+    "sonido": ""
+  }
+]

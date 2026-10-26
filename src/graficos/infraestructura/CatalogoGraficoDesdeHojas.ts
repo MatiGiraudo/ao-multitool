@@ -1,10 +1,10 @@
-import type { HojaDeSprites } from "@/graficos/dominio/HojaDeSprites";
-import type { AnimacionDelCatalogo, CatalogoGrafico, HojaDelCatalogo } from "../dominio/CatalogoGrafico";
-import type { ReferenciaGrafica } from "../dominio/ReferenciaGrafica";
+import type { HojaDeSprites } from "../dominio/HojaDeSprites";
+import type { AnimacionDelCatalogo, CatalogoGrafico, HojaDelCatalogo } from "@/compartido/dominio/CatalogoGrafico";
+import type { ReferenciaGrafica } from "@/compartido/dominio/ReferenciaGrafica";
 
 /**
- * Capa anticorrupción: traduce las hojas del módulo Gráficos al idioma que entiende Objetos.
- * Es el ÚNICO archivo del módulo Objetos que importa algo de Gráficos.
+ * Adaptador de salida: traduce las hojas de este módulo al puerto compartido CatalogoGrafico,
+ * que es lo único que ven los demás módulos (objetos, apariencias, FX…). Así ninguno importa a Gráficos.
  */
 export class CatalogoGraficoDesdeHojas implements CatalogoGrafico {
   private readonly lista: HojaDelCatalogo[];
