@@ -56,3 +56,5 @@ Si ya existe una hoja con el mismo nombre de archivo, se actualiza en lugar de d
 ## Arquitectura
 
 El código está organizado con screaming architecture, arquitectura hexagonal / clean architecture, DDD y SOLID. Está explicado paso a paso, con ejemplos de este mismo código, en **[docs/ARQUITECTURA.md](docs/ARQUITECTURA.md)**. Ahí también está la receta para agregar el próximo módulo (Hechizos, Cabezas, NPCs…).
+
+Qué módulos faltan (cuerpos, cabezas y cascos, FX, hechizos, NPCs y mapas), qué define cada uno y en qué orden encararlos está en **[docs/HOJA_DE_RUTA.md](docs/HOJA_DE_RUTA.md)**.

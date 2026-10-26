@@ -224,4 +224,4 @@ No necesitan navegador ni servidor: es el beneficio directo de los puertos.
 7. **Página**: `src/app/hechizos/page.tsx`, más una pestaña en `app/_componentes/Encabezado.tsx`.
 8. **Tests**: arrancá por el dominio.
 
-Los módulos que siguen (Cuerpos, Cabezas, FX, NPCs y finalmente Mapas) siguen exactamente el mismo molde.
+Los módulos que siguen (Cuerpos, Cabezas, FX, NPCs y finalmente Mapas) siguen exactamente el mismo molde. Qué define cada uno y en qué orden hacerlos está en [HOJA_DE_RUTA.md](HOJA_DE_RUTA.md).
