@@ -1,0 +1,27 @@
+{
+  "name": "ao-world-editor",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Editor de mundo para el remake de Argentum Online: hojas de sprites, animaciones y objetos.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "next": "16.4.3",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "server-only": "0.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "typescript": "5.9.3",
+    "vitest": "3.2.4"
+  }
+}

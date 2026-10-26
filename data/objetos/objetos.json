@@ -1,0 +1,106 @@
+[
+  {
+    "clave": "bb38c97598c3",
+    "numero": 1,
+    "nombre": "Túnica azul",
+    "tipo": "armadura",
+    "valor": 120,
+    "descripcion": "Ropa liviana de aprendiz.",
+    "apilable": false,
+    "nivelMinimo": 0,
+    "banderas": [],
+    "atributos": {
+      "minDef": 2,
+      "maxDef": 4
+    },
+    "graficos": {
+      "icono": {
+        "tipo": "vinculada",
+        "hojaId": "12297960af59",
+        "animacionId": "915bf8fe3537",
+        "frame": 0
+      },
+      "suelo": null,
+      "equipado": {
+        "sur": {
+          "tipo": "vinculada",
+          "hojaId": "7c5795ae7e3c",
+          "animacionId": "4ec3ff7be01a",
+          "frame": 0
+        },
+        "norte": {
+          "tipo": "vinculada",
+          "hojaId": "7c5795ae7e3c",
+          "animacionId": "f0b53ee44b22",
+          "frame": 0
+        },
+        "este": {
+          "tipo": "vinculada",
+          "hojaId": "7c5795ae7e3c",
+          "animacionId": "7d8376a3dc04",
+          "frame": 0
+        },
+        "oeste": {
+          "tipo": "vinculada",
+          "hojaId": "7c5795ae7e3c",
+          "animacionId": "2520518bc02c",
+          "frame": 0
+        }
+      }
+    },
+    "esEjemplo": true
+  },
+  {
+    "clave": "48b01f628b8c",
+    "numero": 2,
+    "nombre": "Espada corta",
+    "tipo": "arma",
+    "valor": 80,
+    "descripcion": "Hoja de hierro, equilibrada y barata.",
+    "apilable": false,
+    "nivelMinimo": 0,
+    "banderas": [],
+    "atributos": {
+      "minHit": 2,
+      "maxHit": 5
+    },
+    "graficos": {
+      "icono": {
+        "tipo": "vinculada",
+        "hojaId": "12297960af59",
+        "animacionId": "9b962fd9342b",
+        "frame": 0
+      },
+      "suelo": null,
+      "equipado": {}
+    },
+    "esEjemplo": true
+  },
+  {
+    "clave": "78bd6fff6e3c",
+    "numero": 3,
+    "nombre": "Poción roja",
+    "tipo": "pocion",
+    "valor": 10,
+    "descripcion": "Recupera algo de vida.",
+    "apilable": true,
+    "nivelMinimo": 0,
+    "banderas": [],
+    "atributos": {
+      "efecto": "vida",
+      "min": 15,
+      "max": 25
+    },
+    "graficos": {
+      "icono": {
+        "tipo": "vinculada",
+        "hojaId": "12297960af59",
+        "animacionId": "100a6c3b0533",
+        "frame": 0
+      },
+      "suelo": null,
+      "equipado": {}
+    },
+    "esEjemplo": true
+  }
+]

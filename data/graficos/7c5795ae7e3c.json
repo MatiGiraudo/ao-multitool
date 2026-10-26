@@ -1,0 +1,204 @@
+{
+  "id": "7c5795ae7e3c",
+  "nombreArchivo": "ejemplo_caminar.png",
+  "tamanio": {
+    "ancho": 192,
+    "alto": 192
+  },
+  "tamanioOriginal": {
+    "ancho": 192,
+    "alto": 192
+  },
+  "versionImagen": 1,
+  "grilla": {
+    "anchoCelda": 32,
+    "altoCelda": 48,
+    "offsetX": 0,
+    "offsetY": 0,
+    "separacionX": 0,
+    "separacionY": 0
+  },
+  "esEjemplo": true,
+  "animaciones": [
+    {
+      "id": "4ec3ff7be01a",
+      "nombre": "caminar_sur",
+      "msPorFrame": 120,
+      "enBucle": true,
+      "ancla": "abajo-centro",
+      "frames": [
+        {
+          "x": 0,
+          "y": 0,
+          "ancho": 32,
+          "alto": 48
+        },
+        {
+          "x": 32,
+          "y": 0,
+          "ancho": 32,
+          "alto": 48
+        },
+        {
+          "x": 64,
+          "y": 0,
+          "ancho": 32,
+          "alto": 48
+        },
+        {
+          "x": 96,
+          "y": 0,
+          "ancho": 32,
+          "alto": 48
+        },
+        {
+          "x": 128,
+          "y": 0,
+          "ancho": 32,
+          "alto": 48
+        },
+        {
+          "x": 160,
+          "y": 0,
+          "ancho": 32,
+          "alto": 48
+        }
+      ]
+    },
+    {
+      "id": "f0b53ee44b22",
+      "nombre": "caminar_norte",
+      "msPorFrame": 120,
+      "enBucle": true,
+      "ancla": "abajo-centro",
+      "frames": [
+        {
+          "x": 0,
+          "y": 48,
+          "ancho": 32,
+          "alto": 48
+        },
+        {
+          "x": 32,
+          "y": 48,
+          "ancho": 32,
+          "alto": 48
+        },
+        {
+          "x": 64,
+          "y": 48,
+          "ancho": 32,
+          "alto": 48
+        },
+        {
+          "x": 96,
+          "y": 48,
+          "ancho": 32,
+          "alto": 48
+        },
+        {
+          "x": 128,
+          "y": 48,
+          "ancho": 32,
+          "alto": 48
+        },
+        {
+          "x": 160,
+          "y": 48,
+          "ancho": 32,
+          "alto": 48
+        }
+      ]
+    },
+    {
+      "id": "7d8376a3dc04",
+      "nombre": "caminar_este",
+      "msPorFrame": 120,
+      "enBucle": true,
+      "ancla": "abajo-centro",
+      "frames": [
+        {
+          "x": 0,
+          "y": 96,
+          "ancho": 32,
+          "alto": 48
+        },
+        {
+          "x": 32,
+          "y": 96,
+          "ancho": 32,
+          "alto": 48
+        },
+        {
+          "x": 64,
+          "y": 96,
+          "ancho": 32,
+          "alto": 48
+        },
+        {
+          "x": 96,
+          "y": 96,
+          "ancho": 32,
+          "alto": 48
+        },
+        {
+          "x": 128,
+          "y": 96,
+          "ancho": 32,
+          "alto": 48
+        },
+        {
+          "x": 160,
+          "y": 96,
+          "ancho": 32,
+          "alto": 48
+        }
+      ]
+    },
+    {
+      "id": "2520518bc02c",
+      "nombre": "caminar_oeste",
+      "msPorFrame": 120,
+      "enBucle": true,
+      "ancla": "abajo-centro",
+      "frames": [
+        {
+          "x": 0,
+          "y": 144,
+          "ancho": 32,
+          "alto": 48
+        },
+        {
+          "x": 32,
+          "y": 144,
+          "ancho": 32,
+          "alto": 48
+        },
+        {
+          "x": 64,
+          "y": 144,
+          "ancho": 32,
+          "alto": 48
+        },
+        {
+          "x": 96,
+          "y": 144,
+          "ancho": 32,
+          "alto": 48
+        },
+        {
+          "x": 128,
+          "y": 144,
+          "ancho": 32,
+          "alto": 48
+        },
+        {
+          "x": 160,
+          "y": 144,
+          "ancho": 32,
+          "alto": 48
+        }
+      ]
+    }
+  ]
+}

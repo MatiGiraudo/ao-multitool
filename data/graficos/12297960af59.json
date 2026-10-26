@@ -1,0 +1,69 @@
+{
+  "id": "12297960af59",
+  "nombreArchivo": "ejemplo_iconos.png",
+  "tamanio": {
+    "ancho": 96,
+    "alto": 32
+  },
+  "tamanioOriginal": {
+    "ancho": 96,
+    "alto": 32
+  },
+  "versionImagen": 1,
+  "grilla": {
+    "anchoCelda": 32,
+    "altoCelda": 32,
+    "offsetX": 0,
+    "offsetY": 0,
+    "separacionX": 0,
+    "separacionY": 0
+  },
+  "esEjemplo": true,
+  "animaciones": [
+    {
+      "id": "9b962fd9342b",
+      "nombre": "icono_espada",
+      "msPorFrame": 120,
+      "enBucle": false,
+      "ancla": "centro",
+      "frames": [
+        {
+          "x": 0,
+          "y": 0,
+          "ancho": 32,
+          "alto": 32
+        }
+      ]
+    },
+    {
+      "id": "100a6c3b0533",
+      "nombre": "icono_pocion",
+      "msPorFrame": 120,
+      "enBucle": false,
+      "ancla": "centro",
+      "frames": [
+        {
+          "x": 32,
+          "y": 0,
+          "ancho": 32,
+          "alto": 32
+        }
+      ]
+    },
+    {
+      "id": "915bf8fe3537",
+      "nombre": "icono_tunica",
+      "msPorFrame": 120,
+      "enBucle": false,
+      "ancla": "centro",
+      "frames": [
+        {
+          "x": 64,
+          "y": 0,
+          "ancho": 32,
+          "alto": 32
+        }
+      ]
+    }
+  ]
+}
