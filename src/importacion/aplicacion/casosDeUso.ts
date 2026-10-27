@@ -1,20 +1,36 @@
-import type { GeneradorDeIds } from "@/compartido/aplicacion/GeneradorDeIds";
 import type { ReferenciaPorNombre } from "@/compartido/aplicacion/ReferenciaPorNombre";
-import { Animacion } from "@/graficos/dominio/Animacion";
-import { Frame } from "@/graficos/dominio/Frame";
+import type { CatalogoGrafico } from "@/compartido/dominio/CatalogoGrafico";
+import type { Direccion } from "@/compartido/dominio/Direccion";
 import type { HojaDeSprites } from "@/graficos/dominio/HojaDeSprites";
 import type { HojaRepositorio } from "@/graficos/dominio/HojaRepositorio";
+import type { ImportarApariencias, ResultadoDeImportacionDeApariencias } from "@/apariencias/aplicacion/casosDeUso";
+import type { ReferenciaImportada } from "@/apariencias/dominio/Apariencia";
+import type { Cabeza, CabezaImportada } from "@/apariencias/dominio/Cabeza";
+import type { Cuerpo, CuerpoImportado } from "@/apariencias/dominio/Cuerpo";
+import type { ImportarEfectos, ResultadoDeImportacionDeEfectos } from "@/fx/aplicacion/casosDeUso";
 import type { ImportarHechizos, ResultadoDeImportacionDeHechizos } from "@/hechizos/aplicacion/casosDeUso";
 import type { ImportarObjetos, ResultadoDeImportacion } from "@/objetos/aplicacion/casosDeUso";
 import type { FabricaDeCatalogo } from "@/proyecto/aplicacion/ImportarProyectoLegado";
 import { esElArchivo } from "../dominio/nombres";
 import { TablaDeGrh } from "../dominio/TablaDeGrh";
 import type { TablaDeGrhRepositorio } from "../dominio/TablaDeGrhRepositorio";
-import type { LectorDeGraficosClasicos, LectorDeHechizosClasicos, LectorDeObjetosClasicos } from "./puertos";
+import type { PuenteDeGrh, VinculosDeGrh } from "./PuenteDeGrh";
+import type {
+  AparienciaClasica,
+  LectorDeAparienciasClasicas,
+  LectorDeEfectosClasicos,
+  LectorDeGraficosClasicos,
+  LectorDeHechizosClasicos,
+  LectorDeObjetosClasicos,
+} from "./puertos";
 
 /*
  * Módulo Importación: igual que Proyecto, coordina varios módulos y por eso depende de ellos,
- * nunca al revés. Gráficos y Objetos no saben que existe.
+ * nunca al revés. Gráficos, Objetos, Apariencias, FX y Hechizos no saben que existe.
+ *
+ * Todos los importadores que traen gráficos tienen la misma forma: leer el archivo, pedirle al
+ * PuenteDeGrh que convierta los números de GRH en animaciones, y pasarle al módulo destino su
+ * propio Importar<X>. Lo único propio de cada uno es cómo se llaman los campos.
  */
 
 export interface ResultadoDeTablaDeGrh {
@@ -58,13 +74,41 @@ export class ImportarTablaDeGrh {
   }
 }
 
-export interface ResultadoDeObjetosClasicos {
-  objetos: ResultadoDeImportacion;
+/** Lo que todo importador con gráficos cuenta además de lo suyo: qué pudo vincular y qué no. */
+export interface ResumenDeVinculos {
   animacionesCreadas: number;
-  /** Archivos que hacían falta para los iconos y no están cargados como hoja. */
+  /** Archivos que hacían falta para los gráficos y no están cargados como hoja. */
   hojasFaltantes: string[];
-  /** GRH que los objetos usan y la tabla no conoce (o que no está cargada). */
+  /** GRH que el archivo usa y la tabla no conoce (o que la tabla no está cargada). */
   grhSinResolver: number[];
+}
+
+export interface ResultadoDeObjetosClasicos extends ResumenDeVinculos {
+  objetos: ResultadoDeImportacion;
+}
+
+export interface ResultadoDeAparienciasClasicas extends ResumenDeVinculos {
+  apariencias: ResultadoDeImportacionDeApariencias;
+}
+
+export interface ResultadoDeEfectosClasicos extends ResumenDeVinculos {
+  efectos: ResultadoDeImportacionDeEfectos;
+}
+
+export interface ResultadoDeHechizosClasicos extends ResultadoDeImportacionDeHechizos {
+  /** Los hechizos cuyo efecto el archivo no trae. Con el Hechizos.dat del cliente, son todos. */
+  sinEfecto: number[];
+}
+
+/**
+ * Lo que necesita cualquier importador que traiga gráficos. Se declara una vez acá porque los
+ * cuatro lo repiten, y `conGraficos` lo usa para hacer el paso común sin saber de quién se trata.
+ */
+interface ConGraficos {
+  readonly tablas: TablaDeGrhRepositorio;
+  readonly puente: PuenteDeGrh;
+  readonly hojas: HojaRepositorio;
+  readonly fabricaDeCatalogo: FabricaDeCatalogo;
 }
 
 /**
@@ -72,82 +116,143 @@ export interface ResultadoDeObjetosClasicos {
  * icono.
  *
  * Lo interesante es el icono. En el clásico es un número de GRH; acá es "tal hoja, tal animación".
- * Así que este caso de uso, para cada GRH que haga falta, **crea la animación en la hoja que
- * corresponda** (llamada `grh505`, con los recortes que dice la tabla) y recién ahí vincula el
- * objeto. Si la hoja no está cargada, lo anota en `hojasFaltantes`: cargás esa imagen, volvés a
- * importar y se vincula.
+ * El puente crea la animación que haga falta y recién ahí se vincula el objeto. Si la hoja no está
+ * cargada queda anotada en `hojasFaltantes`: cargás esa imagen, volvés a importar y se vincula.
  */
-export class ImportarObjetosClasicos {
+export class ImportarObjetosClasicos implements ConGraficos {
   constructor(
     private readonly lector: LectorDeObjetosClasicos,
-    private readonly tablas: TablaDeGrhRepositorio,
-    private readonly hojas: HojaRepositorio,
+    readonly tablas: TablaDeGrhRepositorio,
+    readonly puente: PuenteDeGrh,
+    readonly hojas: HojaRepositorio,
     private readonly importarObjetos: ImportarObjetos,
-    private readonly fabricaDeCatalogo: FabricaDeCatalogo,
-    private readonly ids: GeneradorDeIds,
+    readonly fabricaDeCatalogo: FabricaDeCatalogo,
   ) {}
 
   async ejecutar(texto: string): Promise<ResultadoDeObjetosClasicos> {
     const clasicos = this.lector.leer(texto);
-    const tabla = (await this.tablas.leer()) ?? TablaDeGrh.vacia();
-    const hojas = await this.hojas.listar();
-
-    const hojasFaltantes = new Set<string>();
-    const grhSinResolver = new Set<number>();
-    const referencias = new Map<number, ReferenciaPorNombre>();
-    const tocadas = new Map<string, HojaDeSprites>();
-    let animacionesCreadas = 0;
-
-    for (const grh of new Set(clasicos.map((o) => o.grhIcono).filter((n) => n > 0))) {
-      const recortes = tabla.recortes(grh);
-      if (!recortes) {
-        grhSinResolver.add(grh);
-        continue;
-      }
-      const original = hojas.find((h) => esElArchivo(h.nombreArchivo, recortes.archivo));
-      if (!original) {
-        hojasFaltantes.add(recortes.archivo);
-        continue;
-      }
-      let hoja = tocadas.get(original.id) ?? original;
-      const nombre = `grh${grh}`;
-      if (!hoja.animacionLlamada(nombre)) {
-        const animacion = Animacion.crear(this.ids.nuevo(), nombre)
-          .conMsPorFrame(recortes.msPorFrame || 120)
-          .conFramesAgregados(recortes.rects.map((r) => Frame.deCoordenadas(r.x, r.y, r.ancho, r.alto)));
-        hoja = hoja.conAnimacionAgregada(animacion);
-        tocadas.set(hoja.id, hoja);
-        animacionesCreadas++;
-      }
-      referencias.set(grh, { hoja: hoja.nombreArchivo, animacion: nombre, frame: 0 });
-    }
-
-    for (const hoja of tocadas.values()) await this.hojas.guardar(hoja);
-
-    const catalogo = this.fabricaDeCatalogo(await this.hojas.listar());
+    const { vinculos, catalogo } = await conGraficos(
+      this,
+      clasicos.map((o) => o.grhIcono),
+    );
     const objetos = await this.importarObjetos.importar(
       clasicos.map(({ grhIcono, ...resto }) => ({
         ...resto,
-        graficos: { icono: referencias.get(grhIcono) ?? null, suelo: null, equipado: {} },
+        graficos: { icono: vinculos.referencias.get(grhIcono) ?? null, suelo: null, equipado: {} },
       })),
       catalogo,
     );
+    return { objetos, ...resumen(vinculos) };
+  }
+}
 
-    return {
-      objetos,
-      animacionesCreadas,
-      hojasFaltantes: [...hojasFaltantes].sort((a, b) => Number(a) - Number(b) || a.localeCompare(b)),
-      grhSinResolver: [...grhSinResolver].sort((a, b) => a - b),
-    };
+/**
+ * Trae el índice de cuerpos (`Personajes.ini`): las cuatro animaciones de caminar y, lo que de
+ * verdad no se puede cargar a mano, el corrimiento donde se apoya la cabeza.
+ *
+ * Los cuerpos del clásico no tienen nombre, así que se lo pone el importador ("Cuerpo 12"). Como
+ * los que ya existen se reemplazan, un nombre editado a mano se pierde al reimportar.
+ */
+export class ImportarCuerposClasicos implements ConGraficos {
+  constructor(
+    private readonly lector: LectorDeAparienciasClasicas,
+    readonly tablas: TablaDeGrhRepositorio,
+    readonly puente: PuenteDeGrh,
+    readonly hojas: HojaRepositorio,
+    private readonly cuerpos: ImportarApariencias<Cuerpo, CuerpoImportado>,
+    readonly fabricaDeCatalogo: FabricaDeCatalogo,
+  ) {}
+
+  async ejecutar(texto: string): Promise<ResultadoDeAparienciasClasicas> {
+    const clasicas = this.lector.leer(texto);
+    const { vinculos, catalogo } = await conGraficos(this, grhDe(clasicas));
+    const apariencias = await this.cuerpos.importar(
+      clasicas.map((c) => ({
+        numero: c.numero,
+        nombre: `Cuerpo ${c.numero}`,
+        direcciones: direccionesVinculadas(c, vinculos.referencias),
+        offsetCabezaX: c.offsetCabezaX,
+        offsetCabezaY: c.offsetCabezaY,
+      })),
+      catalogo,
+    );
+    return { apariencias, ...resumen(vinculos) };
+  }
+}
+
+/**
+ * Trae el índice de cabezas (`Cabezas.ini`) o el de cascos (`Cascos.ini`): los dos archivos tienen
+ * la misma forma, así que es el mismo caso de uso con otro lector.
+ */
+export class ImportarCabezasClasicas implements ConGraficos {
+  constructor(
+    private readonly lector: LectorDeAparienciasClasicas,
+    readonly tablas: TablaDeGrhRepositorio,
+    readonly puente: PuenteDeGrh,
+    readonly hojas: HojaRepositorio,
+    private readonly cabezas: ImportarApariencias<Cabeza, CabezaImportada>,
+    readonly fabricaDeCatalogo: FabricaDeCatalogo,
+  ) {}
+
+  async ejecutar(texto: string): Promise<ResultadoDeAparienciasClasicas> {
+    const clasicas = this.lector.leer(texto);
+    const { vinculos, catalogo } = await conGraficos(this, grhDe(clasicas));
+    const apariencias = await this.cabezas.importar(
+      clasicas.map((c) => ({
+        numero: c.numero,
+        nombre: `Cabeza ${c.numero}`,
+        direcciones: direccionesVinculadas(c, vinculos.referencias),
+      })),
+      catalogo,
+    );
+    return { apariencias, ...resumen(vinculos) };
+  }
+}
+
+/**
+ * Trae el `Fxs.ini`: la animación de cada efecto y su corrimiento, que es el dato que cuesta
+ * acertar a ojo. El clásico no guarda nombre ni repeticiones, así que quedan en "FX n" y 1.
+ */
+export class ImportarEfectosClasicos implements ConGraficos {
+  constructor(
+    private readonly lector: LectorDeEfectosClasicos,
+    readonly tablas: TablaDeGrhRepositorio,
+    readonly puente: PuenteDeGrh,
+    readonly hojas: HojaRepositorio,
+    private readonly efectos: ImportarEfectos,
+    readonly fabricaDeCatalogo: FabricaDeCatalogo,
+  ) {}
+
+  async ejecutar(texto: string): Promise<ResultadoDeEfectosClasicos> {
+    const clasicos = this.lector.leer(texto);
+    const { vinculos, catalogo } = await conGraficos(
+      this,
+      clasicos.map((e) => e.grh),
+    );
+    const efectos = await this.efectos.importar(
+      clasicos.map((e) => ({
+        numero: e.numero,
+        nombre: `FX ${e.numero}`,
+        animacion: vinculos.referencias.get(e.grh) ?? null,
+        offsetX: e.offsetX,
+        offsetY: e.offsetY,
+        repeticiones: 1,
+      })),
+      catalogo,
+    );
+    return { efectos, ...resumen(vinculos) };
   }
 }
 
 /**
  * Trae el `Hechizos.dat` completo.
  *
- * Es el importador más simple de todos, y se nota lo que ganaron los cimientos: el lector traduce
- * las banderas sueltas del clásico al tipo de efecto del editor, y el caso de uso de Hechizos hace
- * el resto. Los hechizos con el mismo ID se reemplazan.
+ * Es el importador más simple: no toca gráficos, porque el hechizo apunta al FX por número igual
+ * que acá. El lector traduce las banderas sueltas del clásico al tipo de efecto del editor, y el
+ * caso de uso de Hechizos hace el resto. Los hechizos con el mismo ID se reemplazan.
+ *
+ * Lo único que agrega es `sinEfecto`: con el `Hechizos.dat` del cliente entra el texto completo
+ * pero no la mecánica, y el editor tiene que decirlo en vez de dejar hechizos que dicen curar.
  */
 export class ImportarHechizosClasicos {
   constructor(
@@ -155,7 +260,37 @@ export class ImportarHechizosClasicos {
     private readonly hechizos: ImportarHechizos,
   ) {}
 
-  async ejecutar(texto: string): Promise<ResultadoDeImportacionDeHechizos> {
-    return this.hechizos.importar(this.lector.leer(texto));
+  async ejecutar(texto: string): Promise<ResultadoDeHechizosClasicos> {
+    const { hechizos, sinEfecto } = this.lector.leer(texto);
+    return { ...(await this.hechizos.importar(hechizos)), sinEfecto };
   }
+}
+
+/** El paso común de los cuatro: leer la tabla, vincular los GRH del archivo y armar el catálogo. */
+async function conGraficos(quien: ConGraficos, grhs: number[]): Promise<{ vinculos: VinculosDeGrh; catalogo: CatalogoGrafico }> {
+  const tabla = (await quien.tablas.leer()) ?? TablaDeGrh.vacia();
+  const vinculos = await quien.puente.vincular(tabla, grhs);
+  // El catálogo se arma DESPUÉS de vincular: el puente acaba de crear animaciones que tiene que ver.
+  return { vinculos, catalogo: quien.fabricaDeCatalogo(await quien.hojas.listar()) };
+}
+
+function resumen(v: VinculosDeGrh): ResumenDeVinculos {
+  return { animacionesCreadas: v.animacionesCreadas, hojasFaltantes: v.hojasFaltantes, grhSinResolver: v.grhSinResolver };
+}
+
+function grhDe(clasicas: readonly AparienciaClasica[]): number[] {
+  return clasicas.flatMap((c) => Object.values(c.grhPorDireccion));
+}
+
+/** De "esta dirección usa el GRH 4582" a "esta dirección usa tal animación de tal hoja". */
+function direccionesVinculadas(
+  clasica: AparienciaClasica,
+  referencias: Map<number, ReferenciaPorNombre>,
+): Partial<Record<Direccion, ReferenciaImportada>> {
+  const out: Partial<Record<Direccion, ReferenciaImportada>> = {};
+  for (const [direccion, grh] of Object.entries(clasica.grhPorDireccion) as [Direccion, number][]) {
+    const ref = referencias.get(grh);
+    if (ref) out[direccion] = ref;
+  }
+  return out;
 }

@@ -4,10 +4,27 @@
  * en cada importador:
  *
  * - vienen en CRLF y a veces con BOM;
- * - los comentarios empiezan con ' (apóstrofo, herencia de Visual Basic) o con ;
+ * - los comentarios empiezan con ' (apóstrofo, herencia de Visual Basic) o con ;, y también
+ *   aparecen al final de una línea con valor: `Walk1=4582	 ' arriba`;
  * - las claves no respetan mayúsculas: `GrhIndex`, `grhindex` y `GRHINDEX` son la misma;
  * - hay valores vacíos, y hay secciones repetidas (gana la última).
  */
+
+/**
+ * Saca el comentario que algunos archivos dejan pegado al valor: `Walk1=4582	 ' arriba` vale 4582.
+ *
+ * Sólo corta cuando lo que queda antes es un número, y eso es a propósito. Los comentarios al
+ * final de línea aparecen en los índices (cuerpos, cabezas, armas), que son siempre numéricos;
+ * en cambio un nombre o una descripción pueden tener comillas simples de verdad (`la espada
+ * 'Matadragones'`) y cortar ahí los rompería. Como `numero` ya perdona la basura del final, el
+ * único que necesitaba esto es `texto` — por ejemplo el `FileNum` del Graficos.ini.
+ */
+function sinComentarioAlFinal(valor: string): string {
+  const corte = valor.search(/s['´;]/);
+  if (corte < 0) return valor;
+  const antes = valor.slice(0, corte).trim();
+  return /^[+-]?d+([.,]d+)?$/.test(antes) ? antes : valor;
+}
 
 export class ArchivoIni {
   private constructor(private readonly secciones: Map<string, Map<string, string>>) {}
@@ -28,7 +45,7 @@ export class ArchivoIni {
       }
       const igual = linea.indexOf("=");
       if (igual < 0 || !actual) continue;
-      actual.set(linea.slice(0, igual).trim().toLowerCase(), linea.slice(igual + 1).trim());
+      actual.set(linea.slice(0, igual).trim().toLowerCase(), sinComentarioAlFinal(linea.slice(igual + 1).trim()));
     }
     return new ArchivoIni(secciones);
   }
