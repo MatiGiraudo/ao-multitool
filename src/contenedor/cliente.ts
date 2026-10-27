@@ -89,6 +89,7 @@ import {
   ImportarTablaDeGrh,
 } from "@/importacion/aplicacion/casosDeUso";
 import { PuenteDeGrh } from "@/importacion/aplicacion/PuenteDeGrh";
+import { AbrirMapaClasico, ResolverGraficosDelMapa } from "@/mapas/aplicacion/casosDeUso";
 import { LectorAparienciasIni } from "@/importacion/infraestructura/LectorAparienciasIni";
 import { LectorFxsIni } from "@/importacion/infraestructura/LectorFxsIni";
 import { LectorGraficosIni } from "@/importacion/infraestructura/LectorGraficosIni";
@@ -206,6 +207,10 @@ function crear() {
       eliminar: new EliminarNpc(npcs),
       exportar: new ExportarNpcs(npcs, formatoNpcs),
       importar: new ImportarNpcs(npcs, formatoNpcs, ids),
+    },
+    mapas: {
+      abrir: new AbrirMapaClasico(),
+      resolverGraficos: new ResolverGraficosDelMapa(tablaDeGrh, hojas),
     },
     clasico: {
       tablaDeGrh: new ImportarTablaDeGrh(new LectorGraficosIni(), tablaDeGrh, hojas),

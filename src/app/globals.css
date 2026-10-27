@@ -993,3 +993,61 @@ canvas.suelo {
   color: var(--apagado);
   text-align: left;
 }
+
+/* ---------- Mapas ---------- */
+/* Lista | lienzo | detalle. Acá el lienzo es el protagonista, así que se lleva el alto. */
+.mapa-layout {
+  display: grid;
+  grid-template-columns: 230px minmax(0, 1fr) 270px;
+  gap: 14px;
+  align-items: start;
+}
+@media (max-width: 1200px) {
+  .mapa-layout {
+    grid-template-columns: 220px minmax(0, 1fr);
+  }
+  .mapa-layout > .side {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  }
+}
+@media (max-width: 760px) {
+  .mapa-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.mapa-panel {
+  min-height: 420px;
+}
+.mapa-lienzo {
+  position: relative;
+  height: min(70vh, 720px);
+  border: 1px solid var(--linea);
+  border-radius: 6px;
+  overflow: hidden;
+  background: #0b0d12;
+  touch-action: none; /* el arrastre lo maneja el lienzo, no el navegador */
+}
+.mapa-lienzo canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+  image-rendering: pixelated;
+}
+.mapa-lienzo canvas:active {
+  cursor: grabbing;
+}
+.mapa-zoom {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  background: var(--panel);
+  border: 1px solid var(--linea);
+  border-radius: 6px;
+}

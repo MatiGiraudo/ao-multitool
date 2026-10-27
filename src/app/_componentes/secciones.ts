@@ -56,6 +56,12 @@ export const SECCIONES: readonly Seccion[] = [
     sub: "Definí los hechizos: qué hacen, cuánto cuestan, sus palabras mágicas y con qué FX se ven.",
   },
   {
+    href: "/mapas",
+    nombre: "Mapas",
+    familia: "Mundo",
+    sub: "Abrí la carpeta Mundos del juego y mirá cualquier mapa, con sus bloqueos, traslados y NPCs.",
+  },
+  {
     href: "/diagnostico",
     nombre: "Diagnóstico",
     familia: "Mundo",
