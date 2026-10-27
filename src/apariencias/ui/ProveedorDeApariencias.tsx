@@ -47,12 +47,13 @@ interface ValorApariencias {
 
 const Contexto = createContext<ValorApariencias | null>(null);
 
-function useEspecie<T extends Apariencia>(casos: CasosDeEspecie<T>, catalogo: CatalogoGrafico): ColeccionDeApariencias<T> {
+function useEspecie<T extends Apariencia>(nombre: string, casos: CasosDeEspecie<T>, catalogo: CatalogoGrafico): ColeccionDeApariencias<T> {
   const { intentar } = useAplicacion();
   const { items, cargando, estadoGuardado, actualizar, poner, quitar, cancelarPendiente, guardarPendientes, recargar } = useColeccionEditable<T>({
     claveDe: (x) => x.clave,
     listar: () => casos.listar.ejecutar(),
     guardar: (x) => casos.guardar.ejecutar(x),
+    recordarComo: nombre,
   });
 
   return useMemo(
@@ -97,8 +98,8 @@ function useEspecie<T extends Apariencia>(casos: CasosDeEspecie<T>, catalogo: Ca
 export function ProveedorDeApariencias({ children }: { children: ReactNode }) {
   const { casos } = useAplicacion();
   const { catalogo, resolver } = useGraficos();
-  const cuerpos = useEspecie<Cuerpo>(casos.cuerpos, catalogo);
-  const cabezas = useEspecie<Cabeza>(casos.cabezas, catalogo);
+  const cuerpos = useEspecie<Cuerpo>("cuerpos", casos.cuerpos, catalogo);
+  const cabezas = useEspecie<Cabeza>("cabezas", casos.cabezas, catalogo);
 
   const valor = useMemo<ValorApariencias>(() => ({ cuerpos, cabezas, catalogo, resolver }), [cuerpos, cabezas, catalogo, resolver]);
   return <Contexto.Provider value={valor}>{children}</Contexto.Provider>;

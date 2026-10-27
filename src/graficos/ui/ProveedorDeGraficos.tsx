@@ -57,6 +57,7 @@ export function ProveedorDeGraficos({ children }: { children: ReactNode }) {
     claveDe: (h) => h.id,
     listar: () => g.listar.ejecutar(),
     guardar: (h) => g.guardar.ejecutar(h),
+    recordarComo: "graficos",
   });
   const { items: hojas, cargando, estadoGuardado, actualizar, poner, quitar, cancelarPendiente, guardarPendientes, recargar } = coleccion;
 

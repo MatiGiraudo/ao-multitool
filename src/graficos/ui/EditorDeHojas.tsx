@@ -13,6 +13,7 @@ import { LienzoDeHoja, type ModoDeLienzo } from "./LienzoDeHoja";
 import { ListaDeFrames } from "./ListaDeFrames";
 import { PanelRedimensionar } from "./PanelRedimensionar";
 import { useGraficos } from "./ProveedorDeGraficos";
+import { useHistorial } from "./useHistorial";
 import { VistaPreviaAnimacion } from "./VistaPreviaAnimacion";
 
 const TOPE_DE_LA_TIRA = 60;
@@ -88,23 +89,44 @@ export function EditorDeHojas({ renderUso }: { renderUso?: (hoja: HojaDeSprites,
   }, [hoja?.id, animacion?.id]);
 
   // ---------- helpers de edición ----------
+  // Todo cambio a la hoja pasa por acá, así el historial ve siempre el paso anterior completo.
+  const historial = useHistorial(hoja, graficos.actualizar);
+  const { cambiar, deshacer, rehacer } = historial;
   const aplicar = useCallback(
     (fn: () => HojaDeSprites) => {
       try {
-        graficos.actualizar(fn());
+        cambiar(fn());
       } catch (e) {
         avisar(e instanceof Error ? e.message : String(e));
       }
     },
-    [graficos, avisar],
+    [cambiar, avisar],
+  );
+  // Devuelve el zoom que quedó: el lienzo lo necesita para no mover la hoja cuando ya está en el tope.
+  const cambiarZoom = useCallback(
+    (d: 1 | -1) => {
+      const siguiente = ZOOMS[Math.max(0, Math.min(ZOOMS.length - 1, ZOOMS.indexOf(zoom) + d))] ?? zoom;
+      setZoom(siguiente);
+      return siguiente;
+    },
+    [zoom],
   );
   const cambiarAnimacion = useCallback((a: Animacion) => hoja && aplicar(() => hoja.conAnimacion(a)), [hoja, aplicar]);
   const elegirAnimacion = (id: string) => hoja && setAnimPorHoja((m) => ({ ...m, [hoja.id]: id }));
 
   const agregarFrames = (frames: Frame[]) => {
-    if (!animacion) return;
-    const a = animacion.conFramesAgregados(frames);
-    cambiarAnimacion(a);
+    if (!hoja) return;
+    /*
+     * Sin animación elegida, el primer frame crea una.
+     *
+     * Las hojas que deja el cargador masivo nacen sin animaciones, así que ese es el estado normal
+     * de una hoja recién traída: antes el lienzo no respondía al clic, justo cuando el panel de al
+     * lado decía «hacé clic en las celdas de la hoja».
+     */
+    const base = animacion ?? Animacion.crear(casos.graficos.nuevoId(), nombreLibre(hoja));
+    const a = base.conFramesAgregados(frames);
+    aplicar(() => (animacion ? hoja.conAnimacion(a) : hoja.conAnimacionAgregada(a)));
+    if (!animacion) elegirAnimacion(a.id);
     setSeleccion(new Set([a.cantidadDeFrames - 1]));
   };
 
@@ -142,6 +164,11 @@ export function EditorDeHojas({ renderUso }: { renderUso?: (hoja: HojaDeSprites,
         if (k === "g") return setModo("grilla");
         if (k === "r") return setModo("recuadro");
         if (k === "v" || k === "m") return setModo("mover");
+      }
+      // Deshacer va antes que todo lo demás: también tiene que andar sin animación elegida.
+      if (mod && (k === "z" || k === "y")) {
+        e.preventDefault();
+        return k === "y" || e.shiftKey ? rehacer() : deshacer();
       }
       if (!animacion) return;
       if (mod && k === "a") {
@@ -272,11 +299,19 @@ export function EditorDeHojas({ renderUso }: { renderUso?: (hoja: HojaDeSprites,
                 </BotonConfirmar>
               </div>
               <div className="row">
-                <button aria-label="Alejar" onClick={() => setZoom(ZOOMS[Math.max(0, ZOOMS.indexOf(zoom) - 1)] ?? zoom)}>
+                <div className="seg" role="group" aria-label="Historial">
+                  <button title="Deshacer (Ctrl+Z)" aria-label="Deshacer" disabled={!historial.puedeDeshacer} onClick={deshacer}>
+                    ↶
+                  </button>
+                  <button title="Rehacer (Ctrl+Shift+Z)" aria-label="Rehacer" disabled={!historial.puedeRehacer} onClick={rehacer}>
+                    ↷
+                  </button>
+                </div>
+                <button aria-label="Alejar" title="Alejar (o rueda sobre la hoja)" onClick={() => cambiarZoom(-1)}>
                   −
                 </button>
                 <span className="status">x{zoom}</span>
-                <button aria-label="Acercar" onClick={() => setZoom(ZOOMS[Math.min(ZOOMS.length - 1, ZOOMS.indexOf(zoom) + 1)] ?? zoom)}>
+                <button aria-label="Acercar" title="Acercar (o rueda sobre la hoja)" onClick={() => cambiarZoom(1)}>
                   +
                 </button>
               </div>
@@ -306,6 +341,7 @@ export function EditorDeHojas({ renderUso }: { renderUso?: (hoja: HojaDeSprites,
               zoom={zoom}
               mostrarGrilla={mostrarGrilla}
               ajustarAGrilla={ajustar}
+              onZoom={cambiarZoom}
               onAgregarFrames={agregarFrames}
               onSeleccion={(s, u) => {
                 setSeleccion(s);
@@ -331,7 +367,7 @@ export function EditorDeHojas({ renderUso }: { renderUso?: (hoja: HojaDeSprites,
                 <div className="row">
                   <button
                     onClick={() => {
-                      const a = Animacion.crear(casos.graficos.nuevoId(), `animacion_${hoja.animaciones.length + 1}`);
+                      const a = Animacion.crear(casos.graficos.nuevoId(), nombreLibre(hoja));
                       aplicar(() => hoja.conAnimacionAgregada(a));
                       elegirAnimacion(a.id);
                     }}
@@ -441,6 +477,14 @@ export function EditorDeHojas({ renderUso }: { renderUso?: (hoja: HojaDeSprites,
       )}
     </>
   );
+}
+
+/** El primer `animacion_N` que no esté usado en la hoja: al exportar, las animaciones van por nombre. */
+function nombreLibre(hoja: HojaDeSprites): string {
+  const usados = new Set(hoja.animaciones.map((a) => a.nombre));
+  let n = 1;
+  while (usados.has(`animacion_${n}`)) n++;
+  return `animacion_${n}`;
 }
 
 function MiniaturaHoja({ hoja }: { hoja: HojaDeSprites }) {

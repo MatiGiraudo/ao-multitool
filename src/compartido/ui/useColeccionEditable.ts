@@ -17,6 +17,16 @@ import { useAplicacion } from "./Aplicacion";
 
 export type EstadoGuardado = "guardado" | "guardando" | "error";
 
+/*
+ * Lo último que vio cada colección, para que cambiar de pestaña no empiece de cero.
+ *
+ * Cinco de las seis pantallas montan Gráficos, y listar las hojas de un cliente clásico tarda un
+ * par de segundos: sin esto, cada ida y vuelta entre pestañas era volver a esperarlas mirando un
+ * cartel. Se muestra lo recordado al instante y se relee igual por atrás, así que si algo cambió
+ * afuera se corrige solo. Vive en memoria: recargar la página la vacía.
+ */
+const recordadas = new Map<string, readonly unknown[]>();
+
 export interface ColeccionEditable<T> {
   items: readonly T[];
   cargando: boolean;
@@ -40,6 +50,8 @@ export function useColeccionEditable<T>(opciones: {
   listar: () => Promise<T[]>;
   guardar: (item: T) => Promise<void>;
   demoraMs?: number;
+  /** Con qué nombre recordar la lista entre pantallas (ver `recordadas`). */
+  recordarComo?: string;
 }): ColeccionEditable<T> {
   const { intentar, registrarRecarga } = useAplicacion();
   const demora = opciones.demoraMs ?? 400;
@@ -48,8 +60,9 @@ export function useColeccionEditable<T>(opciones: {
   const ops = useRef(opciones);
   ops.current = opciones;
 
-  const [items, setItems] = useState<T[]>([]);
-  const [cargando, setCargando] = useState(true);
+  const recordada = opciones.recordarComo ? (recordadas.get(opciones.recordarComo) as T[] | undefined) : undefined;
+  const [items, setItems] = useState<T[]>(recordada ?? []);
+  const [cargando, setCargando] = useState(!recordada);
   const [estadoGuardado, setEstado] = useState<EstadoGuardado>("guardado");
   const pendientes = useRef(new Map<string, { item: T; timer: ReturnType<typeof setTimeout> }>());
   const enVuelo = useRef(0);
@@ -66,6 +79,10 @@ export function useColeccionEditable<T>(opciones: {
 
   // Así "Importar proyecto…" puede refrescar todas las pantallas montadas sin conocer a ninguna.
   useEffect(() => registrarRecarga(recargar), [registrarRecarga, recargar]);
+
+  useEffect(() => {
+    if (ops.current.recordarComo) recordadas.set(ops.current.recordarComo, items);
+  }, [items]);
 
   const poner = useCallback((item: T) => {
     const clave = ops.current.claveDe(item);
