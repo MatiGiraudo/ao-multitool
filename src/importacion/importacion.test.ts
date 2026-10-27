@@ -136,6 +136,30 @@ describe("ArchivoIni", () => {
     expect(b.bandera("a", "Vacio")).toBe(false);
     expect(b.bandera("a", "No")).toBe(false);
   });
+
+  // Estos tres van por `texto` y `bandera` a propósito: `entero` usa parseFloat, que frena solo en
+  // el espacio, así que por ese camino el comentario pasa desapercibido aunque no se corte nada.
+  it("saca el comentario pegado a un valor numérico", () => {
+    const b = ArchivoIni.parsear("[A]\nWalk1=4582\t ' arriba\nFileNum=12 ' la hoja\nWAV=61 ; sonido\nDef=7 ´ raro");
+    expect(b.texto("a", "Walk1")).toBe("4582");
+    expect(b.texto("a", "FileNum")).toBe("12");
+    expect(b.texto("a", "WAV")).toBe("61");
+    expect(b.texto("a", "Def")).toBe("7");
+    expect(b.entero("a", "Walk1")).toBe(4582);
+  });
+
+  it("una bandera apagada con comentario al lado sigue apagada", () => {
+    const b = ArchivoIni.parsear("[A]\nCrucial=0 ' no se cae al morir\nNewbie=1 ' solo newbies");
+    expect(b.bandera("a", "Crucial")).toBe(false);
+    expect(b.bandera("a", "Newbie")).toBe(true);
+  });
+
+  it("no corta un texto que tiene comillas de verdad", () => {
+    const b = ArchivoIni.parsear("[A]\nName=La espada 'Matadragones'\nDesc=Cura 5 ; dicen\nClave=no 'toques'");
+    expect(b.texto("a", "Name")).toBe("La espada 'Matadragones'");
+    expect(b.texto("a", "Desc")).toBe("Cura 5 ; dicen");
+    expect(b.texto("a", "Clave")).toBe("no 'toques'");
+  });
 });
 
 describe("LectorGraficosIni", () => {

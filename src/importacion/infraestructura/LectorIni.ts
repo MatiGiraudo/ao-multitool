@@ -20,10 +20,10 @@
  * único que necesitaba esto es `texto` — por ejemplo el `FileNum` del Graficos.ini.
  */
 function sinComentarioAlFinal(valor: string): string {
-  const corte = valor.search(/s['´;]/);
+  const corte = valor.search(/\s['´;]/);
   if (corte < 0) return valor;
   const antes = valor.slice(0, corte).trim();
-  return /^[+-]?d+([.,]d+)?$/.test(antes) ? antes : valor;
+  return /^[+-]?\d+([.,]\d+)?$/.test(antes) ? antes : valor;
 }
 
 export class ArchivoIni {
