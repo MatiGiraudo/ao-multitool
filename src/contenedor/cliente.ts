@@ -83,7 +83,10 @@ import { LectorGraficosIni } from "@/importacion/infraestructura/LectorGraficosI
 import { LectorHechizosDat } from "@/importacion/infraestructura/LectorHechizosDat";
 import { LectorObjDat } from "@/importacion/infraestructura/LectorObjDat";
 import { HttpTablaDeGrh } from "@/importacion/infraestructura/navegador/HttpTablaDeGrh";
+import { ExportarTodo, GuardarExportacion } from "@/proyecto/aplicacion/ExportarTodo";
 import { ImportarProyectoLegado } from "@/proyecto/aplicacion/ImportarProyectoLegado";
+import { RevisarMundo } from "@/proyecto/aplicacion/RevisarMundo";
+import { HttpAlmacenDeExportacion } from "@/proyecto/infraestructura/navegador/HttpAlmacenDeExportacion";
 import { LectorAoProj } from "@/proyecto/infraestructura/LectorAoProj";
 
 /*
@@ -204,6 +207,26 @@ function crear() {
     },
     proyecto: {
       importarLegado: new ImportarProyectoLegado(new LectorAoProj(), hojas, imagenes, procesador, importarObjetos, fabricaDeCatalogo, ids),
+      // Los exportadores de cada módulo, ya enchufados: el caso de uso sólo sabe que son funciones.
+      exportarTodo: new ExportarTodo(hojas, formatoAnim, fabricaDeCatalogo, [
+        (catalogo) => new ExportarObjetos(objetos, formatoObjs).ejecutar(catalogo),
+        (catalogo) => new ExportarEfectos(efectos, formatoFx).ejecutar(catalogo),
+        (catalogo) => new ExportarApariencias(cuerpos, formatoCuerpos).ejecutar(catalogo),
+        (catalogo) => new ExportarApariencias(cabezas, formatoCabezas).ejecutar(catalogo),
+        () => new ExportarHechizos(hechizos, formatoHechizos).ejecutar(),
+      ]),
+      guardarExportacion: new GuardarExportacion(new HttpAlmacenDeExportacion()),
+      revisar: new RevisarMundo(
+        hojas,
+        {
+          objetos: () => new ListarObjetos(objetos).ejecutar(),
+          efectos: () => new ListarEfectos(efectos).ejecutar(),
+          cuerpos: () => new ListarApariencias(cuerpos).ejecutar(),
+          cabezas: () => new ListarApariencias(cabezas).ejecutar(),
+          hechizos: () => new ListarHechizos(hechizos).ejecutar(),
+        },
+        fabricaDeCatalogo,
+      ),
     },
   };
 }

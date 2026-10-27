@@ -50,10 +50,22 @@ export const SECCIONES: readonly Seccion[] = [
     sub: "Definí los hechizos: qué hacen, cuánto cuestan, sus palabras mágicas y con qué FX se ven.",
   },
   {
+    href: "/diagnostico",
+    nombre: "Diagnóstico",
+    familia: "Mundo",
+    sub: "Qué quedó roto o a medio terminar en todo el mundo, incluido lo que ningún módulo ve solo.",
+  },
+  {
     href: "/importar",
     nombre: "Importar",
     familia: "Proyecto",
     sub: "Traé lo que ya existe en los archivos del AO original: la tabla de GRH, los cuerpos, las cabezas, los FX, los objetos y los hechizos.",
+  },
+  {
+    href: "/exportar",
+    nombre: "Exportar",
+    familia: "Proyecto",
+    sub: "Los JSON de todo el mundo juntos, listos para que los lea el juego.",
   },
 ];
 

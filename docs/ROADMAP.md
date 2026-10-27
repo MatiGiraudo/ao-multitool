@@ -19,8 +19,8 @@ Se apoya en **[ARQUITECTURA.md](ARQUITECTURA.md)**, en especial en la receta de 
 | Hechizos | ✅ Lista | `src/hechizos/` | `ao-spells` |
 | NPCs | ❌ Falta | — | — |
 | Mapas | ❌ Falta | — | — |
-| Exportar todo de una vez | ❌ Falta | — | — |
-| Diagnóstico del mundo | ❌ Falta | — | — |
+| Exportar todo de una vez | ✅ Lista | `src/proyecto/` | — |
+| Diagnóstico del mundo | ✅ Lista | `src/proyecto/` | — |
 
 Dos aclaraciones sobre lo que **no** hace falta como módulo nuevo:
 
@@ -288,7 +288,21 @@ Lo que hace a Mapas distinto de todo lo anterior:
 
 ---
 
-## 9. Fase 6 — Transversales
+## 9. Fase 6 — Transversales ✅ hecha
+
+> Hecha el 27/10/2026. Las dos pantallas viven en `proyecto/`, que es el único módulo con permiso
+> para conocer a todos los demás.
+>
+> - **Exportar todo** arma los cinco catálogos y un `.anim.json` por hoja **con animaciones**: después
+>   de importar los gráficos del clásico hay miles de hojas cargadas y la mayoría no tiene ninguna.
+>   Pasa por el mismo caso de uso de cada módulo que el botón de su pantalla, así que no pueden
+>   quedar distintos. Los archivos los arma el navegador y los escribe el servidor en
+>   `data/exportado/`, con los nombres saneados: salen del nombre de archivo de cada hoja, que lo
+>   eligió quien cargó la imagen.
+> - **Diagnóstico** junta los validadores de cada módulo y agrega el cruce que ninguno puede hacer
+>   solo: el pergamino que apunta a un hechizo que no existe. Suma dos chequeos de hojas que tampoco
+>   tenían dónde verse: nombres de animación repetidos (error, porque los JSON referencian por
+>   nombre) y hojas sin imagen.
 
 Chicas, de mucho valor, y conviene hacerlas en cuanto haya tres o cuatro módulos (no al final).
 
@@ -306,7 +320,7 @@ Fase 2  FX                           ✅ hecha
 Fase 1  Apariencias                  ✅ hecha
 Fase 1.5 Importadores clásicos       ✅ hecha (falta NPCs.dat, y el equipado de los objetos)
 Fase 3  Hechizos                     ✅ hecha
-Fase 6  Exportar todo + diagnóstico  1 día
+Fase 6  Exportar todo + diagnóstico  ✅ hecha
 Fase 4  NPCs                         3 días
 Fase 5  Mapas (A visor, B editor)    1–2 semanas por entrega
 ```

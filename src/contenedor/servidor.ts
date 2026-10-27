@@ -12,6 +12,8 @@ import { EliminarEfecto, GuardarEfecto, ListarEfectos } from "@/fx/aplicacion/ca
 import { EliminarHechizo, GuardarHechizo, ListarHechizos } from "@/hechizos/aplicacion/casosDeUso";
 import { ArchivosHechizoRepositorio } from "@/hechizos/infraestructura/servidor/ArchivosHechizoRepositorio";
 import { ArchivosTablaDeGrh } from "@/importacion/infraestructura/servidor/ArchivosTablaDeGrh";
+import { GuardarExportacion } from "@/proyecto/aplicacion/ExportarTodo";
+import { ArchivosAlmacenDeExportacion } from "@/proyecto/infraestructura/servidor/ArchivosAlmacenDeExportacion";
 import { ArchivosEfectoRepositorio } from "@/fx/infraestructura/servidor/ArchivosEfectoRepositorio";
 import { EliminarObjeto, GuardarObjeto, ListarObjetos } from "@/objetos/aplicacion/casosDeUso";
 import { ArchivosObjetoRepositorio } from "@/objetos/infraestructura/servidor/ArchivosObjetoRepositorio";
@@ -57,4 +59,5 @@ export const servidor = {
   guardarHechizo: new GuardarHechizo(hechizos),
   eliminarHechizo: new EliminarHechizo(hechizos),
   tablaDeGrh,
+  guardarExportacion: new GuardarExportacion(new ArchivosAlmacenDeExportacion()),
 };
