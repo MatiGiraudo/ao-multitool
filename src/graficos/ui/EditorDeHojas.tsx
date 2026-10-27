@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useAplicacion } from "@/compartido/ui/Aplicacion";
-import { BotonArchivo, BotonConfirmar, CampoNumero } from "@/compartido/ui/componentes";
+import { BotonArchivo, BotonConfirmar, CampoNumero, Cargando } from "@/compartido/ui/componentes";
 import { copiar, descargar, useImagen } from "@/compartido/ui/utilidades";
 import { Animacion } from "../dominio/Animacion";
 import { ANCLAS, type Ancla } from "../dominio/Ancla";
@@ -169,7 +169,7 @@ export function EditorDeHojas({ renderUso }: { renderUso?: (hoja: HojaDeSprites,
   const json = useMemo(() => (hoja ? formatoVista.exportar(hoja) : ""), [hoja, formatoVista]);
   const onFrameActual = useCallback((i: number) => setFrameActual(i), []);
 
-  if (graficos.cargando) return <p className="hint">Cargando hojas…</p>;
+  if (graficos.cargando) return <Cargando bloque>Cargando hojas…</Cargando>;
 
   const clicEnLista = (i: number, e: React.MouseEvent) => {
     const s = new Set(seleccion);

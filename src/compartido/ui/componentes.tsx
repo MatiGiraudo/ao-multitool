@@ -34,6 +34,32 @@ export function BotonConfirmar(props: {
   );
 }
 
+/**
+ * «Esto está cargando»: los cuadraditos y un texto.
+ *
+ * `bloque` es para cuando ocupa el lugar de lo que todavía no está (una pantalla, un panel);
+ * sin eso queda en una línea, para ponerlo al lado de otra cosa.
+ */
+export function Cargando(props: { children?: ReactNode; bloque?: boolean; className?: string }) {
+  return (
+    <p className={`cargando${props.bloque ? " bloque" : ""}${props.className ? ` ${props.className}` : ""}`} role="status" aria-live="polite">
+      <PuntosDeCarga />
+      {props.children ?? "Cargando…"}
+    </p>
+  );
+}
+
+/** Los cuadraditos solos, para donde ya hay un texto (un botón que dice «Leyendo…»). */
+export function PuntosDeCarga() {
+  return (
+    <span className="puntos" aria-hidden="true">
+      <i />
+      <i />
+      <i />
+    </span>
+  );
+}
+
 /** Botón que abre el selector de archivos del sistema. */
 export function BotonArchivo(props: { children: ReactNode; accept: string; onArchivo: (f: File) => void; className?: string; id?: string }) {
   return (

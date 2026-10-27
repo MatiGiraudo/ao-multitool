@@ -53,25 +53,25 @@ export function ProveedorDeEfectos({ children }: { children: ReactNode }) {
       recargar,
       async crear() {
         await guardarPendientes();
-        const e = await intentar(() => c.crear.ejecutar());
+        const e = await intentar(() => c.crear.ejecutar(), "Creando…");
         if (e) poner(e);
         return e;
       },
       async duplicar(e) {
         await guardarPendientes();
-        const d = await intentar(() => c.duplicar.ejecutar(e));
+        const d = await intentar(() => c.duplicar.ejecutar(e), "Duplicando…");
         if (d) poner(d);
         return d;
       },
       async eliminar(clave) {
         cancelarPendiente(clave);
-        const ok = await intentar(async () => (await c.eliminar.ejecutar(clave), true));
+        const ok = await intentar(async () => (await c.eliminar.ejecutar(clave), true), "Borrando…");
         if (ok) quitar(clave);
         return !!ok;
       },
       async importar(texto) {
         await guardarPendientes();
-        const r = await intentar(() => c.importar.ejecutar(texto, catalogo));
+        const r = await intentar(() => c.importar.ejecutar(texto, catalogo), "Importando…");
         if (r) await recargar();
         return r;
       },

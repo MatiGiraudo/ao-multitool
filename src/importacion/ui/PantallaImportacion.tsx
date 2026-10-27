@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useAplicacion } from "@/compartido/ui/Aplicacion";
-import { BotonArchivo } from "@/compartido/ui/componentes";
+import { BotonArchivo, PuntosDeCarga } from "@/compartido/ui/componentes";
 import { BotonCargarCarpeta } from "@/graficos/ui/BotonCargarCarpeta";
 import type {
   ResultadoDeAparienciasClasicas,
@@ -44,7 +44,7 @@ export function PantallaImportacion() {
   function importador<T>(paso: string, correr: (texto: string) => Promise<T>, guardar: (r: T) => void, mensaje: (r: T) => string) {
     return async (archivo: File) => {
       setOcupado(paso);
-      const r = await intentar(async () => correr(await textoDeArchivoClasico(archivo)));
+      const r = await intentar(async () => correr(await textoDeArchivoClasico(archivo)), `Leyendo ${archivo.name}…`);
       setOcupado("");
       if (r === undefined || r === null) return;
       guardar(r);
@@ -100,7 +100,7 @@ export function PantallaImportacion() {
           </p>
           <div className="row">
             <BotonArchivo accept=".ini,.txt,text/plain" onArchivo={importarGraficos} className="primary">
-              {ocupado === "graficos" ? "Leyendo…" : "Elegir Graficos.ini…"}
+              {ocupado === "graficos" ? <Leyendo /> : "Elegir Graficos.ini…"}
             </BotonArchivo>
             {tabla && <span className="status">{tabla.grhs.toLocaleString("es-AR")} GRH leídos</span>}
           </div>
@@ -217,7 +217,7 @@ export function PantallaImportacion() {
           </p>
           <div className="row">
             <BotonArchivo accept=".dat,.txt,text/plain" onArchivo={importarHechizos} className="primary">
-              {ocupado === "hechizos" ? "Importando…" : "Elegir Hechizos.dat…"}
+              {ocupado === "hechizos" ? <Leyendo /> : "Elegir Hechizos.dat…"}
             </BotonArchivo>
           </div>
           {hechizos && (
@@ -258,6 +258,16 @@ export function PantallaImportacion() {
   );
 }
 
+/** Lo que dice el botón del paso mientras lee el archivo. */
+function Leyendo() {
+  return (
+    <>
+      <PuntosDeCarga />
+      Leyendo…
+    </>
+  );
+}
+
 /** Un paso de los que dependen de la tabla de GRH: todos se ven igual. */
 function Paso({
   titulo,
@@ -280,7 +290,7 @@ function Paso({
       {children}
       <div className="row">
         <BotonArchivo accept=".ini,.dat,.txt,text/plain" onArchivo={onArchivo} className="primary">
-          {ocupado ? "Importando…" : boton}
+          {ocupado ? <Leyendo /> : boton}
         </BotonArchivo>
         {sinTabla && <span className="hint">Sin el paso 1 se importan los datos, pero sin gráficos.</span>}
       </div>

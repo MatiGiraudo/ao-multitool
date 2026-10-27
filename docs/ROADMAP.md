@@ -16,7 +16,7 @@ Se apoya en **[ARQUITECTURA.md](ARQUITECTURA.md)**, en especial en la receta de 
 | Cuerpos y cabezas (apariencias) | ✅ Lista | `src/apariencias/` | `ao-bodies`, `ao-heads` |
 | Importar del AO original (GRH, cuerpos, cabezas, FX, objetos, hechizos) | ✅ Lista | `src/importacion/` | — |
 | Importar proyecto del indexador web | ✅ Lista | `src/proyecto/` | — |
-| Hechizos | ❌ Falta | — | — |
+| Hechizos | ✅ Lista | `src/hechizos/` | `ao-spells` |
 | NPCs | ❌ Falta | — | — |
 | Mapas | ❌ Falta | — | — |
 | Exportar todo de una vez | ❌ Falta | — | — |

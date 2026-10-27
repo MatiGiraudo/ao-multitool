@@ -80,37 +80,37 @@ export function ProveedorDeGraficos({ children }: { children: ReactNode }) {
       recargar,
       urlImagen: (h) => (h && h.tieneImagen ? casos.ubicadorDeImagenes.urlDe(h.id, h.versionImagen) : null),
       async crearDesdeImagen(archivo) {
-        const h = await intentar(() => g.crearDesdeImagen.ejecutar({ archivo, nombreArchivo: archivo.name }));
+        const h = await intentar(() => g.crearDesdeImagen.ejecutar({ archivo, nombreArchivo: archivo.name }), "Cargando la imagen…");
         if (h) poner(h);
         return h;
       },
       async reemplazarImagen(hojaId, archivo) {
         await guardarPendientes(hojaId);
-        const h = await intentar(() => g.reemplazarImagen.ejecutar({ hojaId, archivo, nombreArchivo: archivo.name }));
+        const h = await intentar(() => g.reemplazarImagen.ejecutar({ hojaId, archivo, nombreArchivo: archivo.name }), "Reemplazando la imagen…");
         if (h) poner(h);
         return h;
       },
       async eliminar(hojaId) {
         cancelarPendiente(hojaId);
-        const ok = await intentar(async () => (await g.eliminar.ejecutar(hojaId), true));
+        const ok = await intentar(async () => (await g.eliminar.ejecutar(hojaId), true), "Borrando la hoja…");
         if (ok) quitar(hojaId);
         return !!ok;
       },
       async redimensionar(hojaId, tamanio, calidad, escalarContenido) {
         await guardarPendientes(hojaId);
-        const h = await intentar(() => g.redimensionar.ejecutar({ hojaId, tamanio, calidad, escalarContenido }));
+        const h = await intentar(() => g.redimensionar.ejecutar({ hojaId, tamanio, calidad, escalarContenido }), "Redimensionando…");
         if (h) poner(h);
         return h;
       },
       async restaurarOriginal(hojaId, escalarContenido) {
         await guardarPendientes(hojaId);
-        const h = await intentar(() => g.restaurarOriginal.ejecutar({ hojaId, escalarContenido }));
+        const h = await intentar(() => g.restaurarOriginal.ejecutar({ hojaId, escalarContenido }), "Restaurando el original…");
         if (h) poner(h);
         return h;
       },
       async importar(texto) {
         await guardarPendientes();
-        const r = await intentar(() => g.importar.ejecutar(texto));
+        const r = await intentar(() => g.importar.ejecutar(texto), "Importando la hoja…");
         if (r) poner(r.hoja);
         return r;
       },

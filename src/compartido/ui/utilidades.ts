@@ -1,17 +1,24 @@
 "use client";
 import { useEffect, useState } from "react";
 
-/** Carga una imagen y la devuelve lista para dibujar en canvas (o null mientras carga / si falla). */
-const cache = new Map<string, Promise<HTMLImageElement>>();
+/**
+ * Carga una imagen y la devuelve lista para dibujar en canvas (o null mientras carga / si falla).
+ *
+ * Al cambiar de url devuelve null hasta que llegue la nueva, en vez de seguir con la anterior: el
+ * que dibuja necesita distinguir «todavía no llegó» de «es esta», o pinta la hoja vieja como si
+ * fuera la nueva. Las que ya están se devuelven en el primer render (`listas`), así cambiar entre
+ * hojas vistas no parpadea.
+ */
+const pedidos = new Map<string, Promise<HTMLImageElement>>();
+const listas = new Map<string, HTMLImageElement>();
 export function useImagen(url: string | null): HTMLImageElement | null {
-  const [img, setImg] = useState<HTMLImageElement | null>(null);
+  const [img, setImg] = useState<HTMLImageElement | null>(() => (url ? (listas.get(url) ?? null) : null));
   useEffect(() => {
     let vivo = true;
-    if (!url) {
-      setImg(null);
-      return;
-    }
-    let p = cache.get(url);
+    const ya = url ? (listas.get(url) ?? null) : null;
+    setImg(ya);
+    if (!url || ya) return;
+    let p = pedidos.get(url);
     if (!p) {
       p = new Promise((ok, mal) => {
         const i = new Image();
@@ -19,10 +26,13 @@ export function useImagen(url: string | null): HTMLImageElement | null {
         i.onerror = mal;
         i.src = url;
       });
-      cache.set(url, p);
-      p.catch(() => cache.delete(url));
+      pedidos.set(url, p);
+      p.catch(() => pedidos.delete(url));
     }
-    p.then((i) => vivo && setImg(i)).catch(() => vivo && setImg(null));
+    p.then((i) => {
+      listas.set(url, i);
+      if (vivo) setImg(i);
+    }).catch(() => vivo && setImg(null));
     return () => {
       vivo = false;
     };

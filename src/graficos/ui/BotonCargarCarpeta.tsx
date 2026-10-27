@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useAplicacion } from "@/compartido/ui/Aplicacion";
-import { BotonArchivos } from "@/compartido/ui/componentes";
+import { BotonArchivos, PuntosDeCarga } from "@/compartido/ui/componentes";
 import type { ResultadoDeLote } from "../aplicacion/casosDeUso";
 
 /** Lo que el selector de archivos deja elegir cuando se piden imágenes sueltas. */
@@ -59,7 +59,14 @@ export function BotonCargarCarpeta({
   return (
     <>
       <BotonArchivos carpeta accept={ACEPTA_IMG} className={className} disabled={!!avance} onArchivos={cargar}>
-        {avance ? `Cargando ${avance.hechas.toLocaleString("es-AR")} de ${avance.total.toLocaleString("es-AR")}…` : (etiqueta ?? "Cargar carpeta…")}
+        {avance ? (
+          <>
+            <PuntosDeCarga />
+            {`Cargando ${avance.hechas.toLocaleString("es-AR")} de ${avance.total.toLocaleString("es-AR")}…`}
+          </>
+        ) : (
+          (etiqueta ?? "Cargar carpeta…")
+        )}
       </BotonArchivos>
       {!!fallidas.length && (
         <p className="hint aviso">

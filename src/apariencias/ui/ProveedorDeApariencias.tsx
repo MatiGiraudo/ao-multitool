@@ -63,25 +63,25 @@ function useEspecie<T extends Apariencia>(casos: CasosDeEspecie<T>, catalogo: Ca
       actualizar,
       async crear() {
         await guardarPendientes();
-        const x = await intentar(() => casos.crear.ejecutar());
+        const x = await intentar(() => casos.crear.ejecutar(), "Creando…");
         if (x) poner(x);
         return x;
       },
       async duplicar(item) {
         await guardarPendientes();
-        const x = await intentar(() => casos.duplicar.ejecutar(item));
+        const x = await intentar(() => casos.duplicar.ejecutar(item), "Duplicando…");
         if (x) poner(x);
         return x;
       },
       async eliminar(clave) {
         cancelarPendiente(clave);
-        const ok = await intentar(async () => (await casos.eliminar.ejecutar(clave), true));
+        const ok = await intentar(async () => (await casos.eliminar.ejecutar(clave), true), "Borrando…");
         if (ok) quitar(clave);
         return !!ok;
       },
       async importar(texto) {
         await guardarPendientes();
-        const r = await intentar(() => casos.importar.ejecutar(texto, catalogo));
+        const r = await intentar(() => casos.importar.ejecutar(texto, catalogo), "Importando…");
         if (r) await recargar();
         return r;
       },
