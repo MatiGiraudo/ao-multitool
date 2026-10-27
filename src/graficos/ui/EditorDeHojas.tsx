@@ -8,14 +8,15 @@ import { ANCLAS, type Ancla } from "../dominio/Ancla";
 import type { Frame } from "../dominio/Frame";
 import type { DatosGrilla } from "../dominio/Grilla";
 import type { HojaDeSprites } from "../dominio/HojaDeSprites";
+import { ACEPTA_IMG, BotonCargarCarpeta } from "./BotonCargarCarpeta";
 import { LienzoDeHoja, type ModoDeLienzo } from "./LienzoDeHoja";
 import { ListaDeFrames } from "./ListaDeFrames";
 import { PanelRedimensionar } from "./PanelRedimensionar";
 import { useGraficos } from "./ProveedorDeGraficos";
 import { VistaPreviaAnimacion } from "./VistaPreviaAnimacion";
 
+const TOPE_DE_LA_TIRA = 60;
 const ZOOMS = [0.125, 0.25, 0.5, 0.75, 1, 2, 3, 4, 5, 6, 8, 10, 12];
-const ACEPTA_IMG = "image/png,image/bmp,image/gif,image/webp,image/jpeg";
 
 const AYUDAS: Record<ModoDeLienzo, ReactNode> = {
   grilla: (
@@ -53,10 +54,24 @@ export function EditorDeHojas({ renderUso }: { renderUso?: (hoja: HojaDeSprites,
   const [frameActual, setFrameActual] = useState(-1);
   const [irA, setIrA] = useState<{ indice: number; n: number } | null>(null);
   const [importTxt, setImportTxt] = useState("");
+  const [filtro, setFiltro] = useState("");
 
   const hoja = graficos.hoja(hojaId) ?? graficos.hojas[0];
   const animacion = hoja ? (hoja.animacion(animPorHoja[hoja.id] ?? "") ?? hoja.animaciones[0]) : undefined;
   const img = useImagen(graficos.urlImagen(hoja));
+
+  /*
+   * La tira de hojas se dibuja recortada. Importar la carpeta del clásico deja miles de hojas, y
+   * miles de miniaturas juntas cuelgan la página: se ven las primeras y el filtro busca el resto.
+   */
+  const { tira, coinciden } = useMemo(() => {
+    const buscado = filtro.trim().toLowerCase();
+    const todas = buscado ? graficos.hojas.filter((h) => h.nombreArchivo.toLowerCase().includes(buscado)) : graficos.hojas;
+    const primeras = todas.slice(0, TOPE_DE_LA_TIRA);
+    // La hoja abierta siempre se ve, aunque el filtro la deje afuera.
+    const tira = hoja && !primeras.some((h) => h.id === hoja.id) ? [hoja, ...primeras] : primeras;
+    return { tira, coinciden: todas.length };
+  }, [graficos.hojas, filtro, hoja]);
 
   // Al cambiar de hoja o de imagen: zoom para que entre a lo ancho.
   useEffect(() => {
@@ -177,8 +192,18 @@ export function EditorDeHojas({ renderUso }: { renderUso?: (hoja: HojaDeSprites,
     <>
       <nav className="sheets" aria-label="Hojas de sprites">
         <span className="lbl">Hojas</span>
+        {(graficos.hojas.length > TOPE_DE_LA_TIRA || filtro) && (
+          <input
+            id="filtroHojas"
+            type="search"
+            placeholder="Filtrar por nombre…"
+            style={{ width: 150 }}
+            value={filtro}
+            onChange={(e) => setFiltro(e.target.value)}
+          />
+        )}
         <div className="sheet-tabs">
-          {graficos.hojas.map((h) => (
+          {tira.map((h) => (
             <button key={h.id} className={`stab${h.id === hoja?.id ? " on" : ""}`} aria-pressed={h.id === hoja?.id} onClick={() => setHojaId(h.id)}>
               <MiniaturaHoja hoja={h} />
               {h.nombreArchivo}
@@ -191,6 +216,12 @@ export function EditorDeHojas({ renderUso }: { renderUso?: (hoja: HojaDeSprites,
         <BotonArchivo className="primary" accept={ACEPTA_IMG} onArchivo={nuevaHoja} id="nuevaHoja">
           + Agregar hoja…
         </BotonArchivo>
+        <BotonCargarCarpeta etiqueta="+ Cargar carpeta…" />
+        {coinciden > tira.length && (
+          <span className="hint">
+            {tira.length} de {coinciden.toLocaleString("es-AR")} hojas; filtrá para ver otras
+          </span>
+        )}
         <span className={`guardado ${graficos.estadoGuardado}`}>
           {graficos.estadoGuardado === "guardando" ? "Guardando…" : graficos.estadoGuardado === "error" ? "No se pudo guardar" : "Guardado en data/graficos"}
         </span>

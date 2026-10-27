@@ -1,6 +1,7 @@
 "use client";
 import { GeneradorDeIdsAleatorio } from "@/compartido/infraestructura/GeneradorDeIdsAleatorio";
 import {
+  CargarHojasEnLote,
   CrearHojaDesdeImagen,
   CrearHojaVacia,
   EliminarHoja,
@@ -121,6 +122,7 @@ function crear() {
       listar: new ListarHojas(hojas),
       crearDesdeImagen: new CrearHojaDesdeImagen(hojas, imagenes, procesador, ids),
       crearVacia: new CrearHojaVacia(hojas, ids),
+      cargarEnLote: new CargarHojasEnLote(hojas, imagenes, procesador, ids),
       reemplazarImagen: new ReemplazarImagenDeHoja(hojas, imagenes, procesador),
       guardar: new GuardarHoja(hojas),
       eliminar: new EliminarHoja(hojas, imagenes),

@@ -7,6 +7,9 @@ export class CanvasProcesadorDeImagenes implements ProcesadorDeImagenes {
   async decodificar(archivo: Blob): Promise<ImagenDecodificada> {
     const img = await cargar(archivo);
     const tamanio = Tamanio.crear(img.width, img.height);
+    // Si ya es PNG no hay nada que convertir: pasarlo por el canvas sólo lo volvería a comprimir, y en
+    // un lote de miles de imágenes eso es la mitad del trabajo.
+    if (archivo.type === "image/png") return { png: archivo, tamanio };
     const c = lienzo(img.width, img.height);
     c.getContext("2d")!.drawImage(img, 0, 0);
     return { png: await aPng(c), tamanio };

@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useAplicacion } from "@/compartido/ui/Aplicacion";
 import { BotonArchivo } from "@/compartido/ui/componentes";
+import { BotonCargarCarpeta } from "@/graficos/ui/BotonCargarCarpeta";
 import type {
   ResultadoDeAparienciasClasicas,
   ResultadoDeEfectosClasicos,
@@ -111,12 +112,26 @@ export function PantallaImportacion() {
                 {!!tabla.faltantes.length && <span className="pill warn">{tabla.faltantes.length} sin cargar</span>}
               </div>
               {!!tabla.faltantes.length && (
+                <div className="row">
+                  <BotonCargarCarpeta
+                    className="primary"
+                    etiqueta={`Cargar la carpeta Graficos (faltan ${tabla.faltantes.length.toLocaleString("es-AR")})…`}
+                    soloEstas={tabla.faltantes}
+                    onCargado={refrescarEstado}
+                  />
+                  <span className="hint">
+                    Elegí la carpeta <code>Graficos</code> del cliente: de todo lo que hay adentro entran nada más que las imágenes que esta tabla
+                    pide, una hoja por archivo.
+                  </span>
+                </div>
+              )}
+              {!!tabla.faltantes.length && (
                 <details>
                   <summary>Qué imágenes faltan</summary>
                   <p className="hint">
-                    Son los archivos que menciona el Graficos.ini y todavía no cargaste como hoja. Cargá los que te interesen desde «Animaciones»
-                    (con el mismo nombre de archivo, por ejemplo <code>{tabla.faltantes[0]}.png</code>) y volvé a importar: lo que falte se vincula
-                    entonces.
+                    Son los archivos que menciona el Graficos.ini y todavía no están cargados como hoja. El botón de arriba los trae todos de una
+                    vez; si preferís unos pocos, cargalos desde «Animaciones» con el mismo nombre de archivo (por ejemplo{" "}
+                    <code>{tabla.faltantes[0]}.png</code>) y volvé a importar: lo que falte se vincula entonces.
                   </p>
                   <p className="json corto" style={{ overflow: "auto", maxHeight: 140 }}>
                     {tabla.faltantes.join(", ")}
@@ -286,7 +301,7 @@ function Resultado({ vinculos, children }: { vinculos: ResumenDeVinculos; childr
       {!!vinculos.hojasFaltantes.length && (
         <p className="hint">
           Los gráficos que faltan salen de estas imágenes: {vinculos.hojasFaltantes.slice(0, 40).join(", ")}
-          {vinculos.hojasFaltantes.length > 40 ? "…" : ""}. Cargalas desde «Animaciones» y volvé a importar.
+          {vinculos.hojasFaltantes.length > 40 ? "…" : ""}. Cargalas con «Cargar la carpeta Graficos» del paso 1 y volvé a importar este archivo.
         </p>
       )}
       {!!vinculos.grhSinResolver.length && (

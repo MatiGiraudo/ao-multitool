@@ -1,5 +1,6 @@
 import type { GeneradorDeIds } from "@/compartido/aplicacion/GeneradorDeIds";
 import { ErrorDeDominio } from "@/compartido/dominio/ErrorDeDominio";
+import { baseDeArchivo } from "@/compartido/dominio/nombreDeArchivo";
 import { Animacion } from "../dominio/Animacion";
 import { HojaDeSprites } from "../dominio/HojaDeSprites";
 import type { HojaRepositorio } from "../dominio/HojaRepositorio";
@@ -38,6 +39,109 @@ export class CrearHojaDesdeImagen {
     const hoja = HojaDeSprites.crear(this.ids.nuevo(), entrada.nombreArchivo, this.ids.nuevo()).conImagenNueva(tamanio);
     await this.imagenes.guardar(hoja.id, png, "actual");
     await this.imagenes.guardar(hoja.id, png, "original");
+    await this.repo.guardar(hoja);
+    return hoja;
+  }
+}
+
+/** Una imagen de un lote: el archivo y el nombre con el que va a quedar la hoja. */
+export interface ImagenEnLote {
+  archivo: Blob;
+  nombreArchivo: string;
+}
+
+/** Qué pasó con cada imagen del lote. */
+export interface ResultadoDeLote {
+  creadas: HojaDeSprites[];
+  /** Cuántas ya estaban cargadas como hoja, con ese mismo nombre de archivo. */
+  yaEstaban: number;
+  /** Cuántas quedaron afuera porque `soloEstas` no las pedía. */
+  deMas: number;
+  /** Las que no se pudieron leer, con el motivo: el lote sigue igual, pero hay que poder mostrarlas. */
+  fallidas: { nombreArchivo: string; motivo: string }[];
+}
+
+/**
+ * Carga muchas imágenes de una vez, una hoja por imagen.
+ *
+ * Es el camino para los gráficos del AO clásico, que son miles de archivos numerados (`1.png`,
+ * `205.png`): de a uno no es trabajo para una persona. Tres decisiones lo hacen repetible sin
+ * miedo: la imagen que ya está cargada se saltea en vez de duplicarse, `soloEstas` permite traer
+ * nada más que las que la tabla de GRH pide, y una imagen ilegible no corta el lote —queda anotada
+ * y sigue—, porque a mitad de camino de tres mil archivos cortar es lo peor que puede pasar.
+ *
+ * Dos diferencias con `CrearHojaDesdeImagen`, las dos por la escala:
+ *
+ * - No guarda copia «original»: en un lote de miles duplicaría cientos de megas en disco, y el
+ *   primer redimensionado la guarda igual, que es justo cuando hace falta.
+ * - La hoja queda sin animaciones. Las pone después el importador del clásico (`grh505`), y una
+ *   `animacion_1` vacía por hoja serían miles de entradas de ruido en todos los selectores.
+ */
+export class CargarHojasEnLote {
+  constructor(
+    private readonly repo: HojaRepositorio,
+    private readonly imagenes: AlmacenDeImagenes,
+    private readonly procesador: ProcesadorDeImagenes,
+    private readonly ids: GeneradorDeIds,
+  ) {}
+
+  async ejecutar(entrada: {
+    imagenes: readonly ImagenEnLote[];
+    /** Si viene, se cargan sólo las imágenes cuyo nombre esté en esta lista (los números que faltan). */
+    soloEstas?: readonly string[];
+    /** Se llama después de cada imagen, para poder mostrar el avance. */
+    alAvanzar?: (hechas: number, total: number) => void;
+    /** Cuántas a la vez. Varias, porque cada hoja son dos viajes a la API y el lote es largo. */
+    enParalelo?: number;
+  }): Promise<ResultadoDeLote> {
+    const cargadas = new Set((await this.repo.listar()).map((h) => baseDeArchivo(h.nombreArchivo)));
+    const pedidas = entrada.soloEstas ? new Set(entrada.soloEstas.map(baseDeArchivo)) : null;
+    const porCargar: ImagenEnLote[] = [];
+    let yaEstaban = 0;
+    let deMas = 0;
+
+    for (const imagen of entrada.imagenes) {
+      const base = baseDeArchivo(imagen.nombreArchivo);
+      if (pedidas && !pedidas.has(base)) deMas++;
+      else if (cargadas.has(base)) yaEstaban++;
+      else {
+        // Se anota ya: si el lote trae `205.png` y `205.bmp`, entra uno solo.
+        cargadas.add(base);
+        porCargar.push(imagen);
+      }
+    }
+
+    const creadas: HojaDeSprites[] = [];
+    const fallidas: { nombreArchivo: string; motivo: string }[] = [];
+    const total = porCargar.length;
+    let proxima = 0;
+    let hechas = 0;
+
+    const trabajar = async () => {
+      for (let i = proxima++; i < total; i = proxima++) {
+        const imagen = porCargar[i]!;
+        try {
+          creadas.push(await this.unaHoja(imagen));
+        } catch (e) {
+          fallidas.push({ nombreArchivo: imagen.nombreArchivo, motivo: e instanceof Error ? e.message : String(e) });
+        }
+        entrada.alAvanzar?.(++hechas, total);
+      }
+    };
+    const cuantos = Math.max(1, Math.min(entrada.enParalelo ?? 4, total));
+    await Promise.all(Array.from({ length: cuantos }, trabajar));
+
+    // Las tareas en paralelo terminan en cualquier orden; ordenadas, el resultado es siempre el mismo.
+    creadas.sort((a, b) => a.nombreArchivo.localeCompare(b.nombreArchivo));
+    fallidas.sort((a, b) => a.nombreArchivo.localeCompare(b.nombreArchivo));
+    return { creadas, yaEstaban, deMas, fallidas };
+  }
+
+  private async unaHoja(imagen: ImagenEnLote): Promise<HojaDeSprites> {
+    const { png, tamanio } = await this.procesador.decodificar(imagen.archivo);
+    const conAnimacionVacia = HojaDeSprites.crear(this.ids.nuevo(), imagen.nombreArchivo, this.ids.nuevo()).conImagenNueva(tamanio);
+    const hoja = conAnimacionVacia.sinAnimacion(conAnimacionVacia.animaciones[0]!.id);
+    await this.imagenes.guardar(hoja.id, png, "actual");
     await this.repo.guardar(hoja);
     return hoja;
   }

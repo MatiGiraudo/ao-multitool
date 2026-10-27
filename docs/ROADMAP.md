@@ -166,6 +166,12 @@ Se reusa tal cual: `RanuraGrafica`, `SelectorDeAnimacion`, `DibujoDeFrame`, `Vis
 >   `Target`, `FXgrh`); el del cliente sólo nombre, descripción, palabras mágicas y costos. Con el
 >   del cliente el importador trae el texto y avisa en `sinEfecto` cuáles quedaron sin mecánica, en
 >   vez de dejar cuarenta y seis hechizos que dicen curar.
+> - **Sin carga masiva de imágenes, el importador no servía de nada.** La tabla de GRH de un cliente
+>   nombra unos 2.850 archivos, y las hojas se cargaban de a una: nadie hace ese clic dos mil veces.
+>   `CargarHojasEnLote` crea una hoja por imagen de una carpeta entera, saltea lo que ya está cargado
+>   y acepta `soloEstas` para traer nada más que lo que la tabla pide. El botón está en el paso 1 y
+>   en «Animaciones». La carpeta `data/graficos` no es un buzón: una hoja es su `.json` más su PNG,
+>   así que copiar imágenes ahí a mano no carga nada.
 >
 > **Lo que falta de esta fase**, por orden de valor:
 >

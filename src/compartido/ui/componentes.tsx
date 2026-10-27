@@ -53,6 +53,46 @@ export function BotonArchivo(props: { children: ReactNode; accept: string; onArc
   );
 }
 
+/**
+ * Botón que trae muchos archivos de una vez, o una carpeta entera.
+ *
+ * Está aparte de `BotonArchivo` porque elegir carpeta no es un `accept` más: el navegador entrega
+ * todos los archivos de todas las subcarpetas, sin filtrar por tipo y de a miles, así que decidir
+ * qué sirve es trabajo de quien recibe.
+ */
+export function BotonArchivos(props: {
+  children: ReactNode;
+  accept: string;
+  onArchivos: (archivos: File[]) => void;
+  /** Elegir una carpeta entera en vez de archivos sueltos. */
+  carpeta?: boolean;
+  className?: string;
+  id?: string;
+  disabled?: boolean;
+}) {
+  return (
+    <label className={`btn ${props.className ?? ""}${props.disabled ? " off" : ""}`}>
+      {props.children}
+      <input
+        id={props.id}
+        type="file"
+        accept={props.accept}
+        multiple
+        disabled={props.disabled}
+        {...(props.carpeta ? ATRIBUTOS_DE_CARPETA : {})}
+        onChange={(e) => {
+          const archivos = [...(e.target.files ?? [])];
+          if (archivos.length) props.onArchivos(archivos);
+          e.target.value = "";
+        }}
+      />
+    </label>
+  );
+}
+
+/** Los atributos con los que el input pide una carpeta. React no los tipa; los navegadores sí los entienden. */
+const ATRIBUTOS_DE_CARPETA = { webkitdirectory: "", directory: "" } as Record<string, string>;
+
 export function CampoNumero(props: {
   id: string;
   etiqueta: string;
