@@ -18,7 +18,7 @@ Se apoya en **[ARQUITECTURA.md](ARQUITECTURA.md)**, en especial en la receta de 
 | Importar proyecto del indexador web | ✅ Lista | `src/proyecto/` | — |
 | Hechizos | ✅ Lista | `src/hechizos/` | `ao-spells` |
 | NPCs | ✅ Lista | `src/npcs/` | `ao-npcs` |
-| Mapas | ❌ Falta | — | — |
+| Mapas | ✅ Lista (visor + editor) | `src/mapas/` | `.map` + `.inf` + `.dat` |
 | Exportar todo de una vez | ✅ Lista | `src/proyecto/` | — |
 | Diagnóstico del mundo | ✅ Lista | `src/proyecto/` | — |
 
@@ -284,13 +284,23 @@ El módulo más grande después de Mapas, porque consume tres catálogos.
 
 ---
 
-## 8. Fase 5 — Mapas
+## 8. Fase 5 — Mapas ✅ hecha
 
 Equivale, sola, a todas las fases anteriores juntas. Conviene partirla en dos entregas y no empezarla hasta que los catálogos tengan datos reales.
 
-**Entrega A — visor (sólo lectura).** Importar un mapa clásico (`.map` + `.inf` + `.dat`), dibujarlo y navegarlo. Valida el modelo de datos y el rendimiento antes de escribir una sola herramienta de edición.
+> Hecha el 27/10/2026, en las dos entregas previstas.
 
-**Entrega B — editor.** Pincel, rectángulo, relleno, capa activa, paleta de tiles, bloqueos, colocar NPCs y objetos, traslados, deshacer/rehacer.
+**Entrega A — visor (sólo lectura) ✅.** Importar un mapa clásico (`.map` + `.inf` + `.dat`), dibujarlo y navegarlo. Validó el modelo de datos y el rendimiento antes de escribir una sola herramienta de edición. El formato se probó contra los 317 mapas de Alkon: todos se leen y se vuelven a escribir idénticos byte a byte.
+
+**Entrega B — editor ✅.** Pincel (1×1 a 7×7), rectángulo, balde, goma, bloquear y desbloquear, cuentagotas; capa activa, paleta con los gráficos del mapa, deshacer/rehacer y exportación a los tres archivos del juego.
+
+Lo que salió distinto de lo previsto, y por qué:
+
+- **Deshacer por diferencias, no por estados.** La pila de estados que decía este plan costaría 160 KB por paso. `Historial` guarda sólo `{celda, capa, antes, después}`, y los tramos de una misma pincelada se funden en un solo paso.
+- **Las herramientas son cuentas, no botones.** `herramientas.ts` calcula los cambios sin tocar el mapa; el que escribe es siempre el historial. Por eso se prueban sin lienzo ni mouse.
+- **Todavía no hay `data/mapas/<numero>.json`.** La salida del editor son los `.map`/`.inf`/`.dat`, que es lo que el juego lee y lo que se pidió: crear mapas desde el navegador listos para cualquier versión de AO. El guardado propio del proyecto queda pendiente, con su cadencia aparte.
+
+Pendiente de la entrega B: colocar NPCs, objetos y traslados desde el lienzo (hoy se ven pero no se editan), y el `CatalogoDeTiles` que evite depender de la tabla de GRH importada.
 
 Lo que hace a Mapas distinto de todo lo anterior:
 
@@ -338,7 +348,7 @@ Fase 1.5 Importadores clásicos       ✅ hecha (falta el equipado de los objeto
 Fase 3  Hechizos                     ✅ hecha
 Fase 6  Exportar todo + diagnóstico  ✅ hecha
 Fase 4  NPCs                         ✅ hecha
-Fase 5  Mapas (A visor, B editor)    1–2 semanas por entrega
+Fase 5  Mapas (A visor, B editor)    ✅ hecha
 ```
 
 FX va antes que Apariencias a propósito: es el módulo más chico y sirve para comprobar que las piezas genéricas de la Fase 0 son las correctas, cuando corregirlas todavía cuesta poco. Su vista previa sobre un cuerpo de muestra se completa después de la Fase 1.

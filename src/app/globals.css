@@ -1051,3 +1051,49 @@ canvas.suelo {
   border: 1px solid var(--linea);
   border-radius: 6px;
 }
+
+/* ---------- edición de mapas ---------- */
+.mapa-lienzo.editando canvas,
+.mapa-lienzo.editando canvas:active {
+  cursor: crosshair;
+}
+.mapa-barra {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.mapa-pincel {
+  align-items: flex-end;
+}
+.mapa-pincel canvas {
+  display: block;
+  width: 48px;
+  height: 48px;
+  image-rendering: pixelated;
+  border: 1px solid var(--linea);
+  border-radius: 4px;
+  background: var(--fondo);
+}
+.mapa-paleta {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 40px);
+  gap: 4px;
+  max-height: 36vh;
+  overflow: auto;
+}
+.mapa-paleta button {
+  padding: 3px;
+  border-color: transparent;
+  background: none;
+}
+.mapa-paleta button.on {
+  border-color: var(--sel);
+  background: var(--acento-suave);
+}
+.mapa-paleta canvas {
+  display: block;
+  width: 32px;
+  height: 32px;
+  image-rendering: pixelated;
+}

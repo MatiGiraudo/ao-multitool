@@ -65,7 +65,12 @@ export class ResolverGraficosDelMapa {
     private readonly hojas: HojaRepositorio,
   ) {}
 
-  async ejecutar(mapa: Mapa): Promise<GraficosDelMapa> {
+  /**
+   * `extra` son gráficos que el mapa todavía no usa y hay que poder dibujar igual: el que el
+   * editor tiene cargado en el pincel. Sin esto, pintar con un gráfico nuevo mostraría un color
+   * plano hasta recargar, porque su hoja no estaría en memoria.
+   */
+  async ejecutar(mapa: Mapa, extra: Iterable<number> = []): Promise<GraficosDelMapa> {
     const tabla = await this.tablas.leer();
     const hojas = await this.hojas.listar();
     const porGrh = new Map<number, RecorteDeGrh>();
@@ -73,7 +78,10 @@ export class ResolverGraficosDelMapa {
     const sinResolver: number[] = [];
     const usadas = new Set<string>();
 
-    for (const grh of [...mapa.graficosUsados()].sort((a, b) => a - b)) {
+    const pedidos = new Set(mapa.graficosUsados());
+    for (const grh of extra) if (grh > 0) pedidos.add(grh);
+
+    for (const grh of [...pedidos].sort((a, b) => a - b)) {
       const recortes = tabla?.recortes(grh);
       if (!recortes) {
         sinResolver.push(grh);

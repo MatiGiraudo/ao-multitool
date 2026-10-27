@@ -49,7 +49,8 @@ describe.skipIf(!CARPETA)("mapas reales del juego", () => {
     expect({ distintos: distintos.slice(0, 10), cuantos: distintos.length }).toEqual({ distintos: [], cuantos: 0 });
     expect(celdas).toBeGreaterThan(0);
     console.log(`  ${nombres.length} mapas · anchos de gráfico usados: ${[...anchos].map(([a, n]) => `${a} bytes ×${n}`).join(", ")}`);
-  });
+    // Son 317 mapas leídos y reescritos: con el disco frío no entra en los 5 segundos de siempre.
+  }, 120_000);
 
   it("el .dat se lee cuando está al lado", () => {
     const conDat = nombres.find((n) => {

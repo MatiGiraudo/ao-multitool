@@ -1,16 +1,25 @@
 "use client";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAplicacion } from "@/compartido/ui/Aplicacion";
 import { BotonArchivos, Cargando } from "@/compartido/ui/componentes";
+import { descargar } from "@/compartido/ui/utilidades";
 import type { GraficosDelMapa } from "../aplicacion/casosDeUso";
+import { Historial } from "../dominio/Historial";
+import { AJUSTES_POR_DEFECTO, type Ajustes, type Herramienta } from "../dominio/herramientas";
 import type { Mapa } from "../dominio/Mapa";
+import type { AnchoDeGrafico } from "../infraestructura/FormatoMapaClasico";
+import { ATAJOS, BarraDeEdicion, PaletaDeGraficos } from "./HerramientasDeMapa";
 import { CAPAS_POR_DEFECTO, LienzoDeMapa, type CapasVisibles } from "./LienzoDeMapa";
 
 /**
- * El visor de mapas: abrís la carpeta `Mundos` del juego y mirás cualquier mapa.
+ * El editor de mapas: abrís la carpeta `Mundos` del juego, editás, y te llevás los tres archivos.
  *
  * Carga sólo lo que el mapa pide. Un mapa usa unos 180 gráficos distintos, que salen de unas
  * decenas de hojas: esas se piden y ninguna más, aunque tengas miles cargadas.
+ *
+ * Lo editado todavía no se guarda en el proyecto: la salida es la exportación a `.map`, `.inf` y
+ * `.dat`, que es lo que el juego lee. El `.map` se vuelve a escribir con el mismo ancho de gráfico
+ * con que vino, así un mapa que se abre y se exporta sin tocar sale idéntico byte a byte.
  */
 
 interface Trio {
@@ -23,9 +32,11 @@ interface Trio {
 
 interface Abierto {
   mapa: Mapa;
-  ancho: number;
+  ancho: AnchoDeGrafico;
+  nombreArchivo: string;
   graficos: GraficosDelMapa;
   imagenes: Map<string, CanvasImageSource>;
+  historial: Historial;
   ms: number;
 }
 
@@ -36,6 +47,16 @@ export function PantallaMapas() {
   const [abriendo, setAbriendo] = useState<number | null>(null);
   const [capas, setCapas] = useState<CapasVisibles>(CAPAS_POR_DEFECTO);
   const [celda, setCelda] = useState<{ x: number; y: number } | null>(null);
+  const [editando, setEditando] = useState(true);
+  const [ajustes, setAjustes] = useState<Ajustes>(AJUSTES_POR_DEFECTO);
+  /* `sello` sube con cada cambio del mapa, y es lo que refresca los contadores y la paleta;
+   * `revision` sólo con lo que el lienzo no hizo él mismo, porque ahí hay que rehornear todo. */
+  const [sello, setSello] = useState(0);
+  const [revision, setRevision] = useState(0);
+  const [sinGuardar, setSinGuardar] = useState(false);
+  /** Gráficos que ya se pidieron para el pincel, resueltos o no, para no pedirlos en cada tecla. */
+  const intentados = useRef(new Set<number>());
+  const usadosAnteriores = useRef<number[]>([]);
 
   /** De la carpeta elegida salen los tríos .map + .inf + .dat que estén completos. */
   const elegirCarpeta = (archivos: File[]) => {
@@ -61,6 +82,7 @@ export function PantallaMapas() {
 
   const abrir = useCallback(
     async (trio: Trio) => {
+      if (sinGuardar && !confirm("Tenés cambios sin exportar en el mapa abierto. ¿Abrir otro y perderlos?")) return;
       setAbriendo(trio.numero);
       const empezo = performance.now();
       const resultado = await intentar(async () => {
@@ -69,13 +91,122 @@ export function PantallaMapas() {
         const { mapa, ancho } = casos.mapas.abrir.ejecutar({ numero: trio.numero, map, inf, dat });
         const graficos = await casos.mapas.resolverGraficos.ejecutar(mapa);
         const imagenes = await cargarHojas(graficos, (hojaId, version) => casos.ubicadorDeImagenes.urlDe(hojaId, version));
-        return { mapa, ancho, graficos, imagenes, ms: Math.round(performance.now() - empezo) };
+        return {
+          mapa,
+          ancho,
+          nombreArchivo: trio.nombre,
+          graficos,
+          imagenes,
+          historial: new Historial(),
+          ms: Math.round(performance.now() - empezo),
+        };
       }, `Abriendo ${trio.nombre}`);
       setAbriendo(null);
-      if (resultado) setAbierto(resultado);
+      if (!resultado) return;
+      intentados.current.clear();
+      setAbierto(resultado);
+      setSinGuardar(false);
+      setSello((n) => n + 1);
+      setRevision((n) => n + 1);
     },
-    [casos, intentar],
+    [casos, intentar, sinGuardar],
   );
+
+  const deshacer = useCallback(() => {
+    if (!abierto?.historial.deshacer(abierto.mapa)) return;
+    setRevision((n) => n + 1);
+    setSello((n) => n + 1);
+  }, [abierto]);
+
+  const rehacer = useCallback(() => {
+    if (!abierto?.historial.rehacer(abierto.mapa)) return;
+    setRevision((n) => n + 1);
+    setSello((n) => n + 1);
+  }, [abierto]);
+
+  // Los atajos de siempre: ctrl+Z, ctrl+Y, las letras de cada herramienta y las capas con 1-4.
+  useEffect(() => {
+    if (!abierto || !editando) return;
+    const letras = new Map(Object.entries(ATAJOS).map(([h, k]) => [k, h as Herramienta]));
+    const alTeclado = (e: KeyboardEvent) => {
+      const foco = e.target as HTMLElement | null;
+      if (foco && /^(INPUT|TEXTAREA|SELECT)$/.test(foco.tagName)) return;
+      const tecla = e.key.toLowerCase();
+      if ((e.ctrlKey || e.metaKey) && tecla === "z") {
+        e.preventDefault();
+        if (e.shiftKey) rehacer();
+        else deshacer();
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && tecla === "y") {
+        e.preventDefault();
+        rehacer();
+        return;
+      }
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      const herramienta = letras.get(tecla);
+      if (herramienta) {
+        setAjustes((a) => ({ ...a, herramienta }));
+        return;
+      }
+      if (tecla >= "1" && tecla <= "4") setAjustes((a) => ({ ...a, capa: Number(tecla) }));
+    };
+    window.addEventListener("keydown", alTeclado);
+    return () => window.removeEventListener("keydown", alTeclado);
+  }, [abierto, deshacer, editando, rehacer]);
+
+  /*
+   * Si el pincel carga un gráfico que este mapa no usaba, hay que traer su hoja. Se intenta una
+   * sola vez por número: si no está en la tabla de GRH no va a aparecer por preguntar de nuevo.
+   */
+  useEffect(() => {
+    const grh = ajustes.grh;
+    if (!abierto || !grh || abierto.graficos.porGrh.has(grh) || intentados.current.has(grh)) return;
+    intentados.current.add(grh);
+    let vivo = true;
+    void (async () => {
+      const graficos = await casos.mapas.resolverGraficos.ejecutar(abierto.mapa, [grh]);
+      const imagenes = await cargarHojas(graficos, (hojaId, version) => casos.ubicadorDeImagenes.urlDe(hojaId, version), abierto.imagenes);
+      if (vivo) setAbierto((prev) => (prev?.mapa === abierto.mapa ? { ...prev, graficos, imagenes } : prev));
+    })();
+    return () => {
+      vivo = false;
+    };
+  }, [abierto, ajustes.grh, casos]);
+
+  // Avisar antes de cerrar la pestaña con cambios sin exportar.
+  useEffect(() => {
+    if (!sinGuardar) return;
+    const antesDeCerrar = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", antesDeCerrar);
+    return () => window.removeEventListener("beforeunload", antesDeCerrar);
+  }, [sinGuardar]);
+
+  /**
+   * Los gráficos que el mapa usa ahora: la paleta sale de acá y se actualiza al pintar.
+   *
+   * Si la lista quedó igual se devuelve la de antes, no una nueva con los mismos números: la
+   * paleta son cientos de miniaturas y así React no tiene que recorrerlas en cada pincelada.
+   */
+  const usados = useMemo(() => {
+    void sello;
+    const nuevos = abierto ? [...abierto.mapa.graficosUsados()].sort((a, b) => a - b) : [];
+    const previos = usadosAnteriores.current;
+    if (previos.length === nuevos.length && previos.every((v, i) => v === nuevos[i])) return previos;
+    usadosAnteriores.current = nuevos;
+    return nuevos;
+  }, [abierto, sello]);
+
+  const exportar = () => {
+    if (!abierto) return;
+    const { map, inf, dat } = casos.mapas.abrir.escribir(abierto.mapa, abierto.ancho);
+    const base = abierto.nombreArchivo || `mapa${abierto.mapa.numero}`;
+    descargar(`${base}.map`, new Blob([map as BlobPart]), "application/octet-stream");
+    descargar(`${base}.inf`, new Blob([inf as BlobPart]), "application/octet-stream");
+    descargar(`${base}.dat`, dat, "text/plain");
+    setSinGuardar(false);
+    avisar(`${base}.map, .inf y .dat descargados. Copialos a la carpeta Mundos del servidor.`);
+  };
 
   return (
     <main className="mapa-layout">
@@ -84,7 +215,7 @@ export function PantallaMapas() {
         <BotonArchivos accept=".map,.inf,.dat" carpeta onArchivos={elegirCarpeta} className="primary">
           Elegir la carpeta Mundos…
         </BotonArchivos>
-        <p className="hint">Los archivos se leen en tu máquina; no se sube nada ni se guarda todavía.</p>
+        <p className="hint">Los archivos se leen en tu máquina; lo que edites sale por «Exportar».</p>
         <div className="olist-items">
           {trios.map((t) => (
             <button
@@ -122,15 +253,56 @@ export function PantallaMapas() {
                 {abierto.mapa.info.nombre || abierto.mapa.numero} <span className="status">#{abierto.mapa.numero}</span>
               </h2>
               <span className="status">
-                {abierto.mapa.contar().graficos} gráficos · {abierto.graficos.hojas.length} hojas · {abierto.ms} ms
+                {usados.length} gráficos · {abierto.graficos.hojas.length} hojas · {abierto.ms} ms
               </span>
             </div>
+
+            <div className="row between">
+              <button className={editando ? "on" : ""} onClick={() => setEditando((v) => !v)}>
+                {editando ? "✎ Editando" : "✎ Editar"}
+              </button>
+              {/* El aviso va acá y no en el título: ahí aparecería al dar la primera pincelada y
+                  correría el mapa para abajo justo mientras se pinta. */}
+              <div className="row">
+                {sinGuardar && <span className="pill warn">sin exportar</span>}
+                <button className="primary" onClick={exportar}>
+                  Exportar .map .inf .dat
+                </button>
+              </div>
+            </div>
+
+            {editando && (
+              <BarraDeEdicion
+                ajustes={ajustes}
+                onAjustes={(cambios) => setAjustes((a) => ({ ...a, ...cambios }))}
+                puedeDeshacer={abierto.historial.puedeDeshacer}
+                puedeRehacer={abierto.historial.puedeRehacer}
+                onDeshacer={deshacer}
+                onRehacer={rehacer}
+                ultimo={abierto.historial.ultimo}
+              />
+            )}
+
             <LienzoDeMapa
               mapa={abierto.mapa}
               graficos={abierto.graficos.porGrh}
               imagenes={abierto.imagenes}
               capas={capas}
               onCelda={(x, y) => setCelda({ x, y })}
+              revision={revision}
+              edicion={
+                editando
+                  ? {
+                      ajustes,
+                      historial: abierto.historial,
+                      onCambio: () => {
+                        setSinGuardar(true);
+                        setSello((n) => n + 1);
+                      },
+                      onCuentagotas: (grh) => setAjustes((a) => ({ ...a, grh, herramienta: "pincel" })),
+                    }
+                  : undefined
+              }
             />
             <div className="flags">
               {(Object.keys(CAPAS_POR_DEFECTO) as (keyof CapasVisibles)[]).map((k) => (
@@ -139,6 +311,11 @@ export function PantallaMapas() {
                 </label>
               ))}
             </div>
+            {editando && (
+              <p className="hint">
+                Pintás con el botón izquierdo. Para moverte, arrastrá con <kbd>shift</kbd> o con el botón del medio; el zoom es con la rueda.
+              </p>
+            )}
           </>
         )}
       </section>
@@ -146,13 +323,25 @@ export function PantallaMapas() {
       <aside className="side">
         {abierto && (
           <>
+            {editando && (
+              <section className="panel">
+                <h2>El pincel</h2>
+                <PaletaDeGraficos
+                  usados={usados}
+                  grh={ajustes.grh}
+                  onGrh={(grh) => setAjustes((a) => ({ ...a, grh }))}
+                  graficos={abierto.graficos.porGrh}
+                  imagenes={abierto.imagenes}
+                />
+              </section>
+            )}
             <section className="panel">
               <h2>La celda</h2>
-              {celda ? <DetalleDeCelda mapa={abierto.mapa} x={celda.x} y={celda.y} /> : <p className="hint">Pasá el mouse por el mapa.</p>}
+              {celda ? <DetalleDeCelda mapa={abierto.mapa} x={celda.x} y={celda.y} sello={sello} /> : <p className="hint">Pasá el mouse por el mapa.</p>}
             </section>
             <section className="panel">
               <h2>El mapa</h2>
-              <Resumen abierto={abierto} />
+              <Resumen abierto={abierto} sello={sello} />
             </section>
           </>
         )}
@@ -172,7 +361,10 @@ const ETIQUETAS: Record<keyof CapasVisibles, string> = {
   grilla: "Grilla",
 };
 
-function DetalleDeCelda({ mapa, x, y }: { mapa: Mapa; x: number; y: number }) {
+/* `sello` no se usa adentro: está para que el detalle se vuelva a dibujar cuando el mapa cambió,
+ * porque el mapa es el mismo objeto y React no tiene cómo notarlo. */
+function DetalleDeCelda({ mapa, x, y, sello }: { mapa: Mapa; x: number; y: number; sello: number }) {
+  void sello;
   const traslado = mapa.traslado(x, y);
   const objeto = mapa.objeto(x, y);
   const npc = mapa.npc(x, y);
@@ -192,7 +384,8 @@ function DetalleDeCelda({ mapa, x, y }: { mapa: Mapa; x: number; y: number }) {
   );
 }
 
-function Resumen({ abierto }: { abierto: Abierto }) {
+function Resumen({ abierto, sello }: { abierto: Abierto; sello: number }) {
+  void sello;
   const c = abierto.mapa.contar();
   const i = abierto.mapa.info;
   return (
@@ -206,6 +399,7 @@ function Resumen({ abierto }: { abierto: Abierto }) {
         <Dato que="Traslados" valor={String(c.traslados)} />
         <Dato que="NPCs" valor={String(c.npcs)} />
         <Dato que="Objetos" valor={String(c.objetos)} />
+        <Dato que="Gráficos de" valor={`${abierto.ancho} bytes`} />
       </div>
       {!!abierto.graficos.hojasFaltantes.length && (
         <p className="hint aviso">
@@ -241,11 +435,15 @@ async function leerAnsi(archivo: File): Promise<string> {
  * `createImageBitmap` evita el parpadeo de decodificar imágenes grandes mientras se dibuja, y
  * `drawImage` las copia más rápido que a un `<img>`.
  */
-async function cargarHojas(graficos: GraficosDelMapa, url: (hojaId: string, version: number) => string): Promise<Map<string, CanvasImageSource>> {
+async function cargarHojas(
+  graficos: GraficosDelMapa,
+  url: (hojaId: string, version: number) => string,
+  ya?: Map<string, CanvasImageSource>,
+): Promise<Map<string, CanvasImageSource>> {
   const porHoja = new Map<string, number>();
-  for (const r of graficos.porGrh.values()) porHoja.set(r.hojaId, r.versionImagen);
+  for (const r of graficos.porGrh.values()) if (!ya?.has(r.hojaId)) porHoja.set(r.hojaId, r.versionImagen);
 
-  const out = new Map<string, CanvasImageSource>();
+  const out = new Map<string, CanvasImageSource>(ya);
   await Promise.all(
     [...porHoja].map(async ([hojaId, version]) => {
       try {
