@@ -69,10 +69,22 @@ import {
 import { FormatoAoSpells } from "@/hechizos/infraestructura/FormatoAoSpells";
 import { HttpHechizoRepositorio } from "@/hechizos/infraestructura/navegador/HttpHechizoRepositorio";
 import {
+  CrearNpc,
+  DuplicarNpc,
+  EliminarNpc,
+  ExportarNpcs,
+  GuardarNpc,
+  ImportarNpcs,
+  ListarNpcs,
+} from "@/npcs/aplicacion/casosDeUso";
+import { FormatoAoNpcs } from "@/npcs/infraestructura/FormatoAoNpcs";
+import { HttpNpcRepositorio } from "@/npcs/infraestructura/navegador/HttpNpcRepositorio";
+import {
   ImportarCabezasClasicas,
   ImportarCuerposClasicos,
   ImportarEfectosClasicos,
   ImportarHechizosClasicos,
+  ImportarNpcsClasicos,
   ImportarObjetosClasicos,
   ImportarTablaDeGrh,
 } from "@/importacion/aplicacion/casosDeUso";
@@ -81,6 +93,7 @@ import { LectorAparienciasIni } from "@/importacion/infraestructura/LectorAparie
 import { LectorFxsIni } from "@/importacion/infraestructura/LectorFxsIni";
 import { LectorGraficosIni } from "@/importacion/infraestructura/LectorGraficosIni";
 import { LectorHechizosDat } from "@/importacion/infraestructura/LectorHechizosDat";
+import { LectorNpcsDat } from "@/importacion/infraestructura/LectorNpcsDat";
 import { LectorObjDat } from "@/importacion/infraestructura/LectorObjDat";
 import { HttpTablaDeGrh } from "@/importacion/infraestructura/navegador/HttpTablaDeGrh";
 import { ExportarTodo, GuardarExportacion } from "@/proyecto/aplicacion/ExportarTodo";
@@ -109,6 +122,8 @@ function crear() {
   const formatoCabezas = new FormatoAoHeads();
   const tablaDeGrh = new HttpTablaDeGrh();
   const hechizos = new HttpHechizoRepositorio();
+  const npcs = new HttpNpcRepositorio();
+  const formatoNpcs = new FormatoAoNpcs();
   const formatoHechizos = new FormatoAoSpells();
   const importarObjetos = new ImportarObjetos(objetos, formatoObjs, ids);
   const importarCuerpos = new ImportarApariencias(cuerpos, formatoCuerpos, ids, ESPECIE_CUERPO);
@@ -183,6 +198,15 @@ function crear() {
       exportar: new ExportarHechizos(hechizos, formatoHechizos),
       importar: new ImportarHechizos(hechizos, formatoHechizos, ids),
     },
+    npcs: {
+      listar: new ListarNpcs(npcs),
+      crear: new CrearNpc(npcs, ids),
+      guardar: new GuardarNpc(npcs),
+      duplicar: new DuplicarNpc(npcs, ids),
+      eliminar: new EliminarNpc(npcs),
+      exportar: new ExportarNpcs(npcs, formatoNpcs),
+      importar: new ImportarNpcs(npcs, formatoNpcs, ids),
+    },
     clasico: {
       tablaDeGrh: new ImportarTablaDeGrh(new LectorGraficosIni(), tablaDeGrh, hojas),
       objetos: new ImportarObjetosClasicos(new LectorObjDat(), tablaDeGrh, puente, hojas, importarObjetos, fabricaDeCatalogo),
@@ -204,6 +228,7 @@ function crear() {
       ),
       fx: new ImportarEfectosClasicos(new LectorFxsIni(), tablaDeGrh, puente, hojas, importarEfectos, fabricaDeCatalogo),
       hechizos: new ImportarHechizosClasicos(new LectorHechizosDat(), new ImportarHechizos(hechizos, formatoHechizos, ids)),
+      npcs: new ImportarNpcsClasicos(new LectorNpcsDat(), new ImportarNpcs(npcs, formatoNpcs, ids)),
     },
     proyecto: {
       importarLegado: new ImportarProyectoLegado(new LectorAoProj(), hojas, imagenes, procesador, importarObjetos, fabricaDeCatalogo, ids),
@@ -214,6 +239,7 @@ function crear() {
         (catalogo) => new ExportarApariencias(cuerpos, formatoCuerpos).ejecutar(catalogo),
         (catalogo) => new ExportarApariencias(cabezas, formatoCabezas).ejecutar(catalogo),
         () => new ExportarHechizos(hechizos, formatoHechizos).ejecutar(),
+        () => new ExportarNpcs(npcs, formatoNpcs).ejecutar(),
       ]),
       guardarExportacion: new GuardarExportacion(new HttpAlmacenDeExportacion()),
       revisar: new RevisarMundo(
@@ -224,6 +250,7 @@ function crear() {
           cuerpos: () => new ListarApariencias(cuerpos).ejecutar(),
           cabezas: () => new ListarApariencias(cabezas).ejecutar(),
           hechizos: () => new ListarHechizos(hechizos).ejecutar(),
+          npcs: () => new ListarNpcs(npcs).ejecutar(),
         },
         fabricaDeCatalogo,
       ),

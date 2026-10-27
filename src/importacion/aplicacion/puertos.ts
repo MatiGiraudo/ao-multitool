@@ -1,5 +1,6 @@
 import type { Direccion } from "@/compartido/dominio/Direccion";
 import type { HechizoImportado } from "@/hechizos/aplicacion/casosDeUso";
+import type { NpcImportado } from "@/npcs/aplicacion/casosDeUso";
 import type { ObjetoImportado } from "@/objetos/aplicacion/puertos";
 import type { Grh } from "../dominio/TablaDeGrh";
 
@@ -77,4 +78,14 @@ export interface EfectoClasico {
 /** Puerto: sabe leer el `Fxs.ini`. */
 export interface LectorDeEfectosClasicos {
   leer(texto: string): EfectoClasico[];
+}
+
+/**
+ * Puerto: sabe leer el `NPCs.dat`.
+ *
+ * Como los hechizos, no necesita la tabla de GRH: el NPC apunta a su cuerpo y a su cabeza por
+ * número, que es exactamente como los guarda el editor.
+ */
+export interface LectorDeNpcsClasicos {
+  leer(texto: string): NpcImportado[];
 }

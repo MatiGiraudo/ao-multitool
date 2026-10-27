@@ -11,6 +11,7 @@ import type {
   ResultadoDeTablaDeGrh,
   ResumenDeVinculos,
 } from "../aplicacion/casosDeUso";
+import type { ResultadoDeImportacionDeNpcs } from "@/npcs/aplicacion/casosDeUso";
 import { textoDeArchivoClasico } from "../infraestructura/navegador/textoDeArchivoClasico";
 
 /**
@@ -29,6 +30,7 @@ export function PantallaImportacion() {
   const [fx, setFx] = useState<ResultadoDeEfectosClasicos | null>(null);
   const [objetos, setObjetos] = useState<ResultadoDeObjetosClasicos | null>(null);
   const [hechizos, setHechizos] = useState<ResultadoDeHechizosClasicos | null>(null);
+  const [npcs, setNpcs] = useState<ResultadoDeImportacionDeNpcs | null>(null);
   const [ocupado, setOcupado] = useState("");
 
   const refrescarEstado = useCallback(async () => {
@@ -82,6 +84,13 @@ export function PantallaImportacion() {
     setObjetos,
     (r) => `Objetos: ${r.objetos.agregados} nuevos, ${r.objetos.reemplazados} reemplazados.`,
   );
+  const importarNpcs = importador(
+    "npcs",
+    (t) => casos.clasico.npcs.ejecutar(t),
+    setNpcs,
+    (r) => `NPCs: ${r.agregados} nuevos, ${r.reemplazados} reemplazados.`,
+  );
+
   const importarHechizos = importador(
     "hechizos",
     (t) => casos.clasico.hechizos.ejecutar(t),
@@ -235,6 +244,26 @@ export function PantallaImportacion() {
                 </p>
               )}
             </>
+          )}
+        </section>
+
+        <section className="panel">
+          <h2>Paso 7 · NPCs.dat</h2>
+          <p className="hint">
+            Criaturas y gente del mundo, con su apariencia, su combate, los hechizos que lanzan y lo que sueltan o venden. Tampoco necesita el paso
+            1: el NPC apunta a su cuerpo y a su cabeza por número, igual que acá. Si esas apariencias todavía no están, el NPC entra lo mismo y el
+            diagnóstico lo marca.
+          </p>
+          <div className="row">
+            <BotonArchivo accept=".dat,.txt,text/plain" onArchivo={importarNpcs} className="primary">
+              {ocupado === "npcs" ? <Leyendo /> : "Elegir NPCs.dat…"}
+            </BotonArchivo>
+          </div>
+          {npcs && (
+            <div className="row">
+              <span className="pill ok">{npcs.agregados} nuevos</span>
+              <span className="pill ok">{npcs.reemplazados} reemplazados</span>
+            </div>
           )}
         </section>
       </div>

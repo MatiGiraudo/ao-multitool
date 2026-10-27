@@ -10,6 +10,7 @@ import { FormatoAoAnim } from "@/graficos/infraestructura/FormatoAoAnim";
 import { CatalogoGraficoDesdeHojas } from "@/graficos/infraestructura/CatalogoGraficoDesdeHojas";
 import { MemoriaHojaRepositorio } from "@/graficos/infraestructura/memoria";
 import { Hechizo } from "@/hechizos/dominio/Hechizo";
+import { Npc } from "@/npcs/dominio/Npc";
 import { Objeto } from "@/objetos/dominio/Objeto";
 import { ExportarTodo, type ArchivoExportado } from "./aplicacion/ExportarTodo";
 import { RevisarMundo, type MundoParaRevisar } from "./aplicacion/RevisarMundo";
@@ -58,7 +59,7 @@ describe("ExportarTodo", () => {
 describe("RevisarMundo", () => {
   const hoja = hojaCon("h1", "cuerpo.png", "caminar_sur");
   const revisor = new RevisarMundo(new MemoriaHojaRepositorio(), {} as never, fabricaDeCatalogo);
-  const vacio: MundoParaRevisar = { hojas: [hoja], objetos: [], efectos: [], cuerpos: [], cabezas: [], hechizos: [] };
+  const vacio: MundoParaRevisar = { hojas: [hoja], objetos: [], efectos: [], cuerpos: [], cabezas: [], hechizos: [], npcs: [] };
 
   const pergamino = (numero: number, hechizo: number | null) => {
     let o = Objeto.crear(`p${numero}`, numero).renombrado("Pergamino").conTipo("pergamino");
@@ -112,6 +113,7 @@ describe("RevisarMundo", () => {
       cuerpos: [Cuerpo.crear("c", 1)],
       cabezas: [Cabeza.crear("k", 1)],
       hechizos: [Hechizo.crear("h", 1).conFx(99)],
+      npcs: [Npc.crear("n", 1).conCuerpo(404)],
     });
     const familias = Object.fromEntries(r.familias.map((f) => [f.familia, { errores: f.errores, revisadas: f.revisadas }]));
     expect(familias).toMatchObject({
@@ -120,6 +122,8 @@ describe("RevisarMundo", () => {
       Apariencias: { errores: 0, revisadas: 2 },
       FX: { errores: 1, revisadas: 1 },
       Hechizos: { errores: 1, revisadas: 1 },
+      // El NPC apunta a un cuerpo que no está: el cruce que más se va a usar.
+      NPCs: { errores: 1, revisadas: 1 },
     });
     // Los errores van primero, para que lo que rompe la exportación se vea sin buscar.
     expect(r.items[0]!.problemas.some((p) => p.gravedad === "error")).toBe(true);

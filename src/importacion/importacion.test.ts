@@ -23,6 +23,7 @@ import { LectorFxsIni } from "./infraestructura/LectorFxsIni";
 import { TablaDeGrh } from "./dominio/TablaDeGrh";
 import { LectorGraficosIni } from "./infraestructura/LectorGraficosIni";
 import { LectorHechizosDat } from "./infraestructura/LectorHechizosDat";
+import { LectorNpcsDat } from "./infraestructura/LectorNpcsDat";
 import { ArchivoIni } from "./infraestructura/LectorIni";
 import { LectorObjDat } from "./infraestructura/LectorObjDat";
 import { ImportarApariencias } from "@/apariencias/aplicacion/casosDeUso";
@@ -636,5 +637,85 @@ describe("importadores de apariencias y FX del clásico", () => {
     expect(segunda.apariencias).toMatchObject({ agregados: 0, reemplazados: 3 });
     expect((await hojas.listar())[0]!.animaciones).toHaveLength(3);
     expect(await repo.listar()).toHaveLength(3);
+  });
+});
+
+const NPCS_DAT = `[NPC1]
+Name=Lobo
+Desc=Un lobo hambriento
+NpcType=2
+Body=25
+Head=0
+Heading=3
+Movement=3
+Attackable=1
+Hostile=1
+ReSpawn=0
+GiveEXP=50
+GiveGLD=20
+MaxHP=60
+MinHIT=4
+MaxHIT=8
+DEF=2
+LanzaSpells=2
+Sp1=5
+Sp2=8
+NROITEMS=2
+Obj1=12-1
+Obj2=40-3
+
+[NPC2]
+Name=Mercader
+NpcType=1
+Comercia=1
+Body=50
+Head=3
+Heading=1
+Movement=1
+NROITEMS=1
+Obj1=12-100
+
+[NPC3]
+Name=Guardia real
+NpcType=3
+Body=51
+Head=4
+Heading=2
+Movement=2
+MaxHP=500
+MaxHIT=40
+`;
+
+describe("LectorNpcsDat", () => {
+  const npcs = new LectorNpcsDat().leer(NPCS_DAT);
+
+  it("traduce el tipo, y el que comercia gana aunque el NpcType diga otra cosa", () => {
+    expect(npcs.map((n) => n.tipo)).toEqual(["hostil", "comerciante", "guardia"]);
+  });
+
+  it("traduce los números de dirección y de movimiento del cliente", () => {
+    expect(npcs.map((n) => n.direccion)).toEqual(["sur", "norte", "este"]);
+    expect(npcs.map((n) => n.movimiento)).toEqual(["persigue", "quieto", "aleatorio"]);
+  });
+
+  it("la misma lista de objetos es botín o inventario según el tipo", () => {
+    expect(npcs[0]!.drops).toEqual([
+      { objeto: 12, cantidad: 1, probabilidad: 100 },
+      { objeto: 40, cantidad: 3, probabilidad: 100 },
+    ]);
+    expect(npcs[0]!.enVenta).toEqual([]);
+    expect(npcs[1]!.enVenta).toEqual([{ objeto: 12, cantidad: 100 }]);
+    expect(npcs[1]!.drops).toEqual([]);
+  });
+
+  it("trae apariencia, combate, hechizos y banderas", () => {
+    expect(npcs[0]).toMatchObject({ numero: 1, nombre: "Lobo", cuerpo: 25, cabeza: 0, hechizos: [5, 8] });
+    expect(npcs[0]!.atributos).toEqual({ vida: 60, golpeMin: 4, golpeMax: 8, defensa: 2, experiencia: 50, oro: 20 });
+    // En el clásico ReSpawn=0 quiere decir que SÍ vuelve a aparecer.
+    expect(npcs[0]!.banderas).toEqual(["atacable", "hostil", "respawn"]);
+  });
+
+  it("avisa si el archivo no es un NPCs.dat", () => {
+    expect(() => new LectorNpcsDat().leer("[OBJ1]\nName=Daga")).toThrow();
   });
 });

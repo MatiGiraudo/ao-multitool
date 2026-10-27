@@ -9,6 +9,7 @@ import type { Cabeza, CabezaImportada } from "@/apariencias/dominio/Cabeza";
 import type { Cuerpo, CuerpoImportado } from "@/apariencias/dominio/Cuerpo";
 import type { ImportarEfectos, ResultadoDeImportacionDeEfectos } from "@/fx/aplicacion/casosDeUso";
 import type { ImportarHechizos, ResultadoDeImportacionDeHechizos } from "@/hechizos/aplicacion/casosDeUso";
+import type { ImportarNpcs, ResultadoDeImportacionDeNpcs } from "@/npcs/aplicacion/casosDeUso";
 import type { ImportarObjetos, ResultadoDeImportacion } from "@/objetos/aplicacion/casosDeUso";
 import type { FabricaDeCatalogo } from "@/proyecto/aplicacion/ImportarProyectoLegado";
 import { esElArchivo } from "../dominio/nombres";
@@ -21,6 +22,7 @@ import type {
   LectorDeEfectosClasicos,
   LectorDeGraficosClasicos,
   LectorDeHechizosClasicos,
+  LectorDeNpcsClasicos,
   LectorDeObjetosClasicos,
 } from "./puertos";
 
@@ -293,4 +295,22 @@ function direccionesVinculadas(
     if (ref) out[direccion] = ref;
   }
   return out;
+}
+
+/**
+ * Trae el `NPCs.dat` completo: apariencia, combate, hechizos, lo que suelta y lo que vende.
+ *
+ * No toca la tabla de GRH, porque el NPC no guarda gráficos propios: apunta a un cuerpo y a una
+ * cabeza por número. Si esos números todavía no existen en el editor, el NPC entra igual y el
+ * validador lo marca — es mejor tener los 500 NPCs con un aviso que no tenerlos.
+ */
+export class ImportarNpcsClasicos {
+  constructor(
+    private readonly lector: LectorDeNpcsClasicos,
+    private readonly npcs: ImportarNpcs,
+  ) {}
+
+  async ejecutar(texto: string): Promise<ResultadoDeImportacionDeNpcs> {
+    return this.npcs.importar(this.lector.leer(texto));
+  }
 }

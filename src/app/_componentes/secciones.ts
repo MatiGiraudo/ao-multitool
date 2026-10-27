@@ -32,6 +32,12 @@ export const SECCIONES: readonly Seccion[] = [
     sub: "Armá los cuerpos y las cabezas: su gráfico en cada dirección y dónde se apoya la cabeza.",
   },
   {
+    href: "/npcs",
+    nombre: "NPCs",
+    familia: "Personajes",
+    sub: "Criaturas y gente del mundo: su apariencia, qué pelean, qué sueltan, qué venden y qué lanzan.",
+  },
+  {
     href: "/objetos",
     nombre: "Objetos",
     familia: "Reglas",

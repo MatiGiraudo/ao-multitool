@@ -6,6 +6,7 @@ Editor de mundo para el remake de Argentum Online. Hoy incluye:
 - **Objetos**: ítems del juego con sus atributos por tipo, icono, gráfico en el suelo y animaciones de equipado por dirección, con exportación `ao-objs`.
 - **Apariencias**: los cuerpos y las cabezas de los personajes, con su gráfico en cada dirección y dónde se apoya la cabeza sobre el cuerpo, con exportación `ao-bodies` y `ao-heads`.
 - **Hechizos**: qué hace cada hechizo, cuánto cuesta, sus palabras mágicas y con qué FX se ve, con exportación `ao-spells`.
+- **NPCs**: criaturas y gente del mundo, con su apariencia, su combate, los hechizos que lanzan y lo que sueltan o venden, con exportación `ao-npcs`.
 - **Exportar todo**: los JSON de todo el mundo juntos, guardados en `data/exportado/` de una vez.
 - **Diagnóstico**: qué quedó roto o a medio terminar en todo el mundo, incluidos los cruces que ningún módulo ve solo.
 - **Importar del AO original**: la tabla de GRH del `Graficos.ini`, el `OBJ.dat` y el `Hechizos.dat`, creando las animaciones que hagan falta y vinculando los iconos.
@@ -54,6 +55,8 @@ data/
 │   └── cabezas.json         ← todas las cabezas, ordenadas por ID
 ├── hechizos/
 │   └── hechizos.json        ← todos los hechizos, ordenados por ID
+├── npcs/
+│   └── npcs.json            ← todos los NPCs, ordenados por ID
 ├── importacion/
 │   └── grh.json             ← la tabla de GRH del AO original, para traducir sus gráficos
 └── exportado/

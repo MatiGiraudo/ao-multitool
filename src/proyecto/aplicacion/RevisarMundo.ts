@@ -8,6 +8,8 @@ import type { HojaDeSprites } from "@/graficos/dominio/HojaDeSprites";
 import type { HojaRepositorio } from "@/graficos/dominio/HojaRepositorio";
 import type { Hechizo } from "@/hechizos/dominio/Hechizo";
 import { ValidadorDeHechizos } from "@/hechizos/dominio/servicios";
+import type { Npc } from "@/npcs/dominio/Npc";
+import { ValidadorDeNpcs } from "@/npcs/dominio/servicios";
 import type { Objeto } from "@/objetos/dominio/Objeto";
 import { ValidadorDeObjetos } from "@/objetos/dominio/servicios";
 import type { FabricaDeCatalogo } from "./ImportarProyectoLegado";
@@ -57,6 +59,7 @@ export interface MundoParaRevisar {
   cuerpos: Apariencia[];
   cabezas: Apariencia[];
   hechizos: Hechizo[];
+  npcs: Npc[];
 }
 
 /** De dónde sale cada familia. Se pasa entera para poder revisar sin montar las pantallas. */
@@ -66,6 +69,7 @@ export interface LectoresDelMundo {
   cuerpos(): Promise<Apariencia[]>;
   cabezas(): Promise<Apariencia[]>;
   hechizos(): Promise<Hechizo[]>;
+  npcs(): Promise<Npc[]>;
 }
 
 export class RevisarMundo {
@@ -76,15 +80,16 @@ export class RevisarMundo {
   ) {}
 
   async ejecutar(): Promise<RevisionDelMundo> {
-    const [hojas, objetos, efectos, cuerpos, cabezas, hechizos] = await Promise.all([
+    const [hojas, objetos, efectos, cuerpos, cabezas, hechizos, npcs] = await Promise.all([
       this.hojas.listar(),
       this.lectores.objetos(),
       this.lectores.efectos(),
       this.lectores.cuerpos(),
       this.lectores.cabezas(),
       this.lectores.hechizos(),
+      this.lectores.npcs(),
     ]);
-    return this.revisar({ hojas, objetos, efectos, cuerpos, cabezas, hechizos });
+    return this.revisar({ hojas, objetos, efectos, cuerpos, cabezas, hechizos, npcs });
   }
 
   /** Lo mismo, con todo ya cargado: así los tests no necesitan repositorios. */
@@ -147,6 +152,20 @@ export class RevisarMundo {
       "/hechizos",
       mundo.hechizos.length,
       mundo.hechizos.map((h) => ({ etiqueta: `#${h.numero} ${h.nombre || "(sin nombre)"}`, problemas: ValidadorDeHechizos.problemas(h, mundo.hechizos, catalogoDeFx) })),
+    );
+
+    // El NPC es el que más apunta hacia afuera: cuerpo, cabeza, objetos y hechizos, todo por número.
+    const catalogosDelNpc = {
+      cuerpos: catalogoDe(mundo.cuerpos),
+      cabezas: catalogoDe(mundo.cabezas),
+      objetos: catalogoDe(mundo.objetos),
+      hechizos: catalogoDe(mundo.hechizos),
+    };
+    sumar(
+      "NPCs",
+      "/npcs",
+      mundo.npcs.length,
+      mundo.npcs.map((n) => ({ etiqueta: `#${n.numero} ${n.nombre || "(sin nombre)"}`, problemas: ValidadorDeNpcs.problemas(n, mundo.npcs, catalogosDelNpc) })),
     );
 
     // Primero lo que está roto, y dentro de eso el orden en que se revisó.

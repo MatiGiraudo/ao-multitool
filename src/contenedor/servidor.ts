@@ -12,6 +12,8 @@ import { EliminarEfecto, GuardarEfecto, ListarEfectos } from "@/fx/aplicacion/ca
 import { EliminarHechizo, GuardarHechizo, ListarHechizos } from "@/hechizos/aplicacion/casosDeUso";
 import { ArchivosHechizoRepositorio } from "@/hechizos/infraestructura/servidor/ArchivosHechizoRepositorio";
 import { ArchivosTablaDeGrh } from "@/importacion/infraestructura/servidor/ArchivosTablaDeGrh";
+import { EliminarNpc, GuardarNpc, ListarNpcs } from "@/npcs/aplicacion/casosDeUso";
+import { ArchivosNpcRepositorio } from "@/npcs/infraestructura/servidor/ArchivosNpcRepositorio";
 import { GuardarExportacion } from "@/proyecto/aplicacion/ExportarTodo";
 import { ArchivosAlmacenDeExportacion } from "@/proyecto/infraestructura/servidor/ArchivosAlmacenDeExportacion";
 import { ArchivosEfectoRepositorio } from "@/fx/infraestructura/servidor/ArchivosEfectoRepositorio";
@@ -30,6 +32,7 @@ const efectos = new ArchivosEfectoRepositorio();
 const cuerpos = new ArchivosCuerpoRepositorio();
 const cabezas = new ArchivosCabezaRepositorio();
 const hechizos = new ArchivosHechizoRepositorio();
+const npcs = new ArchivosNpcRepositorio();
 const tablaDeGrh = new ArchivosTablaDeGrh();
 
 export const servidor = {
@@ -58,6 +61,10 @@ export const servidor = {
   listarHechizos: new ListarHechizos(hechizos),
   guardarHechizo: new GuardarHechizo(hechizos),
   eliminarHechizo: new EliminarHechizo(hechizos),
+  npcs,
+  listarNpcs: new ListarNpcs(npcs),
+  guardarNpc: new GuardarNpc(npcs),
+  eliminarNpc: new EliminarNpc(npcs),
   tablaDeGrh,
   guardarExportacion: new GuardarExportacion(new ArchivosAlmacenDeExportacion()),
 };

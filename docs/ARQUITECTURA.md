@@ -15,6 +15,7 @@ src/
 ├── apariencias/  ← cuerpos y cabezas de los personajes
 ├── fx/           ← efectos visuales
 ├── hechizos/     ← los hechizos y lo que hacen
+├── npcs/         ← criaturas y gente del mundo
 ├── proyecto/     ← operaciones que cruzan varios módulos (importar un proyecto)
 ├── importacion/  ← traer los archivos del AO original (otro módulo que coordina)
 ├── compartido/   ← el vocabulario y los adaptadores que usan todos (sección 3.7)
@@ -24,7 +25,7 @@ src/
 
 La idea es que, al mirar las carpetas, se entienda **de qué trata el sistema** (gráficos, objetos) y no **con qué está hecho** (controllers, services, components). Next.js queda arrinconado en `app/`: es un detalle de entrega, no el centro del proyecto.
 
-Cuando agregues NPCs, va a aparecer una carpeta `src/npcs/`. El proyecto "grita" un módulo más.
+Cuando agregues Mapas, va a aparecer una carpeta `src/mapas/`. El proyecto "grita" un módulo más.
 
 ---
 

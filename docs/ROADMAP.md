@@ -17,7 +17,7 @@ Se apoya en **[ARQUITECTURA.md](ARQUITECTURA.md)**, en especial en la receta de 
 | Importar del AO original (GRH, cuerpos, cabezas, FX, objetos, hechizos) | ✅ Lista | `src/importacion/` | — |
 | Importar proyecto del indexador web | ✅ Lista | `src/proyecto/` | — |
 | Hechizos | ✅ Lista | `src/hechizos/` | `ao-spells` |
-| NPCs | ❌ Falta | — | — |
+| NPCs | ✅ Lista | `src/npcs/` | `ao-npcs` |
 | Mapas | ❌ Falta | — | — |
 | Exportar todo de una vez | ✅ Lista | `src/proyecto/` | — |
 | Diagnóstico del mundo | ✅ Lista | `src/proyecto/` | — |
@@ -180,7 +180,7 @@ Se reusa tal cual: `RanuraGrafica`, `SelectorDeAnimacion`, `DibujoDeFrame`, `Vis
 >    `graficos.equipado` de la ficha del objeto y no a una entidad propia.
 > 2. **Cascos como entidad aparte.** Hoy `Cascos.ini` entra por el importador de cabezas y queda
 >    mezclado con ellas, porque el editor no distingue las dos cosas (ver la decisión abierta 3).
-> 3. `NPCs.dat`, cuando exista ese módulo: es un lector y un caso de uso, igual que el de hechizos.
+> 3. ~~`NPCs.dat`~~: hecho junto con la Fase 4.
 
 **Es la fase con mejor relación valor/esfuerzo y conviene adelantarla.** Cargar a mano cientos de cuerpos, cabezas, hechizos y NPCs es inviable; los `.dat` y `.ind` del AO original ya tienen todo eso.
 
@@ -253,7 +253,23 @@ La receta de la sección 8 de ARQUITECTURA.md, con el detalle completo del domin
 
 ---
 
-## 7. Fase 4 — NPCs
+## 7. Fase 4 — NPCs ✅ hecha
+
+> Hecha el 27/10/2026, junto con el lector de `NPCs.dat`. Cómo quedó respecto del plan:
+>
+> - En vez de tres puertos propios (`CatalogoDeApariencias`, `CatalogoDeObjetos`,
+>   `CatalogoDeHechizos`) usa cuatro `CatalogoPorNumero`, el puerto genérico que estrenó Hechizos.
+>   Es el mismo desacople con una pieza en lugar de tres, y las capas anticorrupción ya estaban en
+>   los módulos dueños de los datos.
+> - El tipo decide qué secciones tiene la ficha, igual que en Objetos: un banquero no pelea ni
+>   suelta nada. Lo cargado para otro tipo se conserva pero no cuenta ni se exporta, así cambiar de
+>   tipo y volver no pierde nada.
+> - `compartido/ui/SelectorPorNumero.tsx` es el selector que el plan anticipaba: se usa cinco veces
+>   en la misma ficha. Nunca pierde un número que no esté en el catálogo —lo muestra como "no
+>   existe"— porque al importar es normal que los NPCs lleguen antes que las apariencias.
+> - En el `NPCs.dat` clásico la misma lista `Obj1=12-100` es el inventario del que vende y el botín
+>   del que pelea; se reparte según el tipo. Y `ReSpawn=0` quiere decir que **sí** reaparece.
+> - El diagnóstico suma la familia NPCs, que es la que más cruces tiene.
 
 El módulo más grande después de Mapas, porque consume tres catálogos.
 
@@ -318,10 +334,10 @@ Chicas, de mucho valor, y conviene hacerlas en cuanto haya tres o cuatro módulo
 Fase 0  Cimientos compartidos        ✅ hecha
 Fase 2  FX                           ✅ hecha
 Fase 1  Apariencias                  ✅ hecha
-Fase 1.5 Importadores clásicos       ✅ hecha (falta NPCs.dat, y el equipado de los objetos)
+Fase 1.5 Importadores clásicos       ✅ hecha (falta el equipado de los objetos)
 Fase 3  Hechizos                     ✅ hecha
 Fase 6  Exportar todo + diagnóstico  ✅ hecha
-Fase 4  NPCs                         3 días
+Fase 4  NPCs                         ✅ hecha
 Fase 5  Mapas (A visor, B editor)    1–2 semanas por entrega
 ```
 
