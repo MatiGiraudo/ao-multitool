@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAplicacion } from "@/compartido/ui/Aplicacion";
 import { CamposDeAtributos, CasillasDeBanderas } from "@/compartido/ui/CamposDeAtributos";
-import { BotonArchivo, BotonConfirmar } from "@/compartido/ui/componentes";
+import { BotonArchivo, BotonConfirmar, Cargando } from "@/compartido/ui/componentes";
 import { copiar, descargar, useImagen } from "@/compartido/ui/utilidades";
 import { DibujoDeFrame } from "@/graficos/ui/DibujoDeFrame";
 import { useGraficos } from "@/graficos/ui/ProveedorDeGraficos";
@@ -45,7 +45,7 @@ export function EditorDeObjetos() {
       .sort((a, b) => a.numero - b.numero);
   }, [s.objetos, busqueda, filtro]);
 
-  if (s.cargando) return <p className="hint">Cargando objetos…</p>;
+  if (s.cargando) return <Cargando bloque>Cargando objetos…</Cargando>;
 
   const nuevo = async () => {
     const o = await s.crear();
@@ -278,7 +278,7 @@ function Ficha({ objeto: o, onBorrado, onDuplicado }: { objeto: Objeto; onBorrad
               <button
                 disabled={!hojaAuto}
                 onClick={async () => {
-                  const r = await intentar(() => casos.objetos.autovincular.ejecutar(o, hojaAuto, s.catalogo));
+                  const r = await intentar(() => casos.objetos.autovincular.ejecutar(o, hojaAuto, s.catalogo), "Vinculando gráficos…");
                   if (!r) return;
                   if (r.cantidad) s.actualizar(r.objeto);
                   const nombre = s.catalogo.hojas().find((h) => h.hojaId === hojaAuto)?.nombreHoja;

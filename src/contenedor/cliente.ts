@@ -1,6 +1,7 @@
 "use client";
 import { GeneradorDeIdsAleatorio } from "@/compartido/infraestructura/GeneradorDeIdsAleatorio";
 import {
+  CargarHojasEnLote,
   CrearHojaDesdeImagen,
   CrearHojaVacia,
   EliminarHoja,
@@ -67,7 +68,17 @@ import {
 } from "@/hechizos/aplicacion/casosDeUso";
 import { FormatoAoSpells } from "@/hechizos/infraestructura/FormatoAoSpells";
 import { HttpHechizoRepositorio } from "@/hechizos/infraestructura/navegador/HttpHechizoRepositorio";
-import { ImportarHechizosClasicos, ImportarObjetosClasicos, ImportarTablaDeGrh } from "@/importacion/aplicacion/casosDeUso";
+import {
+  ImportarCabezasClasicas,
+  ImportarCuerposClasicos,
+  ImportarEfectosClasicos,
+  ImportarHechizosClasicos,
+  ImportarObjetosClasicos,
+  ImportarTablaDeGrh,
+} from "@/importacion/aplicacion/casosDeUso";
+import { PuenteDeGrh } from "@/importacion/aplicacion/PuenteDeGrh";
+import { LectorAparienciasIni } from "@/importacion/infraestructura/LectorAparienciasIni";
+import { LectorFxsIni } from "@/importacion/infraestructura/LectorFxsIni";
 import { LectorGraficosIni } from "@/importacion/infraestructura/LectorGraficosIni";
 import { LectorHechizosDat } from "@/importacion/infraestructura/LectorHechizosDat";
 import { LectorObjDat } from "@/importacion/infraestructura/LectorObjDat";
@@ -97,7 +108,12 @@ function crear() {
   const hechizos = new HttpHechizoRepositorio();
   const formatoHechizos = new FormatoAoSpells();
   const importarObjetos = new ImportarObjetos(objetos, formatoObjs, ids);
+  const importarCuerpos = new ImportarApariencias(cuerpos, formatoCuerpos, ids, ESPECIE_CUERPO);
+  const importarCabezas = new ImportarApariencias(cabezas, formatoCabezas, ids, ESPECIE_CABEZA);
+  const importarEfectos = new ImportarEfectos(efectos, formatoFx, ids);
   const fabricaDeCatalogo = (hs: readonly HojaDeSprites[]) => new CatalogoGraficoDesdeHojas(hs);
+  // El puente GRH → animación lo comparten los cuatro importadores del clásico.
+  const puente = new PuenteDeGrh(hojas, ids);
 
   return {
     ubicadorDeImagenes: imagenes,
@@ -106,6 +122,7 @@ function crear() {
       listar: new ListarHojas(hojas),
       crearDesdeImagen: new CrearHojaDesdeImagen(hojas, imagenes, procesador, ids),
       crearVacia: new CrearHojaVacia(hojas, ids),
+      cargarEnLote: new CargarHojasEnLote(hojas, imagenes, procesador, ids),
       reemplazarImagen: new ReemplazarImagenDeHoja(hojas, imagenes, procesador),
       guardar: new GuardarHoja(hojas),
       eliminar: new EliminarHoja(hojas, imagenes),
@@ -134,7 +151,7 @@ function crear() {
       duplicar: new DuplicarEfecto(efectos, ids),
       eliminar: new EliminarEfecto(efectos),
       exportar: new ExportarEfectos(efectos, formatoFx),
-      importar: new ImportarEfectos(efectos, formatoFx, ids),
+      importar: importarEfectos,
     },
     cuerpos: {
       listar: new ListarApariencias(cuerpos),
@@ -143,7 +160,7 @@ function crear() {
       duplicar: new DuplicarApariencia(cuerpos, ids, ESPECIE_CUERPO),
       eliminar: new EliminarApariencia(cuerpos),
       exportar: new ExportarApariencias(cuerpos, formatoCuerpos),
-      importar: new ImportarApariencias(cuerpos, formatoCuerpos, ids, ESPECIE_CUERPO),
+      importar: importarCuerpos,
     },
     cabezas: {
       listar: new ListarApariencias(cabezas),
@@ -152,7 +169,7 @@ function crear() {
       duplicar: new DuplicarApariencia(cabezas, ids, ESPECIE_CABEZA),
       eliminar: new EliminarApariencia(cabezas),
       exportar: new ExportarApariencias(cabezas, formatoCabezas),
-      importar: new ImportarApariencias(cabezas, formatoCabezas, ids, ESPECIE_CABEZA),
+      importar: importarCabezas,
     },
     hechizos: {
       listar: new ListarHechizos(hechizos),
@@ -165,7 +182,24 @@ function crear() {
     },
     clasico: {
       tablaDeGrh: new ImportarTablaDeGrh(new LectorGraficosIni(), tablaDeGrh, hojas),
-      objetos: new ImportarObjetosClasicos(new LectorObjDat(), tablaDeGrh, hojas, importarObjetos, fabricaDeCatalogo, ids),
+      objetos: new ImportarObjetosClasicos(new LectorObjDat(), tablaDeGrh, puente, hojas, importarObjetos, fabricaDeCatalogo),
+      cuerpos: new ImportarCuerposClasicos(
+        new LectorAparienciasIni("body", "Walk", "Personajes.ini"),
+        tablaDeGrh,
+        puente,
+        hojas,
+        importarCuerpos,
+        fabricaDeCatalogo,
+      ),
+      cabezas: new ImportarCabezasClasicas(
+        new LectorAparienciasIni("head", "Head", "Cabezas.ini"),
+        tablaDeGrh,
+        puente,
+        hojas,
+        importarCabezas,
+        fabricaDeCatalogo,
+      ),
+      fx: new ImportarEfectosClasicos(new LectorFxsIni(), tablaDeGrh, puente, hojas, importarEfectos, fabricaDeCatalogo),
       hechizos: new ImportarHechizosClasicos(new LectorHechizosDat(), new ImportarHechizos(hechizos, formatoHechizos, ids)),
     },
     proyecto: {

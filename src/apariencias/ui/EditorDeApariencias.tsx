@@ -5,7 +5,7 @@ import { DIRECCIONES } from "@/compartido/dominio/Direccion";
 import type { Problema } from "@/compartido/dominio/Problema";
 import type { ReferenciaGrafica } from "@/compartido/dominio/ReferenciaGrafica";
 import { useAplicacion } from "@/compartido/ui/Aplicacion";
-import { BotonArchivo, BotonConfirmar, CampoNumero } from "@/compartido/ui/componentes";
+import { BotonArchivo, BotonConfirmar, CampoNumero, Cargando } from "@/compartido/ui/componentes";
 import { copiar, descargar, useImagen } from "@/compartido/ui/utilidades";
 import { DibujoDeFrame } from "@/graficos/ui/DibujoDeFrame";
 import { useGraficos } from "@/graficos/ui/ProveedorDeGraficos";
@@ -52,7 +52,7 @@ export function EditorDeApariencias() {
     return [...coleccion.items].filter((a) => !q || a.nombre.toLowerCase().includes(q) || String(a.numero) === q).sort((a, b) => a.numero - b.numero);
   }, [coleccion.items, busqueda]);
 
-  if (s.cuerpos.cargando || s.cabezas.cargando) return <p className="hint">Cargando apariencias…</p>;
+  if (s.cuerpos.cargando || s.cabezas.cargando) return <Cargando bloque>Cargando apariencias…</Cargando>;
 
   const elegir = (clave: string | null) => (enCuerpos ? setClaveCuerpo(clave) : setClaveCabeza(clave));
 

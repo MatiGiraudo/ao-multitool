@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Cargando } from "@/compartido/ui/componentes";
 import { colorCss } from "@/compartido/ui/utilidades";
 import type { Animacion } from "../dominio/Animacion";
 import { Frame } from "../dominio/Frame";
@@ -275,6 +276,12 @@ export function LienzoDeHoja(p: Props) {
           }
         }}
       />
+      {/* La hoja tiene imagen pero todavía no llegó: sin esto el lienzo queda en blanco y parece roto. */}
+      {p.hoja.tieneImagen && !p.img && (
+        <div className="sin-imagen">
+          <Cargando>Cargando la imagen…</Cargando>
+        </div>
+      )}
       {!p.hoja.tieneImagen && (
         <div className="sin-imagen">
           Esta hoja todavía no tiene imagen.

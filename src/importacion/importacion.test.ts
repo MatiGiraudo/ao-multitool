@@ -9,13 +9,36 @@ import { MemoriaObjetoRepositorio } from "@/objetos/infraestructura/memoria";
 import { ImportarHechizos } from "@/hechizos/aplicacion/casosDeUso";
 import { FormatoAoSpells } from "@/hechizos/infraestructura/FormatoAoSpells";
 import { MemoriaHechizoRepositorio } from "@/hechizos/infraestructura/memoria";
-import { ImportarHechizosClasicos, ImportarObjetosClasicos, ImportarTablaDeGrh } from "./aplicacion/casosDeUso";
+import {
+  ImportarCabezasClasicas,
+  ImportarCuerposClasicos,
+  ImportarEfectosClasicos,
+  ImportarHechizosClasicos,
+  ImportarObjetosClasicos,
+  ImportarTablaDeGrh,
+} from "./aplicacion/casosDeUso";
+import { PuenteDeGrh } from "./aplicacion/PuenteDeGrh";
+import { LectorAparienciasIni } from "./infraestructura/LectorAparienciasIni";
+import { LectorFxsIni } from "./infraestructura/LectorFxsIni";
 import { TablaDeGrh } from "./dominio/TablaDeGrh";
 import { LectorGraficosIni } from "./infraestructura/LectorGraficosIni";
 import { LectorHechizosDat } from "./infraestructura/LectorHechizosDat";
 import { ArchivoIni } from "./infraestructura/LectorIni";
 import { LectorObjDat } from "./infraestructura/LectorObjDat";
+import { ImportarApariencias } from "@/apariencias/aplicacion/casosDeUso";
+import { ESPECIE_CABEZA } from "@/apariencias/dominio/Cabeza";
+import { ESPECIE_CUERPO } from "@/apariencias/dominio/Cuerpo";
+import { FormatoAoBodies } from "@/apariencias/infraestructura/FormatoAoBodies";
+import { FormatoAoHeads } from "@/apariencias/infraestructura/FormatoAoHeads";
+import { MemoriaCabezaRepositorio, MemoriaCuerpoRepositorio } from "@/apariencias/infraestructura/memoria";
+import { ImportarEfectos } from "@/fx/aplicacion/casosDeUso";
+import { FormatoAoFx } from "@/fx/infraestructura/FormatoAoFx";
+import { MemoriaEfectoRepositorio } from "@/fx/infraestructura/memoria";
+import type { ReferenciaGrafica } from "@/compartido/dominio/ReferenciaGrafica";
 import { MemoriaTablaDeGrh } from "./infraestructura/memoria";
+
+/** El catálogo se arma siempre igual; los escenarios sólo cambian las hojas. */
+const catalogoDe = (hs: readonly HojaDeSprites[]) => new CatalogoGraficoDesdeHojas(hs);
 
 const GRAFICOS_INI = `﻿[INIT]
 NumGrhs=3
@@ -51,6 +74,17 @@ sX=10
 sY=20
 Tile_Ancho=64
 Tile_Alto=48
+`;
+
+const GRAFICOS_INI_DE_UNA_LINEA = `[INIT]
+NumGrh=4
+Version=114
+
+[Graphics]
+Grh1=1-12-0-0-32-64
+Grh2=1-12-32-0-32-64
+Grh3=2-1-2-240
+Grh4=1-99-10-20-11-30
 `;
 
 const OBJ_DAT = `[OBJ1]
@@ -133,6 +167,31 @@ describe("LectorGraficosIni", () => {
   });
 });
 
+describe("LectorGraficosIni, formato de una línea", () => {
+  const tabla = TablaDeGrh.desde(new LectorGraficosIni().leer(GRAFICOS_INI_DE_UNA_LINEA));
+
+  it("lee los campos por posición, con el tamaño ya en píxeles", () => {
+    expect(tabla.obtener(1)).toMatchObject({ archivo: "12", x: 0, y: 0, ancho: 32, alto: 64 });
+    // 11×30 son píxeles: si se leyeran como tiles quedaría un sprite de 352×960.
+    expect(tabla.obtener(4)).toMatchObject({ archivo: "99", x: 10, y: 20, ancho: 11, alto: 30 });
+  });
+
+  it("resuelve un GRH animado igual que el formato por secciones", () => {
+    expect(tabla.recortes(3)).toEqual({
+      archivo: "12",
+      rects: [
+        { x: 0, y: 0, ancho: 32, alto: 64 },
+        { x: 32, y: 0, ancho: 32, alto: 64 },
+      ],
+      msPorFrame: 120,
+    });
+  });
+
+  it("lista los archivos que hacen falta", () => {
+    expect(tabla.archivos()).toEqual(["12", "99"]);
+  });
+});
+
 describe("LectorObjDat", () => {
   const objetos = new LectorObjDat().leer(OBJ_DAT);
 
@@ -179,10 +238,10 @@ describe("ImportarObjetosClasicos", () => {
     const caso = new ImportarObjetosClasicos(
       new LectorObjDat(),
       tablas,
+      new PuenteDeGrh(hojas, ids),
       hojas,
       new ImportarObjetos(objetos, new FormatoAoObjs(), ids),
-      (hs) => new CatalogoGraficoDesdeHojas(hs),
-      ids,
+      catalogoDe,
     );
     return { caso, hojas, objetos };
   }
@@ -225,10 +284,10 @@ describe("ImportarObjetosClasicos", () => {
     const caso = new ImportarObjetosClasicos(
       new LectorObjDat(),
       new MemoriaTablaDeGrh(),
+      new PuenteDeGrh(hojas, ids),
       hojas,
       new ImportarObjetos(objetos, new FormatoAoObjs(), ids),
-      (hs) => new CatalogoGraficoDesdeHojas(hs),
-      ids,
+      catalogoDe,
     );
 
     const r = await caso.ejecutar(OBJ_DAT);
@@ -284,7 +343,7 @@ ManaRequerido=0
 `;
 
 describe("LectorHechizosDat", () => {
-  const hechizos = new LectorHechizosDat().leer(HECHIZOS_DAT);
+  const { hechizos, sinEfecto } = new LectorHechizosDat().leer(HECHIZOS_DAT);
 
   it("traduce las banderas sueltas del clásico al tipo de efecto", () => {
     expect(hechizos.map((h) => h.tipo)).toEqual(["dano", "paralizar", "curacion", "invocar", "modificar_stat"]);
@@ -319,6 +378,16 @@ describe("LectorHechizosDat", () => {
   it("avisa si el archivo no es un Hechizos.dat", () => {
     expect(() => new LectorHechizosDat().leer("[OBJ1]\nName=Daga")).toThrow();
   });
+
+  it("no inventa el efecto cuando el archivo no lo trae", () => {
+    // Los cinco del ejemplo traen banderas de efecto, así que no hay nada que avisar.
+    expect(sinEfecto).toEqual([]);
+
+    // El Hechizos.dat del CLIENTE sólo trae el texto que se muestra: ahí no hay efecto que leer.
+    const delCliente = new LectorHechizosDat().leer("[HECHIZO1]\nNombre=Curar Heridas Leves\nManaRequerido=10");
+    expect(delCliente.sinEfecto).toEqual([1]);
+    expect(delCliente.hechizos[0]).toMatchObject({ nombre: "Curar Heridas Leves", mana: 10 });
+  });
 });
 
 describe("ImportarHechizosClasicos", () => {
@@ -329,8 +398,8 @@ describe("ImportarHechizosClasicos", () => {
       new ImportarHechizos(repo, new FormatoAoSpells(), new GeneradorDeIdsSecuencial()),
     );
 
-    expect(await caso.ejecutar(HECHIZOS_DAT)).toEqual({ agregados: 5, reemplazados: 0 });
-    expect(await caso.ejecutar(HECHIZOS_DAT)).toEqual({ agregados: 0, reemplazados: 5 });
+    expect(await caso.ejecutar(HECHIZOS_DAT)).toEqual({ agregados: 5, reemplazados: 0, sinEfecto: [] });
+    expect(await caso.ejecutar(HECHIZOS_DAT)).toEqual({ agregados: 0, reemplazados: 5, sinEfecto: [] });
 
     const hechizos = await repo.listar();
     expect(hechizos).toHaveLength(5);
@@ -338,5 +407,210 @@ describe("ImportarHechizosClasicos", () => {
     expect(dardo.tipo.id).toBe("dano");
     expect(dardo.atributosVigentes()).toEqual({ min: 5, max: 10 });
     expect(dardo.tieneBandera("baculo")).toBe(true);
+  });
+});
+
+const PERSONAJES_INI = `[INIT]
+NumBodies=3
+
+[BODY1]
+Walk1=1	 ' arriba
+Walk2=2	 ' derecha
+Walk3=3	 ' abajo
+Walk4=4	 ' izq
+HeadOffsetX=0
+HeadOffsetY=-4
+
+[BODY2]
+Walk1=0	 ' arriba
+Walk2=0	 ' derecha
+Walk3=3	 ' abajo
+Walk4=0	 ' izq
+HeadOffsetX=-2
+HeadOffsetY=-32
+
+[BODY3]
+Walk1=4	 ' arriba
+Walk2=4	 ' derecha
+Walk3=4	 ' abajo
+Walk4=4	 ' izq
+HeadOffsetX=0
+HeadOffsetY=0
+`;
+
+const CABEZAS_INI = `[INIT]
+NumHeads=2
+
+[HEAD1]
+Head1=1	 ' arriba
+Head2=2	 ' derecha
+Head3=3	 ' abajo
+Head4=1	 ' izq
+
+[HEAD2]
+Head1=0	 ' arriba
+Head2=0	 ' derecha
+Head3=0	 ' abajo
+Head4=0	 ' izq
+`;
+
+const FXS_INI = `[INIT]
+NumFxs=2
+
+[FX1]
+Animacion=3
+OffsetX=0
+OffsetY=32
+
+[FX2]
+Animacion=99
+OffsetX=-5
+OffsetY=-15
+`;
+
+describe("LectorAparienciasIni", () => {
+  const cuerpos = new LectorAparienciasIni("body", "Walk", "Personajes.ini").leer(PERSONAJES_INI);
+
+  it("traduce el orden de AO (1 norte, 2 este, 3 sur, 4 oeste) y saltea las direcciones en 0", () => {
+    expect(cuerpos[0]).toEqual({
+      numero: 1,
+      grhPorDireccion: { norte: 1, este: 2, sur: 3, oeste: 4 },
+      offsetCabezaX: 0,
+      offsetCabezaY: -4,
+    });
+    expect(cuerpos[1]!.grhPorDireccion).toEqual({ sur: 3 });
+  });
+
+  it("perdona el comentario pegado al valor", () => {
+    // En el archivo real cada Walk termina en "\t ' arriba"; si eso entrara al valor, nada sería un número.
+    expect(cuerpos.every((c) => Object.values(c.grhPorDireccion).every(Number.isInteger))).toBe(true);
+    expect(cuerpos[1]).toMatchObject({ offsetCabezaX: -2, offsetCabezaY: -32 });
+  });
+
+  it("lee las cabezas con el mismo molde, sin corrimiento", () => {
+    const cabezas = new LectorAparienciasIni("head", "Head", "Cabezas.ini").leer(CABEZAS_INI);
+    expect(cabezas[0]!.grhPorDireccion).toEqual({ norte: 1, este: 2, sur: 3, oeste: 1 });
+    expect(cabezas[1]!.grhPorDireccion).toEqual({});
+  });
+
+  it("avisa si el archivo no es el que corresponde", () => {
+    expect(() => new LectorAparienciasIni("body", "Walk", "Personajes.ini").leer(CABEZAS_INI)).toThrow();
+  });
+});
+
+describe("LectorFxsIni", () => {
+  it("trae la animación y el corrimiento de cada efecto", () => {
+    expect(new LectorFxsIni().leer(FXS_INI)).toEqual([
+      { numero: 1, grh: 3, offsetX: 0, offsetY: 32 },
+      { numero: 2, grh: 99, offsetX: -5, offsetY: -15 },
+    ]);
+  });
+
+  it("avisa si el archivo no es un Fxs.ini", () => {
+    expect(() => new LectorFxsIni().leer(CABEZAS_INI)).toThrow();
+  });
+});
+
+describe("importadores de apariencias y FX del clásico", () => {
+  /** Una referencia vinculada guarda ids; para leerla en un test hay que volver al nombre. */
+  async function animacionDe(hojas: MemoriaHojaRepositorio, ref: ReferenciaGrafica | null | undefined) {
+    if (!ref || ref.tipo !== "vinculada") return null;
+    const hoja = (await hojas.listar()).find((h) => h.id === ref.hojaId);
+    return hoja?.animaciones.find((a) => a.id === ref.animacionId)?.nombre ?? null;
+  }
+
+  /** La hoja 12.png existe; la 99 no, para ver qué pasa con lo que no se puede vincular. */
+  async function escenario() {
+    const hojas = new MemoriaHojaRepositorio();
+    await hojas.guardar(HojaDeSprites.crear("h1", "12.png", "a1").sinAnimacion("a1"));
+    const tablas = new MemoriaTablaDeGrh();
+    await tablas.guardar(TablaDeGrh.desde(new LectorGraficosIni().leer(GRAFICOS_INI)));
+    const ids = new GeneradorDeIdsSecuencial();
+    return { hojas, tablas, ids, puente: new PuenteDeGrh(hojas, ids) };
+  }
+
+  it("arma los cuerpos con sus cuatro direcciones y el corrimiento de la cabeza", async () => {
+    const { hojas, tablas, ids, puente } = await escenario();
+    const repo = new MemoriaCuerpoRepositorio();
+    const caso = new ImportarCuerposClasicos(
+      new LectorAparienciasIni("body", "Walk", "Personajes.ini"),
+      tablas,
+      puente,
+      hojas,
+      new ImportarApariencias(repo, new FormatoAoBodies(), ids, ESPECIE_CUERPO),
+      catalogoDe,
+    );
+
+    const r = await caso.ejecutar(PERSONAJES_INI);
+    expect(r.apariencias).toMatchObject({ agregados: 3, reemplazados: 0 });
+    // Los GRH 1, 2 y 3 salen de la hoja 12; el 4 vive en la 99, que no está cargada.
+    expect(r.animacionesCreadas).toBe(3);
+    expect(r.hojasFaltantes).toEqual(["99"]);
+
+    const cuerpo = (await repo.listar()).find((c) => c.numero === 1)!;
+    expect(cuerpo.offsetCabezaY).toBe(-4);
+    expect(await animacionDe(hojas, cuerpo.direcciones.sur)).toBe("grh3");
+    expect(await animacionDe(hojas, cuerpo.direcciones.norte)).toBe("grh1");
+    // La dirección que apunta a la hoja que falta queda pendiente, no se pierde el cuerpo.
+    expect(cuerpo.direcciones.oeste).toBeUndefined();
+  });
+
+  it("arma las cabezas con el mismo molde", async () => {
+    const { hojas, tablas, ids, puente } = await escenario();
+    const repo = new MemoriaCabezaRepositorio();
+    const caso = new ImportarCabezasClasicas(
+      new LectorAparienciasIni("head", "Head", "Cabezas.ini"),
+      tablas,
+      puente,
+      hojas,
+      new ImportarApariencias(repo, new FormatoAoHeads(), ids, ESPECIE_CABEZA),
+      catalogoDe,
+    );
+
+    const r = await caso.ejecutar(CABEZAS_INI);
+    expect(r.apariencias).toMatchObject({ agregados: 2 });
+    const cabeza = (await repo.listar()).find((c) => c.numero === 1)!;
+    expect(await animacionDe(hojas, cabeza.direcciones.este)).toBe("grh2");
+  });
+
+  it("arma los FX con su corrimiento, y anota el GRH que la tabla no conoce", async () => {
+    const { hojas, tablas, ids, puente } = await escenario();
+    const repo = new MemoriaEfectoRepositorio();
+    const caso = new ImportarEfectosClasicos(
+      new LectorFxsIni(),
+      tablas,
+      puente,
+      hojas,
+      new ImportarEfectos(repo, new FormatoAoFx(), ids),
+      catalogoDe,
+    );
+
+    const r = await caso.ejecutar(FXS_INI);
+    expect(r.efectos).toMatchObject({ agregados: 2 });
+    expect(r.grhSinResolver).toEqual([99]);
+
+    const fx = (await repo.listar()).find((e) => e.numero === 1)!;
+    expect(fx.offsetY).toBe(32);
+    expect(await animacionDe(hojas, fx.animacion)).toBe("grh3");
+  });
+
+  it("al reimportar reusa las animaciones en vez de duplicarlas", async () => {
+    const { hojas, tablas, ids, puente } = await escenario();
+    const repo = new MemoriaCuerpoRepositorio();
+    const caso = new ImportarCuerposClasicos(
+      new LectorAparienciasIni("body", "Walk", "Personajes.ini"),
+      tablas,
+      puente,
+      hojas,
+      new ImportarApariencias(repo, new FormatoAoBodies(), ids, ESPECIE_CUERPO),
+      catalogoDe,
+    );
+
+    await caso.ejecutar(PERSONAJES_INI);
+    const segunda = await caso.ejecutar(PERSONAJES_INI);
+    expect(segunda.animacionesCreadas).toBe(0);
+    expect(segunda.apariencias).toMatchObject({ agregados: 0, reemplazados: 3 });
+    expect((await hojas.listar())[0]!.animaciones).toHaveLength(3);
+    expect(await repo.listar()).toHaveLength(3);
   });
 });

@@ -34,6 +34,32 @@ export function BotonConfirmar(props: {
   );
 }
 
+/**
+ * «Esto está cargando»: los cuadraditos y un texto.
+ *
+ * `bloque` es para cuando ocupa el lugar de lo que todavía no está (una pantalla, un panel);
+ * sin eso queda en una línea, para ponerlo al lado de otra cosa.
+ */
+export function Cargando(props: { children?: ReactNode; bloque?: boolean; className?: string }) {
+  return (
+    <p className={`cargando${props.bloque ? " bloque" : ""}${props.className ? ` ${props.className}` : ""}`} role="status" aria-live="polite">
+      <PuntosDeCarga />
+      {props.children ?? "Cargando…"}
+    </p>
+  );
+}
+
+/** Los cuadraditos solos, para donde ya hay un texto (un botón que dice «Leyendo…»). */
+export function PuntosDeCarga() {
+  return (
+    <span className="puntos" aria-hidden="true">
+      <i />
+      <i />
+      <i />
+    </span>
+  );
+}
+
 /** Botón que abre el selector de archivos del sistema. */
 export function BotonArchivo(props: { children: ReactNode; accept: string; onArchivo: (f: File) => void; className?: string; id?: string }) {
   return (
@@ -52,6 +78,46 @@ export function BotonArchivo(props: { children: ReactNode; accept: string; onArc
     </label>
   );
 }
+
+/**
+ * Botón que trae muchos archivos de una vez, o una carpeta entera.
+ *
+ * Está aparte de `BotonArchivo` porque elegir carpeta no es un `accept` más: el navegador entrega
+ * todos los archivos de todas las subcarpetas, sin filtrar por tipo y de a miles, así que decidir
+ * qué sirve es trabajo de quien recibe.
+ */
+export function BotonArchivos(props: {
+  children: ReactNode;
+  accept: string;
+  onArchivos: (archivos: File[]) => void;
+  /** Elegir una carpeta entera en vez de archivos sueltos. */
+  carpeta?: boolean;
+  className?: string;
+  id?: string;
+  disabled?: boolean;
+}) {
+  return (
+    <label className={`btn ${props.className ?? ""}${props.disabled ? " off" : ""}`}>
+      {props.children}
+      <input
+        id={props.id}
+        type="file"
+        accept={props.accept}
+        multiple
+        disabled={props.disabled}
+        {...(props.carpeta ? ATRIBUTOS_DE_CARPETA : {})}
+        onChange={(e) => {
+          const archivos = [...(e.target.files ?? [])];
+          if (archivos.length) props.onArchivos(archivos);
+          e.target.value = "";
+        }}
+      />
+    </label>
+  );
+}
+
+/** Los atributos con los que el input pide una carpeta. React no los tipa; los navegadores sí los entienden. */
+const ATRIBUTOS_DE_CARPETA = { webkitdirectory: "", directory: "" } as Record<string, string>;
 
 export function CampoNumero(props: {
   id: string;

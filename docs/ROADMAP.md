@@ -14,9 +14,9 @@ Se apoya en **[ARQUITECTURA.md](ARQUITECTURA.md)**, en especial en la receta de 
 | Objetos (ítems del juego) | ✅ Lista | `src/objetos/` | `ao-objs` |
 | FX (efectos visuales) | ✅ Lista | `src/fx/` | `ao-fx` |
 | Cuerpos y cabezas (apariencias) | ✅ Lista | `src/apariencias/` | `ao-bodies`, `ao-heads` |
-| Importar del AO original (GRH + OBJ.dat) | ✅ Lista | `src/importacion/` | — |
+| Importar del AO original (GRH, cuerpos, cabezas, FX, objetos, hechizos) | ✅ Lista | `src/importacion/` | — |
 | Importar proyecto del indexador web | ✅ Lista | `src/proyecto/` | — |
-| Hechizos | ❌ Falta | — | — |
+| Hechizos | ✅ Lista | `src/hechizos/` | `ao-spells` |
 | NPCs | ❌ Falta | — | — |
 | Mapas | ❌ Falta | — | — |
 | Exportar todo de una vez | ❌ Falta | — | — |
@@ -135,7 +135,7 @@ Se reusa tal cual: `RanuraGrafica`, `SelectorDeAnimacion`, `DibujoDeFrame`, `Vis
 
 ---
 
-## 4. Fase 1.5 — Importar los archivos clásicos de AO ⏳ primera parte hecha
+## 4. Fase 1.5 — Importar los archivos clásicos de AO ✅ hecha (salvo NPCs)
 
 > Hecha el 26/10/2026 la parte que tiene a dónde ir: la **tabla de GRH** (desde `Graficos.ini`) y el
 > **`OBJ.dat`** completo. Lo que se confirmó al escribirlo:
@@ -147,13 +147,40 @@ Se reusa tal cual: `RanuraGrafica`, `SelectorDeAnimacion`, `DibujoDeFrame`, `Vis
 > - Los `.dat` vienen en ANSI (windows-1252), no en UTF-8. Leerlos como UTF-8 rompe cada acento, así
 >   que el lector prueba UTF-8 estricto y, si no es válido, decodifica como windows-1252.
 >
+> Completada el 26/10/2026 con cuerpos, cabezas y FX, y ahí se cayó la decisión abierta número 2:
+> **no hizo falta ningún lector binario**. Los `.ind` que carga el cliente se generan desde archivos
+> de texto que están al lado, con el mismo formato `[SECCION] clave=valor` de siempre:
+> `Personajes.ini` (cuerpos), `Cabezas.ini`, `Cascos.ini` y `fxs.ini`. Lo que se aprendió:
+>
+> - **El archivo de cuerpos es `Personajes.ini`, no `Cuerpos.ini`.** Lo dice `CargarCuerpos` en
+>   `modCarga.bas`: el cliente abre `Personajes.ind`. El `Cuerpos.ini` que anda dando vueltas es de
+>   otra versión y está corrido — en 477 de sus 597 entradas el `HeadOffsetX` tiene adentro un
+>   número de GRH. La pantalla lo avisa.
+> - **Las direcciones se numeran 1 norte, 2 este, 3 sur, 4 oeste** (`Declares.bas`), y es el mismo
+>   orden en cuerpos, cabezas, cascos, armas y escudos. Por eso los tres archivos de apariencias los
+>   lee una sola clase parametrizada por el prefijo de sección y de clave.
+> - **El puente GRH → animación se extrajo a `PuenteDeGrh`.** Estaba dentro de `ImportarObjetosClasicos`
+>   y ahora lo comparten los cuatro importadores que traen gráficos; cada caso de uso quedó en unas
+>   treinta líneas.
+> - **Hay dos `Hechizos.dat` distintos.** El del servidor trae la mecánica (`SubeHP`, `Paraliza`,
+>   `Target`, `FXgrh`); el del cliente sólo nombre, descripción, palabras mágicas y costos. Con el
+>   del cliente el importador trae el texto y avisa en `sinEfecto` cuáles quedaron sin mecánica, en
+>   vez de dejar cuarenta y seis hechizos que dicen curar.
+> - **Sin carga masiva de imágenes, el importador no servía de nada.** La tabla de GRH de un cliente
+>   nombra unos 2.850 archivos, y las hojas se cargaban de a una: nadie hace ese clic dos mil veces.
+>   `CargarHojasEnLote` crea una hoja por imagen de una carpeta entera, saltea lo que ya está cargado
+>   y acepta `soloEstas` para traer nada más que lo que la tabla pide. El botón está en el paso 1 y
+>   en «Animaciones». La carpeta `data/graficos` no es un buzón: una hoja es su `.json` más su PNG,
+>   así que copiar imágenes ahí a mano no carga nada.
+>
 > **Lo que falta de esta fase**, por orden de valor:
 >
-> 1. Los gráficos de **equipado** de los objetos (arma en la mano, casco en la cabeza): en el clásico
->    viven en `Weapon.ind`, `Shield.ind` y `Head.ind`, que son binarios.
-> 2. **Body.ind / Head.ind** → Apariencias. También binarios: hay que escribir el lector de ese formato.
-> 3. ~~`Hechizos.dat`~~: hecho junto con la Fase 3. Falta `NPCs.dat`, cuando exista ese módulo: es un
->    lector y un caso de uso, igual que el de hechizos.
+> 1. Los gráficos de **equipado** de los objetos (arma en la mano, escudo en el brazo): `Armas.dat` y
+>    `Escudos.dat`, que son texto y tienen la misma forma que los de apariencias, pero van a
+>    `graficos.equipado` de la ficha del objeto y no a una entidad propia.
+> 2. **Cascos como entidad aparte.** Hoy `Cascos.ini` entra por el importador de cabezas y queda
+>    mezclado con ellas, porque el editor no distingue las dos cosas (ver la decisión abierta 3).
+> 3. `NPCs.dat`, cuando exista ese módulo: es un lector y un caso de uso, igual que el de hechizos.
 
 **Es la fase con mejor relación valor/esfuerzo y conviene adelantarla.** Cargar a mano cientos de cuerpos, cabezas, hechizos y NPCs es inviable; los `.dat` y `.ind` del AO original ya tienen todo eso.
 
@@ -277,7 +304,7 @@ Chicas, de mucho valor, y conviene hacerlas en cuanto haya tres o cuatro módulo
 Fase 0  Cimientos compartidos        ✅ hecha
 Fase 2  FX                           ✅ hecha
 Fase 1  Apariencias                  ✅ hecha
-Fase 1.5 Importadores clásicos       ⏳ GRH y OBJ.dat hechos; faltan los .ind binarios
+Fase 1.5 Importadores clásicos       ✅ hecha (falta NPCs.dat, y el equipado de los objetos)
 Fase 3  Hechizos                     ✅ hecha
 Fase 6  Exportar todo + diagnóstico  1 día
 Fase 4  NPCs                         3 días
@@ -293,7 +320,7 @@ Los importadores se adelantan porque diseñar fichas con dos registros de ejempl
 ## 11. Decisiones abiertas
 
 1. **Apariencias juntas o separadas.** El plan propone un módulo con dos entidades y una pantalla de dos pestañas. La alternativa es `src/cuerpos/` y `src/cabezas/` por separado, más fiel a "una carpeta por concepto" pero con pantalla y proveedor duplicados.
-2. **Los archivos binarios del AO original.** Los `.ind` (cuerpos, cabezas, armas, escudos) no son texto, y su formato cambia entre versiones del cliente. Para escribir ese lector hace falta tener los archivos a mano y saber de qué versión son.
+2. ~~**Los archivos binarios del AO original.**~~ **Resuelta el 26/10/2026: no hacen falta.** Al lado de cada `.ind` está el `.ini` de texto desde el que se genera, y es el que conviene leer. Si alguna vez aparece un cliente que sólo traiga los binarios, ahí sí habrá que escribir el lector.
 3. **Cascos, escudos y armas.** El plan los deja como objetos equipables (lo que ya funciona). Si el cliente de Unity espera índices separados, hay que sumar un módulo.
 4. **Mapas.** ¿Tamaño fijo 100×100 como el clásico, o libre? Afecta al modelo de datos y al formato, así que conviene decidirlo antes de la Entrega A.
 5. **Nombres de formato.** `ao-bodies`, `ao-heads`, `ao-fx`, `ao-spells`, `ao-npcs`, `ao-maps` siguen la convención de `ao-anim` y `ao-objs` (claves en inglés, `format` + `version`). Si el lado de Unity ya espera otros nombres, hay que fijarlos antes de escribir los formatos.

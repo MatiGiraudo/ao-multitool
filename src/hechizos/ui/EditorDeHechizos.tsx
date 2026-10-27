@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Problema } from "@/compartido/dominio/Problema";
 import { useAplicacion } from "@/compartido/ui/Aplicacion";
 import { CamposDeAtributos, CasillasDeBanderas } from "@/compartido/ui/CamposDeAtributos";
-import { BotonArchivo, BotonConfirmar, CampoNumero } from "@/compartido/ui/componentes";
+import { BotonArchivo, BotonConfirmar, CampoNumero, Cargando } from "@/compartido/ui/componentes";
 import { copiar, descargar } from "@/compartido/ui/utilidades";
 import type { Hechizo } from "../dominio/Hechizo";
 import { ValidadorDeHechizos } from "../dominio/servicios";
@@ -43,7 +43,7 @@ export function EditorDeHechizos({ renderFx }: { renderFx?: (numero: number) => 
       .sort((a, b) => a.numero - b.numero);
   }, [s.hechizos, busqueda, filtro]);
 
-  if (s.cargando) return <p className="hint">Cargando hechizos…</p>;
+  if (s.cargando) return <Cargando bloque>Cargando hechizos…</Cargando>;
 
   const nuevo = async () => {
     const h = await s.crear();

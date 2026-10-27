@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useAplicacion } from "@/compartido/ui/Aplicacion";
-import { BotonArchivo } from "@/compartido/ui/componentes";
+import { BotonArchivo, PuntosDeCarga } from "@/compartido/ui/componentes";
 
 /** Trae el "proyecto-ao.json" del indexador web: hojas con sus imágenes, animaciones y objetos. */
 export function BotonImportarProyecto() {
@@ -12,7 +12,7 @@ export function BotonImportarProyecto() {
       accept=".json,application/json"
       onArchivo={async (f) => {
         setOcupado(true);
-        const r = await intentar(async () => casos.proyecto.importarLegado.ejecutar(await f.text()));
+        const r = await intentar(async () => casos.proyecto.importarLegado.ejecutar(await f.text()), "Importando el proyecto…");
         await recargarTodo();
         setOcupado(false);
         if (r)
@@ -21,7 +21,14 @@ export function BotonImportarProyecto() {
           );
       }}
     >
-      {ocupado ? "Importando…" : "Importar proyecto del indexador web…"}
+      {ocupado ? (
+        <>
+          <PuntosDeCarga />
+          Importando…
+        </>
+      ) : (
+        "Importar proyecto del indexador web…"
+      )}
     </BotonArchivo>
   );
 }

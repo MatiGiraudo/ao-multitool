@@ -53,7 +53,7 @@ export const SECCIONES: readonly Seccion[] = [
     href: "/importar",
     nombre: "Importar",
     familia: "Proyecto",
-    sub: "Traé lo que ya existe en los archivos del AO original: la tabla de GRH y el OBJ.dat.",
+    sub: "Traé lo que ya existe en los archivos del AO original: la tabla de GRH, los cuerpos, las cabezas, los FX, los objetos y los hechizos.",
   },
 ];
 

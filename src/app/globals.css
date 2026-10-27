@@ -244,6 +244,10 @@ button:disabled {
   opacity: 0.45;
   cursor: default;
 }
+.btn.off {
+  opacity: 0.45;
+  pointer-events: none;
+}
 .btn input {
   display: none;
 }
@@ -389,6 +393,77 @@ canvas.pixel,
   .toast {
     transition: none;
   }
+}
+
+/* ---------- cargando ---------- */
+/*
+ * Tres cuadraditos que titilan. Son cuadrados y titilan de golpe (steps) a propósito: un spinner
+ * redondo y suave quedaría fuera de lugar en un editor de pixel art.
+ */
+.puntos {
+  display: inline-flex;
+  gap: 3px;
+  flex: none;
+}
+.puntos i {
+  width: 5px;
+  height: 5px;
+  background: var(--acento);
+  animation: titilar 0.9s steps(1, end) infinite;
+}
+.puntos i:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.puntos i:nth-child(3) {
+  animation-delay: 0.3s;
+}
+@keyframes titilar {
+  0%,
+  45% {
+    opacity: 1;
+  }
+  46%,
+  100% {
+    opacity: 0.2;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .puntos i {
+    animation: none;
+    opacity: 0.55;
+  }
+}
+.cargando {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 12px;
+  color: var(--apagado);
+}
+/* Cuando ocupa el lugar de lo que todavía no llegó: mismo hueco punteado que .empty. */
+.cargando.bloque {
+  justify-content: center;
+  font-size: 13px;
+  padding: 24px 14px;
+  border: 1px dashed var(--linea);
+  border-radius: 6px;
+}
+/* El cartel de «esto está tardando»: abajo a la derecha, lejos del aviso (centro) y del indicador de Next (izquierda). */
+.cargando.flotante {
+  position: fixed;
+  right: max(16px, env(safe-area-inset-right, 0px));
+  bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  z-index: 61;
+  font-size: 13px;
+  color: var(--tinta);
+  background: var(--panel);
+  border: 1px solid var(--acento);
+  border-radius: 6px;
+  padding: 7px 12px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+  max-width: calc(100% - 32px);
+  pointer-events: none;
 }
 
 /* ---------- hojas ---------- */

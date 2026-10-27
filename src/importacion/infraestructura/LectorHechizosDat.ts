@@ -1,7 +1,7 @@
 import type { ValorDeAtributo } from "@/compartido/dominio/Atributos";
 import { ErrorDeDominio } from "@/compartido/dominio/ErrorDeDominio";
 import type { HechizoImportado } from "@/hechizos/aplicacion/casosDeUso";
-import type { LectorDeHechizosClasicos } from "../aplicacion/puertos";
+import type { HechizosClasicos, LectorDeHechizosClasicos } from "../aplicacion/puertos";
 import { ArchivoIni } from "./LectorIni";
 
 /*
@@ -24,13 +24,42 @@ import { ArchivoIni } from "./LectorIni";
 /** `Target` del clásico → sobre qué se lanza. */
 const OBJETIVOS: Readonly<Record<number, string>> = { 1: "usuario", 2: "npc", 3: "ambos", 4: "terreno" };
 
+/**
+ * Las claves que, si están, dicen qué hace el hechizo.
+ *
+ * El `Hechizos.dat` del cliente no trae ninguna —sólo nombre, descripción, palabras mágicas y
+ * costos—, porque el cliente no necesita saber qué hace un hechizo para dibujarlo. Sin alguna de
+ * éstas no hay efecto que leer: se importa el texto, que es real, y se avisa del resto.
+ */
+const SENALES_DE_EFECTO = [
+  "Revivir",
+  "Invoca",
+  "RemoverParalisis",
+  "Paraliza",
+  "Inmoviliza",
+  "CuraVeneno",
+  "Envenena",
+  "Invisibilidad",
+  "Ceguera",
+  "Estupidez",
+  "SubeMana",
+  "SubeSta",
+  "SubeFuerza",
+  "SubeAgilidad",
+  "SubeHam",
+  "SubeSed",
+  "SubeHP",
+] as const;
+
 export class LectorHechizosDat implements LectorDeHechizosClasicos {
-  leer(texto: string): HechizoImportado[] {
+  leer(texto: string): HechizosClasicos {
     const ini = ArchivoIni.parsear(texto);
     const secciones = ini.numeradas("hechizo");
     if (!secciones.length) throw new ErrorDeDominio("No encontré ninguna sección [HECHIZOn]: ¿seguro que es un Hechizos.dat?");
 
-    return secciones.map(({ seccion, numero }) => {
+    const sinEfecto: number[] = [];
+    const hechizos = secciones.map(({ seccion, numero }) => {
+      if (!SENALES_DE_EFECTO.some((clave) => ini.texto(seccion, clave) !== "")) sinEfecto.push(numero);
       const { tipo, atributos } = efecto(ini, seccion);
       const banderas: string[] = [];
       if (ini.bandera(seccion, "NeedStaff")) banderas.push("baculo");
@@ -53,6 +82,7 @@ export class LectorHechizosDat implements LectorDeHechizosClasicos {
         sonido: ini.texto(seccion, "WAV"),
       };
     });
+    return { hechizos, sinEfecto };
   }
 }
 

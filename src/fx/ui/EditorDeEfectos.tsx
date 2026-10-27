@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Problema } from "@/compartido/dominio/Problema";
 import { useAplicacion } from "@/compartido/ui/Aplicacion";
-import { BotonArchivo, BotonConfirmar, CampoNumero } from "@/compartido/ui/componentes";
+import { BotonArchivo, BotonConfirmar, CampoNumero, Cargando } from "@/compartido/ui/componentes";
 import { copiar, descargar, useImagen } from "@/compartido/ui/utilidades";
 import { DibujoDeFrame } from "@/graficos/ui/DibujoDeFrame";
 import { useGraficos } from "@/graficos/ui/ProveedorDeGraficos";
@@ -38,7 +38,7 @@ export function EditorDeEfectos() {
     return [...s.efectos].filter((e) => !q || e.nombre.toLowerCase().includes(q) || String(e.numero) === q).sort((a, b) => a.numero - b.numero);
   }, [s.efectos, busqueda]);
 
-  if (s.cargando) return <p className="hint">Cargando efectos…</p>;
+  if (s.cargando) return <Cargando bloque>Cargando efectos…</Cargando>;
 
   const nuevo = async () => {
     const e = await s.crear();

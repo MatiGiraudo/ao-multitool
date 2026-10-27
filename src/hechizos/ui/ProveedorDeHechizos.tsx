@@ -49,25 +49,25 @@ export function ProveedorDeHechizos({ children, fx = CATALOGO_VACIO }: { childre
       recargar,
       async crear() {
         await guardarPendientes();
-        const h = await intentar(() => c.crear.ejecutar());
+        const h = await intentar(() => c.crear.ejecutar(), "Creando…");
         if (h) poner(h);
         return h;
       },
       async duplicar(h) {
         await guardarPendientes();
-        const d = await intentar(() => c.duplicar.ejecutar(h));
+        const d = await intentar(() => c.duplicar.ejecutar(h), "Duplicando…");
         if (d) poner(d);
         return d;
       },
       async eliminar(clave) {
         cancelarPendiente(clave);
-        const ok = await intentar(async () => (await c.eliminar.ejecutar(clave), true));
+        const ok = await intentar(async () => (await c.eliminar.ejecutar(clave), true), "Borrando…");
         if (ok) quitar(clave);
         return !!ok;
       },
       async importar(texto) {
         await guardarPendientes();
-        const r = await intentar(() => c.importar.ejecutar(texto));
+        const r = await intentar(() => c.importar.ejecutar(texto), "Importando…");
         if (r) await recargar();
         return r;
       },
