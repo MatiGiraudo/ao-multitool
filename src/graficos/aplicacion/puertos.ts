@@ -20,7 +20,19 @@ export interface AlmacenDeImagenes {
 
 /** Cómo la interfaz encuentra la imagen para dibujarla. Sólo lo necesita la UI. */
 export interface UbicadorDeImagenes {
+  /**
+   * La URL de la imagen, o vacío si todavía no está.
+   *
+   * Es sincrónica porque la llama la interfaz mientras dibuja. Con la API detrás siempre hay una
+   * URL; contra una carpeta del usuario hay que leer el archivo antes, y por eso puede faltar.
+   */
   urlDe(hojaId: string, version: number): string;
+  /**
+   * Avisa cuando una URL que antes no estaba ya se puede usar.
+   *
+   * Lo implementa sólo el adaptador que las arma leyendo archivos. Devuelve cómo desuscribirse.
+   */
+  alCambiar?(escuchar: () => void): () => void;
 }
 
 export type CalidadDeEscalado = "pixel" | "suave";

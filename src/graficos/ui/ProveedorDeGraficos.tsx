@@ -1,5 +1,5 @@
 "use client";
-import { createContext, useContext, useMemo, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useReducer, type ReactNode } from "react";
 import type { CatalogoGrafico } from "@/compartido/dominio/CatalogoGrafico";
 import type { ReferenciaGrafica } from "@/compartido/dominio/ReferenciaGrafica";
 import { useAplicacion } from "@/compartido/ui/Aplicacion";
@@ -65,6 +65,14 @@ export function ProveedorDeGraficos({ children }: { children: ReactNode }) {
 
   const catalogo = useMemo(() => casos.crearCatalogo(hojas), [casos, hojas]);
 
+  /*
+   * En el modo carpeta, la URL de una imagen no existe hasta que se lee el archivo: el ubicador
+   * avisa cuando ya la tiene y acá se vuelve a dibujar. Con la API detrás nadie avisa nunca,
+   * porque la URL está desde el principio.
+   */
+  const [urlsListas, refrescarUrls] = useReducer((n: number) => n + 1, 0);
+  useEffect(() => casos.ubicadorDeImagenes.alCambiar?.(refrescarUrls), [casos]);
+
   const valor = useMemo<ValorGraficos>(
     () => ({
       hojas,
@@ -81,7 +89,8 @@ export function ProveedorDeGraficos({ children }: { children: ReactNode }) {
       hoja: (id) => hojas.find((h) => h.id === id),
       actualizar,
       recargar,
-      urlImagen: (h) => (h && h.tieneImagen ? casos.ubicadorDeImagenes.urlDe(h.id, h.versionImagen) : null),
+      // Vacío es «todavía no está»: para quien dibuja es lo mismo que no tener imagen.
+      urlImagen: (h) => (h?.tieneImagen ? casos.ubicadorDeImagenes.urlDe(h.id, h.versionImagen) || null : null),
       async crearDesdeImagen(archivo) {
         const h = await intentar(() => g.crearDesdeImagen.ejecutar({ archivo, nombreArchivo: archivo.name }), "Cargando la imagen…");
         if (h) poner(h);
@@ -124,7 +133,9 @@ export function ProveedorDeGraficos({ children }: { children: ReactNode }) {
         return r;
       },
     }),
-    [hojas, cargando, estadoGuardado, catalogo, actualizar, poner, quitar, cancelarPendiente, guardarPendientes, recargar, casos, g, intentar],
+    // `urlsListas` está para que el contexto cambie de identidad cuando llega una URL nueva: sin
+    // eso, el valor memorizado sería el mismo y las pantallas no se volverían a dibujar.
+    [hojas, cargando, estadoGuardado, catalogo, actualizar, poner, quitar, cancelarPendiente, guardarPendientes, recargar, casos, g, intentar, urlsListas],
   );
 
   return <Contexto.Provider value={valor}>{children}</Contexto.Provider>;

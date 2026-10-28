@@ -110,6 +110,12 @@ import { CarpetaEfectoRepositorio } from "@/fx/infraestructura/carpeta/CarpetaEf
 import { CarpetaHechizoRepositorio } from "@/hechizos/infraestructura/carpeta/CarpetaHechizoRepositorio";
 import { CarpetaNpcRepositorio } from "@/npcs/infraestructura/carpeta/CarpetaNpcRepositorio";
 import { CarpetaObjetoRepositorio } from "@/objetos/infraestructura/carpeta/CarpetaObjetoRepositorio";
+import type { AlmacenDeImagenes, UbicadorDeImagenes } from "@/graficos/aplicacion/puertos";
+import { CarpetaAlmacenDeImagenes } from "@/graficos/infraestructura/carpeta/CarpetaAlmacenDeImagenes";
+import { CarpetaHojaRepositorio } from "@/graficos/infraestructura/carpeta/CarpetaHojaRepositorio";
+import { CarpetaTablaDeGrh } from "@/importacion/infraestructura/carpeta/CarpetaTablaDeGrh";
+import { CarpetaMapaRepositorio } from "@/mapas/infraestructura/carpeta/CarpetaMapaRepositorio";
+import { CarpetaAlmacenDeExportacion } from "@/proyecto/infraestructura/carpeta/CarpetaAlmacenDeExportacion";
 import { LectorAparienciasIni } from "@/importacion/infraestructura/LectorAparienciasIni";
 import { LectorFxsIni } from "@/importacion/infraestructura/LectorFxsIni";
 import { EscritorGraficosIni } from "@/importacion/infraestructura/EscritorGraficosIni";
@@ -150,8 +156,12 @@ export const carpetaDelProyecto = new CarpetaDelProyecto();
 function crear() {
   const enCarpeta = MODO_DE_DATOS === "carpeta";
   const ids = new GeneradorDeIdsAleatorio();
-  const hojas = new HttpHojaRepositorio();
-  const imagenes = new HttpAlmacenDeImagenes();
+  const hojas = enCarpeta ? new CarpetaHojaRepositorio(carpetaDelProyecto) : new HttpHojaRepositorio();
+  /* Anotado con los puertos y no con la clase: lo que la interfaz puede usar es lo que dice el
+   * puerto, no lo que trae de más el adaptador que haya tocado. */
+  const imagenes: AlmacenDeImagenes & UbicadorDeImagenes = enCarpeta
+    ? new CarpetaAlmacenDeImagenes(carpetaDelProyecto)
+    : new HttpAlmacenDeImagenes();
   const procesador = new CanvasProcesadorDeImagenes();
   const formatoAnim = new FormatoAoAnim();
   const objetos = enCarpeta ? new CarpetaObjetoRepositorio(carpetaDelProyecto) : new HttpObjetoRepositorio();
@@ -162,7 +172,7 @@ function crear() {
   const formatoCuerpos = new FormatoAoBodies();
   const cabezas = enCarpeta ? new CarpetaCabezaRepositorio(carpetaDelProyecto) : new HttpCabezaRepositorio();
   const formatoCabezas = new FormatoAoHeads();
-  const tablaDeGrh = new HttpTablaDeGrh();
+  const tablaDeGrh = enCarpeta ? new CarpetaTablaDeGrh(carpetaDelProyecto) : new HttpTablaDeGrh();
   const hechizos = enCarpeta ? new CarpetaHechizoRepositorio(carpetaDelProyecto) : new HttpHechizoRepositorio();
   const npcs = enCarpeta ? new CarpetaNpcRepositorio(carpetaDelProyecto) : new HttpNpcRepositorio();
   const formatoNpcs = new FormatoAoNpcs();
@@ -176,7 +186,7 @@ function crear() {
   const puente = new PuenteDeGrh(hojas, ids);
 
   const quitarFondoDeHoja = new QuitarFondoDeHoja(hojas, imagenes, procesador);
-  const mapasGuardados = new HttpMapaRepositorio();
+  const mapasGuardados = enCarpeta ? new CarpetaMapaRepositorio(carpetaDelProyecto) : new HttpMapaRepositorio();
   /* Uno solo: lo usan el botón de «Importar» y la exportación del mundo entero. */
   const exportarGraficosIni = new ExportarGraficosIni(tablaDeGrh, new EscritorGraficosIni());
   const leerTodosLosMapas = new LeerTodosLosMapas(mapasGuardados);
@@ -307,7 +317,7 @@ function crear() {
         () => new ExportarMapasAlJuego(leerTodosLosMapas).ejecutar(),
         () => exportarGraficosIni.archivoSiHay(),
       ]),
-      guardarExportacion: new GuardarExportacion(new HttpAlmacenDeExportacion()),
+      guardarExportacion: new GuardarExportacion(enCarpeta ? new CarpetaAlmacenDeExportacion(carpetaDelProyecto) : new HttpAlmacenDeExportacion()),
       revisar: new RevisarMundo(
         hojas,
         {

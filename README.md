@@ -67,6 +67,32 @@ Esa carpeta está pensada para versionarla con **git**: cada cambio aparece clar
 
 La carpeta trae dos hojas de ejemplo y tres objetos. Podés borrarlos desde la app («Quitar hoja» y «Borrar») o borrar esos archivos a mano.
 
+### Publicarlo en un servidor, sin que los datos salgan de tu máquina
+
+Lo de arriba es el modo por defecto: el disco lo toca el servidor. Hay un segundo modo pensado
+para desplegar el editor en un servidor público (Vercel, por ejemplo) y que **cada uno trabaje con
+su propia carpeta**: no se sube ningún archivo a ningún lado, el navegador abre un selector de
+carpetas y lee y escribe ahí directamente.
+
+Se enciende con una variable al compilar:
+
+```bash
+NEXT_PUBLIC_AO_MODO=carpeta npm run build
+```
+
+En Vercel, esa misma variable va en *Settings → Environment Variables*. Lo demás es el build de
+siempre.
+
+Un par de cosas que conviene saber:
+
+- **Necesita Chromium** (Chrome, Edge, Brave, Opera). La API que abre carpetas,
+  `showDirectoryPicker`, todavía no está en Firefox ni en Safari; ahí la app lo dice y no te deja
+  entrar, en vez de fallar raro.
+- **El permiso se pide una vez por sesión.** El navegador recuerda cuál era tu carpeta, pero no
+  te deja volver a entrar sin un clic tuyo. Es un botón, no hay que volver a buscarla.
+- **El formato es el mismo** que el del modo servidor, así que podés abrir con el modo carpeta la
+  misma `data/` que usás en tu máquina, y al revés.
+
 ## Traer los archivos del AO original
 
 En la pestaña **Importar** hay tres pasos. Primero el `Graficos.ini`, que arma la tabla de GRH: ahí está, para cada número de gráfico del juego, de qué imagen sale y qué recorte es. Después el `OBJ.dat`, que trae todos los objetos con su nombre, tipo, valor, banderas y atributos, y les vincula el icono creando en cada hoja las animaciones que hagan falta (las llama `grh505` y así). Y el `Hechizos.dat`, que trae los hechizos con sus palabras mágicas, su costo y su efecto; ese no necesita el paso 1, porque apunta al FX por número.
