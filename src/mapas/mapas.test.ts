@@ -52,6 +52,27 @@ describe("Mapa", () => {
 });
 
 describe("FormatoMapaClasico", () => {
+  it("un mapa hecho de cero sale completo, con la cabecera en blanco", () => {
+    // Lo que pasa al crear un mapa nuevo en el editor: nunca vino de un archivo, así que la
+    // cabecera queda en cero. El servidor la lee y la descarta, así que lo que importa es que
+    // el resto vuelva entero.
+    const nuevo = Mapa.vacio(120, { nombre: "Mapa nuevo" });
+    for (let y = 1; y <= ALTO; y++) for (let x = 1; x <= ANCHO; x++) nuevo.ponerGrafico(x, y, 1, 1000);
+    nuevo.ponerTrigger(4, 4, 4);
+    nuevo.ponerTraslado(4, 5, { mapa: 9, x: 60, y: 61 });
+    nuevo.bloquear(4, 6, true);
+
+    const archivos = formato.escribir(nuevo, 4);
+    const { mapa } = formato.leer(120, archivos.map.buffer as ArrayBuffer, archivos.inf.buffer as ArrayBuffer, archivos.dat);
+
+    expect(mapa.cabeceraOriginal).toEqual({ version: 0, descripcion: "", crc: 0, palabraMagica: 0 });
+    expect(mapa.info.nombre).toBe("Mapa nuevo");
+    expect(mapa.grafico(50, 50, 1)).toBe(1000);
+    expect(mapa.trigger(4, 4)).toBe(4);
+    expect(mapa.traslado(4, 5)).toEqual({ mapa: 9, x: 60, y: 61 });
+    expect(mapa.bloqueada(4, 6)).toBe(true);
+  });
+
   it.each([4, 2] as AnchoDeGrafico[])("ida y vuelta completa con gráficos de %i bytes", (ancho) => {
     const original = mapaDePrueba();
     const archivos = formato.escribir(original, ancho);

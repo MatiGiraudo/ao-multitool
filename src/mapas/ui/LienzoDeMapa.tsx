@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useCadaFrame } from "@/compartido/ui/utilidades";
 import type { RecorteDeGrh } from "../aplicacion/casosDeUso";
 import { celdasDelTrazo, type Historial, type Trazo } from "../dominio/Historial";
-import { calcular, seArrastra, type Ajustes, type Punto } from "../dominio/herramientas";
+import { calcular, esDeUnClic, seArrastra, type Ajustes, type Punto } from "../dominio/herramientas";
 import { ALTO, ANCHO, Mapa } from "../dominio/Mapa";
 import { CELDA, dibujarGrh as pegarGrh } from "./dibujo";
 
@@ -282,7 +282,7 @@ export function LienzoDeMapa({
             return;
           }
           huboCambio.current = false;
-          if (herramienta === "balde") {
+          if (esDeUnClic(herramienta)) {
             aplicarTramo(calcular(mapa, activa.ajustes, celda), false);
             terminarGesto(activa);
             return;

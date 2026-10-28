@@ -1,4 +1,4 @@
-import { ANCHO, Mapa } from "./Mapa";
+import { ANCHO, Mapa, type Traslado } from "./Mapa";
 
 /*
  * Deshacer y rehacer, guardando diferencias.
@@ -11,7 +11,9 @@ import { ANCHO, Mapa } from "./Mapa";
 
 export type Cambio =
   | { tipo: "grafico"; indice: number; capa: number; antes: number; despues: number }
-  | { tipo: "bloqueo"; indice: number; antes: boolean; despues: boolean };
+  | { tipo: "bloqueo"; indice: number; antes: boolean; despues: boolean }
+  | { tipo: "trigger"; indice: number; antes: number; despues: number }
+  | { tipo: "traslado"; indice: number; antes: Traslado | null; despues: Traslado | null };
 
 /** Todo lo que cambió de una sola acción del usuario: una pincelada, un rectángulo, un balde. */
 export interface Trazo {
@@ -86,8 +88,16 @@ export class Historial {
 function escribir(mapa: Mapa, cambio: Cambio, lado: "antes" | "despues"): void {
   const x = (cambio.indice % ANCHO) + 1;
   const y = Math.floor(cambio.indice / ANCHO) + 1;
-  if (cambio.tipo === "grafico") mapa.ponerGrafico(x, y, cambio.capa, cambio[lado]);
-  else mapa.bloquear(x, y, cambio[lado]);
+  switch (cambio.tipo) {
+    case "grafico":
+      return mapa.ponerGrafico(x, y, cambio.capa, cambio[lado]);
+    case "bloqueo":
+      return mapa.bloquear(x, y, cambio[lado]);
+    case "trigger":
+      return mapa.ponerTrigger(x, y, cambio[lado]);
+    case "traslado":
+      return mapa.ponerTraslado(x, y, cambio[lado]);
+  }
 }
 
 /** Las celdas que tocó un trazo, para redibujar sólo esos bloques. */

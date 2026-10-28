@@ -1,5 +1,5 @@
 import type { Cambio, Trazo } from "./Historial";
-import { ALTO, ANCHO, Mapa } from "./Mapa";
+import { ALTO, ANCHO, Mapa, type Traslado } from "./Mapa";
 
 /*
  * Las herramientas de edición, como cuentas y no como botones.
@@ -9,7 +9,7 @@ import { ALTO, ANCHO, Mapa } from "./Mapa";
  * sin lienzo, sin mouse y sin React.
  */
 
-export type Herramienta = "pincel" | "goma" | "rectangulo" | "balde" | "bloquear" | "desbloquear" | "cuentagotas";
+export type Herramienta = "pincel" | "goma" | "rectangulo" | "balde" | "bloquear" | "desbloquear" | "trigger" | "traslado" | "cuentagotas";
 
 export interface Punto {
   x: number;
@@ -22,9 +22,13 @@ export interface Ajustes {
   grh: number;
   /** Lado del pincel en celdas: 1, 3, 5… */
   tamanio: number;
+  /** Lo que escribe la herramienta «trigger»; 0 saca el que hubiera. */
+  trigger: number;
+  /** Adónde manda la herramienta «traslado»; null saca el que hubiera. */
+  traslado: Traslado | null;
 }
 
-export const AJUSTES_POR_DEFECTO: Ajustes = { herramienta: "pincel", capa: 1, grh: 0, tamanio: 1 };
+export const AJUSTES_POR_DEFECTO: Ajustes = { herramienta: "pincel", capa: 1, grh: 0, tamanio: 1, trigger: 1, traslado: { mapa: 1, x: 50, y: 50 } };
 
 export const NOMBRES: Record<Herramienta, string> = {
   pincel: "Pincel",
@@ -33,12 +37,24 @@ export const NOMBRES: Record<Herramienta, string> = {
   balde: "Balde",
   bloquear: "Bloquear",
   desbloquear: "Desbloquear",
+  trigger: "Trigger",
+  traslado: "Traslado",
   cuentagotas: "Cuentagotas",
 };
 
 /** Las herramientas que se arrastran celda por celda; el rectángulo, en cambio, se suelta. */
 export function seArrastra(h: Herramienta): boolean {
-  return h === "pincel" || h === "goma" || h === "bloquear" || h === "desbloquear";
+  return h === "pincel" || h === "goma" || h === "bloquear" || h === "desbloquear" || h === "trigger";
+}
+
+/** Las que se resuelven con el clic y no esperan a que se suelte el botón. */
+export function esDeUnClic(h: Herramienta): boolean {
+  return h === "balde" || h === "traslado";
+}
+
+/** Las que no tienen sentido con un pincel de más de una celda. */
+export function usaTamanio(h: Herramienta): boolean {
+  return seArrastra(h) || h === "goma";
 }
 
 /**
@@ -68,6 +84,10 @@ export function calcular(mapa: Mapa, ajustes: Ajustes, desde: Punto, hasta: Punt
     case "bloquear":
     case "desbloquear":
       return trazo(NOMBRES[herramienta], bloqueos(mapa, pinceladas(desde, hasta, tamanio), herramienta === "bloquear"));
+    case "trigger":
+      return trazo(NOMBRES.trigger, triggers(mapa, pinceladas(desde, hasta, tamanio), ajustes.trigger));
+    case "traslado":
+      return trazo(NOMBRES.traslado, traslados(mapa, desde, ajustes.traslado));
     case "cuentagotas":
       return trazo(NOMBRES.cuentagotas, []);
   }
@@ -182,6 +202,32 @@ function graficos(mapa: Mapa, celdas: number[], capa: number, grh: number): Camb
     cambios.push({ tipo: "grafico", indice, capa, antes, despues: grh });
   }
   return cambios;
+}
+
+function triggers(mapa: Mapa, celdas: number[], valor: number): Cambio[] {
+  const cambios: Cambio[] = [];
+  for (const indice of celdas) {
+    const x = (indice % ANCHO) + 1;
+    const y = Math.floor(indice / ANCHO) + 1;
+    const antes = mapa.trigger(x, y);
+    if (antes === valor) continue;
+    cambios.push({ tipo: "trigger", indice, antes, despues: valor });
+  }
+  return cambios;
+}
+
+/* Un traslado es de una celda sola: una puerta son una o dos, y pintarlos con pincel dejaría
+ * decenas de salidas al mismo lugar sin que nadie las pidiera. */
+function traslados(mapa: Mapa, donde: Punto, destino: Traslado | null): Cambio[] {
+  if (!Mapa.dentro(donde.x, donde.y)) return [];
+  const antes = mapa.traslado(donde.x, donde.y);
+  if (mismoTraslado(antes, destino)) return [];
+  return [{ tipo: "traslado", indice: Mapa.indice(donde.x, donde.y), antes, despues: destino ? { ...destino } : null }];
+}
+
+function mismoTraslado(a: Traslado | null, b: Traslado | null): boolean {
+  if (!a || !b) return a === b;
+  return a.mapa === b.mapa && a.x === b.x && a.y === b.y;
 }
 
 function bloqueos(mapa: Mapa, celdas: number[], valor: boolean): Cambio[] {

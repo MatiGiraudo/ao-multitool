@@ -194,3 +194,70 @@ describe("Historial", () => {
     expect(ANCHO).toBe(100);
   });
 });
+
+describe("triggers y traslados", () => {
+  it("el trigger se pinta con el tamaño del pincel y no repite lo que ya estaba", () => {
+    const mapa = conPiso();
+    const historial = new Historial();
+
+    historial.aplicar(mapa, calcular(mapa, ajustes({ herramienta: "trigger", trigger: 4, tamanio: 3 }), { x: 50, y: 50 }));
+
+    expect(mapa.trigger(50, 50)).toBe(4);
+    expect(mapa.trigger(49, 49)).toBe(4);
+    expect(mapa.contar().conTrigger).toBe(9);
+    expect(calcular(mapa, ajustes({ herramienta: "trigger", trigger: 4, tamanio: 3 }), { x: 50, y: 50 }).cambios).toHaveLength(0);
+  });
+
+  it("deshacer devuelve el trigger que había, no lo borra", () => {
+    const mapa = conPiso();
+    const historial = new Historial();
+    historial.aplicar(mapa, calcular(mapa, ajustes({ herramienta: "trigger", trigger: 1 }), { x: 10, y: 10 }));
+    historial.aplicar(mapa, calcular(mapa, ajustes({ herramienta: "trigger", trigger: 4 }), { x: 10, y: 10 }));
+    expect(mapa.trigger(10, 10)).toBe(4);
+
+    historial.deshacer(mapa);
+
+    expect(mapa.trigger(10, 10)).toBe(1);
+  });
+
+  it("el trigger 0 saca el que hubiera", () => {
+    const mapa = conPiso();
+    const historial = new Historial();
+    historial.aplicar(mapa, calcular(mapa, ajustes({ herramienta: "trigger", trigger: 6 }), { x: 3, y: 3 }));
+
+    historial.aplicar(mapa, calcular(mapa, ajustes({ herramienta: "trigger", trigger: 0 }), { x: 3, y: 3 }));
+
+    expect(mapa.trigger(3, 3)).toBe(0);
+    expect(mapa.contar().conTrigger).toBe(0);
+  });
+
+  it("el traslado es de una celda sola y se deshace", () => {
+    const mapa = conPiso();
+    const historial = new Historial();
+    const destino = { mapa: 34, x: 12, y: 80 };
+
+    const trazo = calcular(mapa, ajustes({ herramienta: "traslado", traslado: destino, tamanio: 5 }), { x: 7, y: 7 });
+    historial.aplicar(mapa, trazo);
+
+    expect(trazo.cambios).toHaveLength(1);
+    expect(mapa.traslado(7, 7)).toEqual(destino);
+    expect(mapa.contar().traslados).toBe(1);
+
+    historial.deshacer(mapa);
+    expect(mapa.traslado(7, 7)).toBeNull();
+  });
+
+  it("con traslado en null, el clic saca el que hubiera", () => {
+    const mapa = conPiso();
+    const historial = new Historial();
+    historial.aplicar(mapa, calcular(mapa, ajustes({ herramienta: "traslado", traslado: { mapa: 2, x: 5, y: 5 } }), { x: 9, y: 9 }));
+
+    historial.aplicar(mapa, calcular(mapa, ajustes({ herramienta: "traslado", traslado: null }), { x: 9, y: 9 }));
+
+    expect(mapa.traslado(9, 9)).toBeNull();
+    // Y poner el mismo que ya estaba no gasta un paso de deshacer.
+    historial.deshacer(mapa);
+    expect(mapa.traslado(9, 9)).toEqual({ mapa: 2, x: 5, y: 5 });
+    expect(calcular(mapa, ajustes({ herramienta: "traslado", traslado: { mapa: 2, x: 5, y: 5 } }), { x: 9, y: 9 }).cambios).toHaveLength(0);
+  });
+});

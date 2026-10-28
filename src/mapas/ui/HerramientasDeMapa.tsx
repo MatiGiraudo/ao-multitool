@@ -2,7 +2,8 @@
 import { memo, useEffect, useRef } from "react";
 import { CampoNumero } from "@/compartido/ui/componentes";
 import type { RecorteDeGrh } from "../aplicacion/casosDeUso";
-import { NOMBRES, type Ajustes, type Herramienta } from "../dominio/herramientas";
+import { NOMBRES, usaTamanio, type Ajustes, type Herramienta } from "../dominio/herramientas";
+import { TRIGGERS } from "../dominio/triggers";
 import { CELDA, dibujarGrh } from "./dibujo";
 
 /*
@@ -13,7 +14,7 @@ import { CELDA, dibujarGrh } from "./dibujo";
  * pared— y para traer uno nuevo están el número a mano y el cuentagotas.
  */
 
-const ORDEN: Herramienta[] = ["pincel", "rectangulo", "balde", "goma", "bloquear", "desbloquear", "cuentagotas"];
+const ORDEN: Herramienta[] = ["pincel", "rectangulo", "balde", "goma", "bloquear", "desbloquear", "trigger", "traslado", "cuentagotas"];
 
 /** La misma letra que escucha la pantalla, para que el botón la pueda mostrar. */
 export const ATAJOS: Record<Herramienta, string> = {
@@ -23,6 +24,8 @@ export const ATAJOS: Record<Herramienta, string> = {
   goma: "e",
   bloquear: "x",
   desbloquear: "d",
+  trigger: "t",
+  traslado: "p",
   cuentagotas: "i",
 };
 
@@ -45,7 +48,8 @@ export function BarraDeEdicion({
   onRehacer: () => void;
   ultimo: string | null;
 }) {
-  const conTamanio = ajustes.herramienta !== "rectangulo" && ajustes.herramienta !== "balde" && ajustes.herramienta !== "cuentagotas";
+  const conTamanio = usaTamanio(ajustes.herramienta);
+  const destino = ajustes.traslado;
   return (
     <div className="mapa-barra">
       <div className="seg">
@@ -68,6 +72,62 @@ export function BarraDeEdicion({
           </button>
         ))}
       </div>
+
+      {ajustes.herramienta === "trigger" && (
+        <label className="f" title="El servidor los interpreta por número; la lista son los que conoce el AO clásico">
+          Trigger
+          <select
+            id="mapa_trigger"
+            value={TRIGGERS.some((x) => x.valor === ajustes.trigger) ? ajustes.trigger : "otro"}
+            onChange={(e) => e.target.value !== "otro" && onAjustes({ trigger: Number(e.target.value) })}
+          >
+            {TRIGGERS.map((x) => (
+              <option key={x.valor} value={x.valor} title={x.que}>
+                {x.valor} · {x.nombre}
+              </option>
+            ))}
+            <option value="otro">otro…</option>
+          </select>
+        </label>
+      )}
+
+      {ajustes.herramienta === "trigger" && (
+        <CampoNumero id="mapa_trigger_n" etiqueta="N°" valor={ajustes.trigger} min={0} max={65535} ancho={70} onCambio={(v) => onAjustes({ trigger: v ?? 0 })} />
+      )}
+
+      {ajustes.herramienta === "traslado" && (
+        <>
+          <CampoNumero
+            id="mapa_tr_mapa"
+            etiqueta="Al mapa"
+            valor={destino?.mapa ?? ""}
+            min={1}
+            ancho={70}
+            onCambio={(v) => onAjustes({ traslado: v === null ? null : { mapa: v, x: destino?.x ?? 50, y: destino?.y ?? 50 } })}
+          />
+          <CampoNumero
+            id="mapa_tr_x"
+            etiqueta="X"
+            valor={destino?.x ?? ""}
+            min={1}
+            max={100}
+            ancho={60}
+            onCambio={(v) => destino && v !== null && onAjustes({ traslado: { ...destino, x: v } })}
+          />
+          <CampoNumero
+            id="mapa_tr_y"
+            etiqueta="Y"
+            valor={destino?.y ?? ""}
+            min={1}
+            max={100}
+            ancho={60}
+            onCambio={(v) => destino && v !== null && onAjustes({ traslado: { ...destino, y: v } })}
+          />
+          <button className={destino ? "" : "on"} title="Clic en una celda le saca el traslado que tenga" onClick={() => onAjustes({ traslado: destino ? null : { mapa: 1, x: 50, y: 50 } })}>
+            {destino ? "Sacar traslado" : "Sacando"}
+          </button>
+        </>
+      )}
 
       {conTamanio && (
         <div className="seg" title="Tamaño del pincel">

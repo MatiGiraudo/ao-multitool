@@ -1,12 +1,12 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAplicacion } from "@/compartido/ui/Aplicacion";
-import { BotonArchivos, Cargando } from "@/compartido/ui/componentes";
+import { BotonArchivos, CampoNumero, Cargando } from "@/compartido/ui/componentes";
 import { descargar } from "@/compartido/ui/utilidades";
 import type { GraficosDelMapa } from "../aplicacion/casosDeUso";
 import { Historial } from "../dominio/Historial";
 import { AJUSTES_POR_DEFECTO, type Ajustes, type Herramienta } from "../dominio/herramientas";
-import type { Mapa } from "../dominio/Mapa";
+import { Mapa } from "../dominio/Mapa";
 import type { AnchoDeGrafico } from "../infraestructura/FormatoMapaClasico";
 import { ATAJOS, BarraDeEdicion, PaletaDeGraficos } from "./HerramientasDeMapa";
 import { CAPAS_POR_DEFECTO, LienzoDeMapa, type CapasVisibles } from "./LienzoDeMapa";
@@ -54,6 +54,7 @@ export function PantallaMapas() {
   const [sello, setSello] = useState(0);
   const [revision, setRevision] = useState(0);
   const [sinGuardar, setSinGuardar] = useState(false);
+  const [numeroNuevo, setNumeroNuevo] = useState(1);
   /** Gráficos que ya se pidieron para el pincel, resueltos o no, para no pedirlos en cada tecla. */
   const intentados = useRef(new Set<number>());
   const usadosAnteriores = useRef<number[]>([]);
@@ -111,6 +112,45 @@ export function PantallaMapas() {
     },
     [casos, intentar, sinGuardar],
   );
+
+  /**
+   * Un mapa desde cero.
+   *
+   * Arranca sin gráficos cargados a propósito: la hoja de cada uno se trae recién cuando lo ponés
+   * en el pincel, igual que al abrir uno del juego. La cabecera del archivo queda en cero, que es
+   * lo que el servidor espera de un mapa que no viene de otro (no valida ni el CRC ni la palabra
+   * mágica: los lee y los descarta).
+   */
+  const crearNuevo = () => {
+    if (sinGuardar && !confirm("Tenés cambios sin exportar en el mapa abierto. ¿Empezar uno nuevo y perderlos?")) return;
+    const creado = avisandoSiFalla(() => Mapa.vacio(numeroNuevo, { nombre: `Mapa ${numeroNuevo}` }));
+    if (!creado) return;
+    intentados.current.clear();
+    setAbierto({
+      mapa: creado,
+      ancho: 4,
+      nombreArchivo: `Mapa${numeroNuevo}`,
+      graficos: { porGrh: new Map(), hojasFaltantes: [], sinResolver: [], hojas: [] },
+      imagenes: new Map(),
+      historial: new Historial(),
+      ms: 0,
+    });
+    setSinGuardar(false);
+    setEditando(true);
+    setSello((n) => n + 1);
+    setRevision((n) => n + 1);
+    avisar(`Mapa ${numeroNuevo} vacío. Elegí un gráfico y empezá por el piso.`);
+  };
+
+  /** La versión sincrónica de `intentar`: crear el mapa valida el número y puede fallar. */
+  const avisandoSiFalla = <T,>(fn: () => T): T | undefined => {
+    try {
+      return fn();
+    } catch (e) {
+      avisar(e instanceof Error ? e.message : String(e));
+      return undefined;
+    }
+  };
 
   const deshacer = useCallback(() => {
     if (!abierto?.historial.deshacer(abierto.mapa)) return;
@@ -216,6 +256,12 @@ export function PantallaMapas() {
           Elegir la carpeta Mundos…
         </BotonArchivos>
         <p className="hint">Los archivos se leen en tu máquina; lo que edites sale por «Exportar».</p>
+        <div className="row">
+          <CampoNumero id="mapa_nuevo" etiqueta="Número" valor={numeroNuevo} min={1} ancho={80} onCambio={(v) => setNumeroNuevo(v ?? 1)} />
+          <button className="abajo" onClick={crearNuevo} title="Un mapa vacío de 100×100, para pintarlo de cero">
+            + Mapa nuevo
+          </button>
+        </div>
         <div className="olist-items">
           {trios.map((t) => (
             <button
