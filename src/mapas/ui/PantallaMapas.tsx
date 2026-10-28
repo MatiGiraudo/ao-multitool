@@ -9,6 +9,8 @@ import { AJUSTES_POR_DEFECTO, type Ajustes, type Herramienta } from "../dominio/
 import { Mapa, type InfoDeMapa } from "../dominio/Mapa";
 import type { ResumenDeMapa } from "../dominio/MapaRepositorio";
 import type { AnchoDeGrafico } from "../infraestructura/FormatoMapaClasico";
+import { baseDeArchivo } from "@/compartido/dominio/nombreDeArchivo";
+import { CatalogoDeTiles } from "./CatalogoDeTiles";
 import { DatosDelMapa } from "./DatosDelMapa";
 import { ATAJOS, BarraDeEdicion, PaletaDeGraficos } from "./HerramientasDeMapa";
 import { CAPAS_POR_DEFECTO, LienzoDeMapa, type CapasVisibles } from "./LienzoDeMapa";
@@ -204,6 +206,23 @@ export function PantallaMapas() {
       avisar(e instanceof Error ? e.message : String(e));
       return undefined;
     }
+  };
+
+  /**
+   * Un tile elegido de una hoja pasa a ser el gráfico del pincel.
+   *
+   * El mapa guarda números de GRH —es lo único que el juego entiende—, así que el recorte se
+   * traduce a uno: si ya tenía número se reusa, y si no, el editor le da el primero libre y lo
+   * suma a la tabla. Esos gráficos nuevos salen por «Exportar Graficos.ini», en Importar.
+   */
+  const elegirTile = async (hoja: { nombreArchivo: string }, recorte: { x: number; y: number; ancho: number; alto: number }) => {
+    const r = await intentar(
+      () => casos.clasico.grhDeRecorte.ejecutar({ archivo: baseDeArchivo(hoja.nombreArchivo), ...recorte }),
+      "Buscando el gráfico…",
+    );
+    if (!r) return;
+    setAjustes((a) => ({ ...a, grh: r.numero, herramienta: a.herramienta === "cuentagotas" ? "pincel" : a.herramienta }));
+    avisar(r.creado ? `Gráfico nuevo: grh ${r.numero}.` : `Ese recorte ya era el grh ${r.numero}.`);
   };
 
   const cambiarInfo = (cambios: Partial<InfoDeMapa>) => {
@@ -487,6 +506,12 @@ export function PantallaMapas() {
                   graficos={abierto.graficos.porGrh}
                   imagenes={abierto.imagenes}
                 />
+                <details>
+                  <summary>Elegir de una hoja del proyecto</summary>
+                  <div className="col">
+                    <CatalogoDeTiles onElegir={elegirTile} />
+                  </div>
+                </details>
               </section>
             )}
             <section className="panel">

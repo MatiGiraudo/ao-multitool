@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useAplicacion } from "@/compartido/ui/Aplicacion";
 import { BotonArchivo, PuntosDeCarga } from "@/compartido/ui/componentes";
+import { descargar } from "@/compartido/ui/utilidades";
 import { BotonCargarCarpeta } from "@/graficos/ui/BotonCargarCarpeta";
 import type {
   ResultadoDeAparienciasClasicas,
@@ -53,6 +54,19 @@ export function PantallaImportacion() {
       avisar(mensaje(r));
     };
   }
+
+  /*
+   * La tabla de vuelta como archivo del juego.
+   *
+   * No es simétrico de importar por capricho: pintar un mapa con una hoja del proyecto le inventa
+   * números de GRH nuevos, y sin devolver el Graficos.ini el cliente no sabría qué dibujar ahí.
+   */
+  const exportarGraficos = async () => {
+    const texto = await intentar(() => casos.clasico.exportarGraficos.ejecutar(), "Armando el Graficos.ini…");
+    if (!texto) return;
+    descargar("Graficos.ini", texto, "text/plain");
+    avisar("Graficos.ini descargado. Va en la carpeta INIT del cliente.");
+  };
 
   const importarGraficos = importador(
     "graficos",
@@ -112,6 +126,11 @@ export function PantallaImportacion() {
               {ocupado === "graficos" ? <Leyendo /> : "Elegir Graficos.ini…"}
             </BotonArchivo>
             {tabla && <span className="status">{tabla.grhs.toLocaleString("es-AR")} GRH leídos</span>}
+            {tabla && (
+              <button onClick={exportarGraficos} title="Incluye los gráficos que el editor fue inventando al pintar mapas">
+                Exportar Graficos.ini
+              </button>
+            )}
           </div>
 
           {tabla && (

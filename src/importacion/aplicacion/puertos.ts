@@ -2,11 +2,16 @@ import type { Direccion } from "@/compartido/dominio/Direccion";
 import type { HechizoImportado } from "@/hechizos/aplicacion/casosDeUso";
 import type { NpcImportado } from "@/npcs/aplicacion/casosDeUso";
 import type { ObjetoImportado } from "@/objetos/aplicacion/puertos";
-import type { Grh } from "../dominio/TablaDeGrh";
+import type { Grh, TablaDeGrh } from "../dominio/TablaDeGrh";
 
 /** Puerto: sabe leer el `Graficos.ini` y devolver los GRH que define. */
 export interface LectorDeGraficosClasicos {
   leer(texto: string): Grh[];
+}
+
+/** Puerto: sabe escribir la tabla como `Graficos.ini`, para devolverle los gráficos nuevos al juego. */
+export interface EscritorDeGraficosClasicos {
+  escribir(tabla: TablaDeGrh): string;
 }
 
 /**

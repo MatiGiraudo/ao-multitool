@@ -55,6 +55,34 @@ export class TablaDeGrh {
     return this.porNumero.get(numero) ?? null;
   }
 
+  /** El primer número libre, para sumar gráficos propios sin pisar los que vinieron del clásico. */
+  proximoNumero(): number {
+    let mayor = 0;
+    for (const n of this.porNumero.keys()) if (n > mayor) mayor = n;
+    return mayor + 1;
+  }
+
+  /**
+   * El GRH estático que ya apunta a ese recorte exacto, si existe.
+   *
+   * Sirve para no inventar un número nuevo cada vez que se elige el mismo tile: dos celdas con el
+   * mismo pasto tienen que terminar con el mismo GRH, como en el juego.
+   */
+  buscarRecorte(archivo: string, x: number, y: number, ancho: number, alto: number): Grh | null {
+    for (const g of this.porNumero.values()) {
+      if (!g.cuadros.length && g.archivo === archivo && g.x === x && g.y === y && g.ancho === ancho && g.alto === alto) return g;
+    }
+    return null;
+  }
+
+  /** Otra tabla con ese GRH sumado (o reemplazado, si el número ya estaba). */
+  con(grh: Grh): TablaDeGrh {
+    asegurar(Number.isInteger(grh.numero) && grh.numero > 0, "El número de GRH tiene que ser un entero positivo.");
+    const m = new Map(this.porNumero);
+    m.set(grh.numero, grh);
+    return new TablaDeGrh(m);
+  }
+
   datos(): Grh[] {
     return [...this.porNumero.values()].sort((a, b) => a.numero - b.numero);
   }

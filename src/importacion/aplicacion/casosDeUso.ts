@@ -13,11 +13,13 @@ import type { ImportarNpcs, ResultadoDeImportacionDeNpcs } from "@/npcs/aplicaci
 import type { ImportarObjetos, ResultadoDeImportacion } from "@/objetos/aplicacion/casosDeUso";
 import type { FabricaDeCatalogo } from "@/proyecto/aplicacion/ImportarProyectoLegado";
 import { esElArchivo } from "../dominio/nombres";
+import { ErrorDeDominio } from "@/compartido/dominio/ErrorDeDominio";
 import { TablaDeGrh } from "../dominio/TablaDeGrh";
 import type { TablaDeGrhRepositorio } from "../dominio/TablaDeGrhRepositorio";
 import type { PuenteDeGrh, VinculosDeGrh } from "./PuenteDeGrh";
 import type {
   AparienciaClasica,
+  EscritorDeGraficosClasicos,
   LectorDeAparienciasClasicas,
   LectorDeEfectosClasicos,
   LectorDeGraficosClasicos,
@@ -50,6 +52,40 @@ export interface ResultadoDeTablaDeGrh {
  * Es el primer paso de cualquier importación del clásico: sin esta tabla, los `GrhIndex` de los
  * demás archivos no se pueden traducir a hojas y animaciones.
  */
+/**
+ * De un recorte de una hoja del proyecto al número de GRH con el que se dibuja.
+ *
+ * Es lo que deja pintar un mapa con gráficos que nunca estuvieron en un `Graficos.ini`: si el
+ * recorte ya tiene número se reusa, y si no se le da el primer número libre y la tabla queda
+ * guardada. Así el mapa sigue hablando en números de GRH, que es lo único que el juego entiende.
+ */
+export class GrhDeRecorte {
+  constructor(private readonly tablas: TablaDeGrhRepositorio) {}
+
+  async ejecutar(recorte: { archivo: string; x: number; y: number; ancho: number; alto: number }): Promise<{ numero: number; creado: boolean }> {
+    const tabla = (await this.tablas.leer()) ?? TablaDeGrh.vacia();
+    const existente = tabla.buscarRecorte(recorte.archivo, recorte.x, recorte.y, recorte.ancho, recorte.alto);
+    if (existente) return { numero: existente.numero, creado: false };
+    const numero = tabla.proximoNumero();
+    await this.tablas.guardar(tabla.con({ numero, ...recorte, cuadros: [], msDelCiclo: 0 }));
+    return { numero, creado: true };
+  }
+}
+
+/** La tabla de vuelta como `Graficos.ini`, con los gráficos propios incluidos. */
+export class ExportarGraficosIni {
+  constructor(
+    private readonly tablas: TablaDeGrhRepositorio,
+    private readonly escritor: EscritorDeGraficosClasicos,
+  ) {}
+
+  async ejecutar(): Promise<string> {
+    const tabla = await this.tablas.leer();
+    if (!tabla?.cantidad) throw new ErrorDeDominio("Todavía no hay tabla de GRH: importá un Graficos.ini o pintá un mapa con gráficos del proyecto.");
+    return this.escritor.escribir(tabla);
+  }
+}
+
 export class ImportarTablaDeGrh {
   constructor(
     private readonly lector: LectorDeGraficosClasicos,

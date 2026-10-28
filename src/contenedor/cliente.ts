@@ -88,6 +88,8 @@ import {
   ImportarHechizosClasicos,
   ImportarNpcsClasicos,
   ImportarObjetosClasicos,
+  ExportarGraficosIni,
+  GrhDeRecorte,
   ImportarTablaDeGrh,
 } from "@/importacion/aplicacion/casosDeUso";
 import { PuenteDeGrh } from "@/importacion/aplicacion/PuenteDeGrh";
@@ -102,6 +104,7 @@ import {
 import { HttpMapaRepositorio } from "@/mapas/infraestructura/navegador/HttpMapaRepositorio";
 import { LectorAparienciasIni } from "@/importacion/infraestructura/LectorAparienciasIni";
 import { LectorFxsIni } from "@/importacion/infraestructura/LectorFxsIni";
+import { EscritorGraficosIni } from "@/importacion/infraestructura/EscritorGraficosIni";
 import { LectorGraficosIni } from "@/importacion/infraestructura/LectorGraficosIni";
 import { LectorHechizosDat } from "@/importacion/infraestructura/LectorHechizosDat";
 import { LectorNpcsDat } from "@/importacion/infraestructura/LectorNpcsDat";
@@ -253,6 +256,9 @@ function crear() {
       fx: new ImportarEfectosClasicos(new LectorFxsIni(), tablaDeGrh, puente, hojas, importarEfectos, fabricaDeCatalogo),
       hechizos: new ImportarHechizosClasicos(new LectorHechizosDat(), new ImportarHechizos(hechizos, formatoHechizos, ids)),
       npcs: new ImportarNpcsClasicos(new LectorNpcsDat(), new ImportarNpcs(npcs, formatoNpcs, ids)),
+      /** Para los gráficos propios: el número con el que se dibuja un recorte, y la tabla de vuelta. */
+      grhDeRecorte: new GrhDeRecorte(tablaDeGrh),
+      exportarGraficos: new ExportarGraficosIni(tablaDeGrh, new EscritorGraficosIni()),
     },
     proyecto: {
       importarLegado: new ImportarProyectoLegado(new LectorAoProj(), hojas, imagenes, procesador, importarObjetos, fabricaDeCatalogo, ids),

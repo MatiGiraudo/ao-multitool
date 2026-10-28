@@ -305,7 +305,11 @@ Lo que salió distinto de lo previsto, y por qué:
 
 **Guardado en el proyecto ✅ (27/10/2026).** Un mapa = un archivo `data/mapas/<numero>.json`, con su propio formato (`ao-mapa` v1). Las capas, los bloqueos, los triggers y las partículas van comprimidos por repetición —una capa que nadie usó son dos números— y lo del `.inf` va como lista de celdas. Pesa más que el binario del juego (40 mapas de Alkon: 2.446 KB contra 3.342 KB) y a cambio se lee, se diffea en git y no depende del formato de ninguna versión de AO. El editor lo guarda solo un segundo después de cada cambio, pero recién a partir del primer «Guardar en el proyecto»: abrir un mapa del juego para mirarlo no lo copia a `data/`.
 
-Pendiente de la entrega B: el `CatalogoDeTiles` que evite depender de la tabla de GRH importada.
+**Catálogo de tiles ✅ (27/10/2026).** El pincel ya no obliga a saberse el número de GRH: «Elegir de una hoja del proyecto» muestra las hojas con su grilla y, al hacer clic en una celda, el editor busca el GRH de ese recorte o le da el primer número libre. Así se puede pintar con gráficos que nunca estuvieron en un `Graficos.ini`.
+
+El mapa sigue guardando números de GRH, que es lo único que el juego entiende, así que el camino de vuelta se cierra con **«Exportar Graficos.ini»** (en Importar): escribe la tabla entera —los del clásico y los propios— en el formato de una línea por GRH. Lo que sale de ahí, leído de nuevo, da la misma tabla.
+
+La tabla de un cliente son varios megas y el pincel la consulta todo el tiempo, así que el adaptador HTTP la deja en memoria y la refresca cuando él mismo la guarda.
 
 Lo que hace a Mapas distinto de todo lo anterior:
 
