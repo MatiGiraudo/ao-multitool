@@ -89,6 +89,8 @@ import {
   ImportarNpcsClasicos,
   ImportarObjetosClasicos,
   ExportarGraficosIni,
+  ExportarHechizosClasicos,
+  ExportarNpcsClasicos,
   ExportarObjetosClasicos,
   GrhDeRecorte,
   ImportarTablaDeGrh,
@@ -122,6 +124,8 @@ import { CarpetaAlmacenDeExportacion } from "@/proyecto/infraestructura/carpeta/
 import { LectorAparienciasIni } from "@/importacion/infraestructura/LectorAparienciasIni";
 import { LectorFxsIni } from "@/importacion/infraestructura/LectorFxsIni";
 import { EscritorGraficosIni } from "@/importacion/infraestructura/EscritorGraficosIni";
+import { EscritorHechizosDat } from "@/importacion/infraestructura/EscritorHechizosDat";
+import { EscritorNpcsDat } from "@/importacion/infraestructura/EscritorNpcsDat";
 import { EscritorObjDat } from "@/importacion/infraestructura/EscritorObjDat";
 import { LectorGraficosIni } from "@/importacion/infraestructura/LectorGraficosIni";
 import { LectorHechizosDat } from "@/importacion/infraestructura/LectorHechizosDat";
@@ -300,8 +304,8 @@ function crear() {
         fabricaDeCatalogo,
       ),
       fx: new ImportarEfectosClasicos(new LectorFxsIni(), tablaDeGrh, puente, hojas, importarEfectos, fabricaDeCatalogo),
-      hechizos: new ImportarHechizosClasicos(new LectorHechizosDat(), new ImportarHechizos(hechizos, formatoHechizos, ids)),
-      npcs: new ImportarNpcsClasicos(new LectorNpcsDat(), new ImportarNpcs(npcs, formatoNpcs, ids)),
+      hechizos: new ImportarHechizosClasicos(new LectorHechizosDat(), new ImportarHechizos(hechizos, formatoHechizos, ids), originales),
+      npcs: new ImportarNpcsClasicos(new LectorNpcsDat(), new ImportarNpcs(npcs, formatoNpcs, ids), originales),
       /** Para los gráficos propios: el número con el que se dibuja un recorte, y la tabla de vuelta. */
       grhDeRecorte: new GrhDeRecorte(tablaDeGrh),
       exportarGraficos: exportarGraficosIni,
@@ -325,6 +329,8 @@ function crear() {
       [
         // Los archivos del AO original, con todo lo que el editor no entiende de vuelta en su lugar.
         () => new ExportarObjetosClasicos(() => new ListarObjetos(objetos).ejecutar(), originales, new EscritorObjDat()).ejecutar(),
+        () => new ExportarNpcsClasicos(() => new ListarNpcs(npcs).ejecutar(), originales, new EscritorNpcsDat()).ejecutar(),
+        () => new ExportarHechizosClasicos(() => new ListarHechizos(hechizos).ejecutar(), originales, new EscritorHechizosDat()).ejecutar(),
       ]),
       guardarExportacion: new GuardarExportacion(enCarpeta ? new CarpetaAlmacenDeExportacion(carpetaDelProyecto) : new HttpAlmacenDeExportacion()),
       revisar: new RevisarMundo(

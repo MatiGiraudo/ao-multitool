@@ -2,6 +2,8 @@ import type { Direccion } from "@/compartido/dominio/Direccion";
 import type { HechizoImportado } from "@/hechizos/aplicacion/casosDeUso";
 import type { NpcImportado } from "@/npcs/aplicacion/casosDeUso";
 import type { ObjetoImportado } from "@/objetos/aplicacion/puertos";
+import type { Hechizo } from "@/hechizos/dominio/Hechizo";
+import type { Npc } from "@/npcs/dominio/Npc";
 import type { Objeto } from "@/objetos/dominio/Objeto";
 import type { OriginalesDeFamilia } from "../dominio/OriginalesRepositorio";
 import type { Grh, TablaDeGrh } from "../dominio/TablaDeGrh";
@@ -65,6 +67,11 @@ export interface LectorDeHechizosClasicos {
   leer(texto: string): HechizosClasicos;
 }
 
+/** Puerto: sabe devolver el `Hechizos.dat` sin perder lo que el editor no maneja. */
+export interface EscritorDeHechizosClasicos {
+  escribir(hechizos: readonly Hechizo[], originales: OriginalesDeFamilia): string;
+}
+
 /**
  * Lo que sale de un `Hechizos.dat`.
  *
@@ -75,6 +82,9 @@ export interface LectorDeHechizosClasicos {
  */
 export interface HechizosClasicos {
   hechizos: HechizoImportado[];
+  /** El texto de cada seccion, por numero, y el encabezado del archivo. */
+  crudos: Record<number, string>;
+  encabezado: string;
   /** Los números cuyo efecto el archivo no trae. */
   sinEfecto: number[];
 }
@@ -117,6 +127,19 @@ export interface LectorDeEfectosClasicos {
  * Como los hechizos, no necesita la tabla de GRH: el NPC apunta a su cuerpo y a su cabeza por
  * número, que es exactamente como los guarda el editor.
  */
+/** Un NPC del clasico, con la seccion entera por si hay que devolver el archivo. */
+export type NpcClasico = NpcImportado & { crudo: string };
+
+export interface ArchivoDeNpcsClasicos {
+  npcs: NpcClasico[];
+  encabezado: string;
+}
+
 export interface LectorDeNpcsClasicos {
-  leer(texto: string): NpcImportado[];
+  leer(texto: string): ArchivoDeNpcsClasicos;
+}
+
+/** Puerto: sabe devolver el `NPCs.dat` sin perder las claves que el editor no maneja. */
+export interface EscritorDeNpcsClasicos {
+  escribir(npcs: readonly Npc[], originales: OriginalesDeFamilia): string;
 }

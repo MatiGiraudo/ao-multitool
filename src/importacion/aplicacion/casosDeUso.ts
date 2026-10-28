@@ -11,6 +11,8 @@ import type { ImportarEfectos, ResultadoDeImportacionDeEfectos } from "@/fx/apli
 import type { ImportarHechizos, ResultadoDeImportacionDeHechizos } from "@/hechizos/aplicacion/casosDeUso";
 import type { ImportarNpcs, ResultadoDeImportacionDeNpcs } from "@/npcs/aplicacion/casosDeUso";
 import type { ImportarObjetos, ResultadoDeImportacion } from "@/objetos/aplicacion/casosDeUso";
+import type { Hechizo } from "@/hechizos/dominio/Hechizo";
+import type { Npc } from "@/npcs/dominio/Npc";
 import type { Objeto } from "@/objetos/dominio/Objeto";
 import type { FabricaDeCatalogo } from "@/proyecto/aplicacion/ImportarProyectoLegado";
 import { esElArchivo } from "../dominio/nombres";
@@ -22,6 +24,8 @@ import type { PuenteDeGrh, VinculosDeGrh } from "./PuenteDeGrh";
 import type {
   AparienciaClasica,
   EscritorDeGraficosClasicos,
+  EscritorDeHechizosClasicos,
+  EscritorDeNpcsClasicos,
   EscritorDeObjetosClasicos,
   LectorDeAparienciasClasicas,
   LectorDeEfectosClasicos,
@@ -140,6 +144,36 @@ export class ExportarObjetosClasicos {
     const objetos = await this.listar();
     if (!objetos.length) return [];
     return [{ nombreArchivo: "OBJ.dat", contenido: this.escritor.escribir(objetos, await this.originales.leer("obj")), carpeta: "Dat" }];
+  }
+}
+
+/** El `NPCs.dat` de vuelta, con lo editado adentro. */
+export class ExportarNpcsClasicos {
+  constructor(
+    private readonly listar: () => Promise<Npc[]>,
+    private readonly originales: OriginalesRepositorio,
+    private readonly escritor: EscritorDeNpcsClasicos,
+  ) {}
+
+  async ejecutar(): Promise<{ nombreArchivo: string; contenido: string; carpeta: string }[]> {
+    const npcs = await this.listar();
+    if (!npcs.length) return [];
+    return [{ nombreArchivo: "NPCs.dat", contenido: this.escritor.escribir(npcs, await this.originales.leer("npcs")), carpeta: "Dat" }];
+  }
+}
+
+/** El `Hechizos.dat` de vuelta. */
+export class ExportarHechizosClasicos {
+  constructor(
+    private readonly listar: () => Promise<Hechizo[]>,
+    private readonly originales: OriginalesRepositorio,
+    private readonly escritor: EscritorDeHechizosClasicos,
+  ) {}
+
+  async ejecutar(): Promise<{ nombreArchivo: string; contenido: string; carpeta: string }[]> {
+    const hechizos = await this.listar();
+    if (!hechizos.length) return [];
+    return [{ nombreArchivo: "Hechizos.dat", contenido: this.escritor.escribir(hechizos, await this.originales.leer("hechizos")), carpeta: "Dat" }];
   }
 }
 
@@ -376,10 +410,12 @@ export class ImportarHechizosClasicos {
   constructor(
     private readonly lector: LectorDeHechizosClasicos,
     private readonly hechizos: ImportarHechizos,
+    private readonly originales: OriginalesRepositorio = SIN_ORIGINALES,
   ) {}
 
   async ejecutar(texto: string): Promise<ResultadoDeHechizosClasicos> {
-    const { hechizos, sinEfecto } = this.lector.leer(texto);
+    const { hechizos, sinEfecto, crudos, encabezado } = this.lector.leer(texto);
+    await this.originales.guardar("hechizos", { [ENCABEZADO]: encabezado, ...crudos });
     return { ...(await this.hechizos.importar(hechizos)), sinEfecto };
   }
 }
@@ -424,9 +460,12 @@ export class ImportarNpcsClasicos {
   constructor(
     private readonly lector: LectorDeNpcsClasicos,
     private readonly npcs: ImportarNpcs,
+    private readonly originales: OriginalesRepositorio = SIN_ORIGINALES,
   ) {}
 
   async ejecutar(texto: string): Promise<ResultadoDeImportacionDeNpcs> {
-    return this.npcs.importar(this.lector.leer(texto));
+    const { npcs, encabezado } = this.lector.leer(texto);
+    await this.originales.guardar("npcs", { [ENCABEZADO]: encabezado, ...Object.fromEntries(npcs.map((n) => [n.numero, n.crudo])) });
+    return this.npcs.importar(npcs);
   }
 }

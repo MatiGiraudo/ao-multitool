@@ -83,10 +83,9 @@ guardando el sello con el que se abrió y comparando.
 
 **Dónde:** `src/importacion/infraestructura/`, al lado de `EscritorObjDat.ts`.
 
-El ida y vuelta con el AO clásico está hecho y probado para el `OBJ.dat`: las claves que el editor
-no entiende vuelven intactas porque al importar se guarda el texto original de cada sección. Falta
-repetirlo para `NPCs.dat` (124 claves distintas en un servidor real), `Hechizos.dat` (60), `FXs.ini`,
-`Personajes.ini` y `Cabezas.ini`.
+El ida y vuelta con el AO clásico está hecho y probado para `OBJ.dat`, `NPCs.dat` y
+`Hechizos.dat`: las claves que el editor no entiende vuelven intactas porque al importar se guarda
+el texto original de cada sección. Faltan `FXs.ini`, `Personajes.ini` y `Cabezas.ini`.
 
 Cada uno es un escritor chico más su verificación contra el archivo de un servidor de verdad, como
 la que ya corre con `AO_DAT_DIR`.

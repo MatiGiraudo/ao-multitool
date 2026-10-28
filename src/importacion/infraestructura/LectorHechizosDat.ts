@@ -82,7 +82,8 @@ export class LectorHechizosDat implements LectorDeHechizosClasicos {
         sonido: ini.texto(seccion, "WAV"),
       };
     });
-    return { hechizos, sinEfecto };
+    const crudos = Object.fromEntries(secciones.map(({ seccion, numero }) => [numero, ini.lineasDe(seccion).join("\r\n")]));
+    return { hechizos, sinEfecto, crudos, encabezado: ini.encabezado("hechizo").join("\r\n") };
   }
 }
 

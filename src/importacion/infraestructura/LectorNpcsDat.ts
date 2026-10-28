@@ -3,7 +3,7 @@ import type { Direccion } from "@/compartido/dominio/Direccion";
 import { ErrorDeDominio } from "@/compartido/dominio/ErrorDeDominio";
 import type { NpcImportado } from "@/npcs/aplicacion/casosDeUso";
 import type { Drop, EnVenta } from "@/npcs/dominio/Npc";
-import type { LectorDeNpcsClasicos } from "../aplicacion/puertos";
+import type { ArchivoDeNpcsClasicos, LectorDeNpcsClasicos } from "../aplicacion/puertos";
 import { ArchivoIni } from "./LectorIni";
 
 /*
@@ -38,7 +38,7 @@ import { ArchivoIni } from "./LectorIni";
  */
 
 /** `NpcType` del clásico → el tipo del editor. Lo que no está acá se decide por las banderas. */
-const TIPOS: Readonly<Record<number, string>> = {
+export const TIPOS: Readonly<Record<number, string>> = {
   1: "comerciante",
   2: "hostil",
   3: "guardia",
@@ -49,22 +49,22 @@ const TIPOS: Readonly<Record<number, string>> = {
 };
 
 /** El mismo orden que en los índices de apariencias: NORTH = 1, EAST = 2, SOUTH = 3, WEST = 4. */
-const DIRECCION_DE_AO: readonly Direccion[] = ["norte", "este", "sur", "oeste"];
+export const DIRECCION_DE_AO: readonly Direccion[] = ["norte", "este", "sur", "oeste"];
 
 /** `Movement` del cliente: 1 es quieto, 2 da vueltas, el resto persigue. */
-function movimientoDeAo(n: number): string {
+export function movimientoDeAo(n: number): string {
   if (n <= 1) return "quieto";
   if (n === 2) return "aleatorio";
   return "persigue";
 }
 
 export class LectorNpcsDat implements LectorDeNpcsClasicos {
-  leer(texto: string): NpcImportado[] {
+  leer(texto: string): ArchivoDeNpcsClasicos {
     const ini = ArchivoIni.parsear(texto);
     const secciones = ini.numeradas("npc");
     if (!secciones.length) throw new ErrorDeDominio("No encontré ninguna sección [NPCn]: ¿seguro que es un NPCs.dat?");
 
-    return secciones.map(({ seccion, numero }) => {
+    const npcs = secciones.map(({ seccion, numero }) => {
       const comercia = ini.bandera(seccion, "Comercia");
       const tipo = comercia ? "comerciante" : (TIPOS[ini.entero(seccion, "NpcType")] ?? "otro");
       const items = objetos(ini, seccion);
@@ -90,8 +90,10 @@ export class LectorNpcsDat implements LectorDeNpcsClasicos {
         // El mismo campo es el inventario del que vende y el botín del que pelea.
         drops: tipo === "comerciante" ? [] : items.map((o): Drop => ({ ...o, probabilidad: 100 })),
         enVenta: tipo === "comerciante" ? items : [],
+        crudo: ini.lineasDe(seccion).join("\r\n"),
       };
     });
+    return { npcs, encabezado: ini.encabezado("npc").join("\r\n") };
   }
 }
 

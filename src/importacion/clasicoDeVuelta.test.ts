@@ -2,7 +2,13 @@ import { describe, expect, it } from "vitest";
 import { Objeto } from "@/objetos/dominio/Objeto";
 import { ENCABEZADO } from "./dominio/OriginalesRepositorio";
 import { armarIni, reescribirSeccion } from "./infraestructura/EscritorIni";
+import { Hechizo } from "@/hechizos/dominio/Hechizo";
+import { Npc } from "@/npcs/dominio/Npc";
+import { EscritorHechizosDat } from "./infraestructura/EscritorHechizosDat";
+import { EscritorNpcsDat } from "./infraestructura/EscritorNpcsDat";
 import { EscritorObjDat } from "./infraestructura/EscritorObjDat";
+import { LectorHechizosDat } from "./infraestructura/LectorHechizosDat";
+import { LectorNpcsDat } from "./infraestructura/LectorNpcsDat";
 import { LectorObjDat } from "./infraestructura/LectorObjDat";
 
 /*
@@ -131,5 +137,141 @@ describe("reescribirSeccion", () => {
 describe("armarIni", () => {
   it("no toca el espaciado: pega las secciones tal como vienen", () => {
     expect(armarIni([["[A]", "x=1", ""], ["[B]", "y=2"]], ["# hola", ""])).toBe("# hola\r\n\r\n[A]\r\nx=1\r\n\r\n[B]\r\ny=2\r\n");
+  });
+});
+
+const NPCS_DAT = [
+  "[INIT]",
+  "NumNPCs=2",
+  "",
+  "[NPC1] 'el sastre",
+  "Name=Sastre",
+  "NpcType=0",
+  "Comercia=1",
+  "Body=50",
+  "Head=7",
+  "Heading=3",
+  "Movement=1",
+  "Alineacion=0",
+  "TipoItems=3",
+  "NROITEMS=2",
+  "Obj1=31-1000 'Vestimentas",
+  "Obj2=54-0",
+  "",
+  "[NPC2]",
+  "Name=Lobo",
+  "NpcType=2",
+  "Movement=5",
+  "MaxHP=60",
+  "GiveEXP=50",
+  "AtacaDoble=1",
+  "",
+].join("\r\n");
+
+describe("EscritorNpcsDat", () => {
+  function idaYVuelta(cambiar: (n: Npc) => Npc = (n) => n) {
+    const { npcs: clasicos, encabezado } = new LectorNpcsDat().leer(NPCS_DAT);
+    const originales = { [ENCABEZADO]: encabezado, ...Object.fromEntries(clasicos.map((n) => [n.numero, n.crudo])) };
+    const npcs = clasicos.map((c, i) =>
+      cambiar(
+        Npc.reconstituir({
+          clave: `n${i}`,
+          numero: c.numero,
+          nombre: c.nombre,
+          descripcion: c.descripcion,
+          tipo: c.tipo as never,
+          cuerpo: c.cuerpo,
+          cabeza: c.cabeza,
+          direccion: c.direccion as never,
+          movimiento: c.movimiento as never,
+          banderas: c.banderas,
+          atributos: c.atributos,
+          hechizos: c.hechizos,
+          drops: c.drops,
+          enVenta: c.enVenta,
+          esEjemplo: false,
+        }),
+      ),
+    );
+    return new EscritorNpcsDat().escribir(npcs, originales);
+  }
+
+  it("devuelve el archivo igual cuando no se editó nada", () => {
+    expect(idaYVuelta()).toBe(NPCS_DAT + "\r\n");
+  });
+
+  it("deja en paz lo que el editor no puede representar", () => {
+    const texto = idaYVuelta((n) => n.renombrado("Sastre nuevo"));
+    // Un `Movement=5` que el editor lee como «persigue», un tipo que no conoce y una cantidad en cero.
+    expect(texto).toContain("Movement=5");
+    expect(texto).toContain("NpcType=0");
+    expect(texto).toContain("Obj2=54-0");
+    // Y las claves que ni mira.
+    expect(texto).toContain("AtacaDoble=1");
+    expect(texto).toContain("TipoItems=3");
+    expect(texto).toContain("Alineacion=0");
+  });
+});
+
+const HECHIZOS_DAT = [
+  "[INIT]",
+  "NumeroHechizos=1",
+  "",
+  "[Hechizo1]",
+  "Nombre=Dardo magico",
+  "PalabrasMagicas=OHL VARAN",
+  "ManaRequerido=10",
+  "SubeHP=2",
+  "MinHP=5",
+  "MaxHP=8",
+  "NeedStaff=2",
+  "HechizeroMsg=has lanzado un dardo",
+  "Loops=3",
+  "",
+].join("\r\n");
+
+describe("EscritorHechizosDat", () => {
+  function idaYVuelta(cambiar: (h: Hechizo) => Hechizo = (h) => h) {
+    const { hechizos: clasicos, crudos, encabezado } = new LectorHechizosDat().leer(HECHIZOS_DAT);
+    const originales = { [ENCABEZADO]: encabezado, ...crudos };
+    const hechizos = clasicos.map((c, i) =>
+      cambiar(
+        Hechizo.reconstituir({
+          clave: `h${i}`,
+          numero: c.numero,
+          nombre: c.nombre,
+          descripcion: c.descripcion,
+          palabrasMagicas: c.palabrasMagicas,
+          tipo: c.tipo as never,
+          objetivo: c.objetivo as never,
+          mana: c.mana,
+          energia: c.energia,
+          skillRequerido: c.skillRequerido,
+          nivelMinimo: c.nivelMinimo,
+          banderas: c.banderas,
+          atributos: c.atributos,
+          fx: c.fx,
+          sonido: c.sonido,
+          esEjemplo: false,
+        }),
+      ),
+    );
+    return new EscritorHechizosDat().escribir(hechizos, originales);
+  }
+
+  it("devuelve el archivo igual cuando no se editó nada", () => {
+    expect(idaYVuelta()).toBe(HECHIZOS_DAT + "\r\n");
+  });
+
+  it("no toca el efecto ni lo que no entiende", () => {
+    const texto = idaYVuelta((h) => h.renombrado("Dardo nuevo"));
+    expect(texto).toContain("Nombre=Dardo nuevo");
+    // El efecto queda como estaba: el clásico lo escribe de varias formas y el editor junta todo en un tipo.
+    expect(texto).toContain("SubeHP=2");
+    expect(texto).toContain("MinHP=5");
+    // Un `NeedStaff=2` es tan «sí» como un 1: no se pisa.
+    expect(texto).toContain("NeedStaff=2");
+    expect(texto).toContain("HechizeroMsg=has lanzado un dardo");
+    expect(texto).toContain("Loops=3");
   });
 });

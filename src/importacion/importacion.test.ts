@@ -687,7 +687,7 @@ MaxHIT=40
 `;
 
 describe("LectorNpcsDat", () => {
-  const npcs = new LectorNpcsDat().leer(NPCS_DAT);
+  const { npcs } = new LectorNpcsDat().leer(NPCS_DAT);
 
   it("traduce el tipo, y el que comercia gana aunque el NpcType diga otra cosa", () => {
     expect(npcs.map((n) => n.tipo)).toEqual(["hostil", "comerciante", "guardia"]);

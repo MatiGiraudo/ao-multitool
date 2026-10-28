@@ -6,7 +6,17 @@ import { ImportarObjetos } from "@/objetos/aplicacion/casosDeUso";
 import { FormatoAoObjs } from "@/objetos/infraestructura/FormatoAoObjs";
 import { MemoriaObjetoRepositorio } from "@/objetos/infraestructura/memoria";
 import { ENCABEZADO } from "./dominio/OriginalesRepositorio";
+import { ImportarHechizos } from "@/hechizos/aplicacion/casosDeUso";
+import { FormatoAoSpells } from "@/hechizos/infraestructura/FormatoAoSpells";
+import { MemoriaHechizoRepositorio } from "@/hechizos/infraestructura/memoria";
+import { ImportarNpcs } from "@/npcs/aplicacion/casosDeUso";
+import { FormatoAoNpcs } from "@/npcs/infraestructura/FormatoAoNpcs";
+import { MemoriaNpcRepositorio } from "@/npcs/infraestructura/memoria";
+import { EscritorHechizosDat } from "./infraestructura/EscritorHechizosDat";
+import { EscritorNpcsDat } from "./infraestructura/EscritorNpcsDat";
 import { EscritorObjDat } from "./infraestructura/EscritorObjDat";
+import { LectorHechizosDat } from "./infraestructura/LectorHechizosDat";
+import { LectorNpcsDat } from "./infraestructura/LectorNpcsDat";
 import { ArchivoIni } from "./infraestructura/LectorIni";
 import { LectorObjDat } from "./infraestructura/LectorObjDat";
 
@@ -35,10 +45,10 @@ function idsDePrueba() {
 }
 
 /** Todas las claves de todas las secciones, para comparar dos archivos por lo que dicen. */
-function claves(texto: string): Map<string, string> {
+function claves(texto: string, prefijo = "obj"): Map<string, string> {
   const ini = ArchivoIni.parsear(texto);
   const out = new Map<string, string>();
-  for (const { seccion } of ini.numeradas("obj")) {
+  for (const { seccion } of ini.numeradas(prefijo)) {
     for (const linea of ini.lineasDe(seccion)) {
       const igual = linea.indexOf("=");
       if (igual < 0) continue;
@@ -97,6 +107,43 @@ describe.skipIf(!CARPETA)("OBJ.dat de verdad", () => {
     const distintas = lineasEsperadas.map((l, i) => [i, l, lineasObtenidas[i]] as const).filter(([, a, b]) => a !== b);
 
     console.log(`  ${original.split(/\r?\n/).length} líneas en el archivo · ${lineasEsperadas.length} esperadas · distintas ${distintas.length}`);
+    expect(distintas).toEqual([]);
+  }, 60_000);
+
+  it("el NPCs.dat vuelve con sus 124 claves", async () => {
+    const original = leerDat("NPCs.dat");
+    const { npcs: clasicos, encabezado } = new LectorNpcsDat().leer(original);
+    const repo = new MemoriaNpcRepositorio();
+    await new ImportarNpcs(repo, new FormatoAoNpcs(), idsDePrueba()).importar(clasicos);
+    const originales = { [ENCABEZADO]: encabezado, ...Object.fromEntries(clasicos.map((n) => [n.numero, n.crudo])) };
+
+    const texto = new EscritorNpcsDat().escribir(await repo.listar(), originales);
+    const antes = claves(original, "npc");
+    const despues = claves(texto, "npc");
+    const distintas = [...antes].filter(([clave, valor]) => despues.get(clave) !== valor).map(([c, v]) => [c, v, despues.get(c)] as const);
+
+    /*
+     * Lo único que cambia es el contador de items de los NPCs cuyo archivo se contradice: hay
+     * comerciantes con `NROITEMS=10` y nueve líneas `Obj`. El editor escribe la cuenta real, que
+     * es lo que el servidor puede leer sin encontrarse un item vacío.
+     */
+    const mal = distintas.filter(([clave, antesV, despuesV]) => !clave.endsWith(".nroitems") || Number(despuesV) >= Number(antesV));
+    console.log(`  ${clasicos.length} NPCs · ${antes.size} claves · distintas ${distintas.length}, todas por el contador de items: ${distintas.slice(0, 3).map(([c, v, o]) => c + ": " + v + " -> " + o).join(" | ")}`);
+    expect(mal).toEqual([]);
+  }, 60_000);
+
+  it("el Hechizos.dat vuelve con sus 60 claves", async () => {
+    const original = leerDat("Hechizos.dat");
+    const { hechizos: clasicos, crudos, encabezado } = new LectorHechizosDat().leer(original);
+    const repo = new MemoriaHechizoRepositorio();
+    await new ImportarHechizos(repo, new FormatoAoSpells(), idsDePrueba()).importar(clasicos);
+    const originales = { [ENCABEZADO]: encabezado, ...crudos };
+
+    const texto = new EscritorHechizosDat().escribir(await repo.listar(), originales);
+    const antes = claves(original, "hechizo");
+    const distintas = [...antes].filter(([clave, valor]) => claves(texto, "hechizo").get(clave) !== valor);
+
+    console.log(`  ${clasicos.length} hechizos · ${antes.size} claves · distintas ${distintas.length}: ${distintas.slice(0, 4).map(([c, v]) => c + "=" + v).join(" | ")}`);
     expect(distintas).toEqual([]);
   }, 60_000);
 
