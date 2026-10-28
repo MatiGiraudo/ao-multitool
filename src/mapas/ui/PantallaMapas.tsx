@@ -59,6 +59,8 @@ export function PantallaMapas() {
   const [revision, setRevision] = useState(0);
   const [sinGuardar, setSinGuardar] = useState(false);
   const [numeroNuevo, setNumeroNuevo] = useState(1);
+  /** Mientras el usuario no elija uno, el número del mapa nuevo sigue al primero libre. */
+  const numeroAMano = useRef(false);
   const [guardados, setGuardados] = useState<ResumenDeMapa[]>([]);
   /* El mapa abierto ya vive en el proyecto: a partir de ahí se guarda solo, como el resto del editor. */
   const [enProyecto, setEnProyecto] = useState(false);
@@ -107,6 +109,11 @@ export function PantallaMapas() {
   useEffect(() => {
     void refrescarGuardados();
   }, [refrescarGuardados]);
+
+  useEffect(() => {
+    if (numeroAMano.current) return;
+    setNumeroNuevo(guardados.reduce((mayor, g) => Math.max(mayor, g.numero), 0) + 1);
+  }, [guardados]);
 
   const abrirDelProyecto = useCallback(
     async (numero: number) => {
@@ -223,6 +230,20 @@ export function PantallaMapas() {
     if (!r) return;
     setAjustes((a) => ({ ...a, grh: r.numero, herramienta: a.herramienta === "cuentagotas" ? "pincel" : a.herramienta }));
     avisar(r.creado ? `Gráfico nuevo: grh ${r.numero}.` : `Ese recorte ya era el grh ${r.numero}.`);
+  };
+
+  /**
+   * Guardar es escribir `data/mapas/<numero>.json`, así que si ese número ya es de otro mapa hay
+   * que preguntar: pasa solo, porque un mapa nuevo arranca en el primer número libre pero nada
+   * impide escribir uno ocupado, y un mapa abierto del juego trae el número que trae.
+   *
+   * Va acá y no adentro de `guardarEnProyecto` para no meter `guardados` en sus dependencias: el
+   * guardado automático depende de esa función, y la lista cambia justo después de cada guardado.
+   */
+  const guardarPreguntandoSiPisa = (abierto: Abierto) => {
+    const pisa = guardados.some((g) => g.numero === abierto.mapa.numero);
+    if (pisa && !confirm(`Ya hay un mapa ${abierto.mapa.numero} guardado en el proyecto. ¿Reemplazarlo por este?`)) return;
+    void guardarEnProyecto(abierto);
   };
 
   const cambiarInfo = (cambios: Partial<InfoDeMapa>) => {
@@ -348,7 +369,17 @@ export function PantallaMapas() {
         </BotonArchivos>
         <p className="hint">Los archivos se leen en tu máquina; lo que edites sale por «Exportar».</p>
         <div className="row">
-          <CampoNumero id="mapa_nuevo" etiqueta="Número" valor={numeroNuevo} min={1} ancho={80} onCambio={(v) => setNumeroNuevo(v ?? 1)} />
+          <CampoNumero
+            id="mapa_nuevo"
+            etiqueta="Número"
+            valor={numeroNuevo}
+            min={1}
+            ancho={80}
+            onCambio={(v) => {
+              numeroAMano.current = true;
+              setNumeroNuevo(v ?? 1);
+            }}
+          />
           <button className="abajo" onClick={crearNuevo} title="Un mapa vacío de 100×100, para pintarlo de cero">
             + Mapa nuevo
           </button>
@@ -435,7 +466,7 @@ export function PantallaMapas() {
               <div className="row">
                 {sinGuardar && <span className="pill warn">sin exportar</span>}
                 <span className="status">{guardando ? "Guardando…" : enProyecto ? "Guardado en data/mapas" : ""}</span>
-                <button onClick={() => void guardarEnProyecto(abierto)} disabled={guardando || enProyecto} title="Para no perderlo al recargar">
+                <button onClick={() => guardarPreguntandoSiPisa(abierto)} disabled={guardando || enProyecto} title="Para no perderlo al recargar">
                   {enProyecto ? "En el proyecto" : "Guardar en el proyecto"}
                 </button>
                 <button className="primary" onClick={exportar}>

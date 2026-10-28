@@ -60,9 +60,27 @@ export interface ResultadoDeTablaDeGrh {
  * guardada. Así el mapa sigue hablando en números de GRH, que es lo único que el juego entiende.
  */
 export class GrhDeRecorte {
+  private cola: Promise<unknown> = Promise.resolve();
+
   constructor(private readonly tablas: TablaDeGrhRepositorio) {}
 
-  async ejecutar(recorte: { archivo: string; x: number; y: number; ancho: number; alto: number }): Promise<{ numero: number; creado: boolean }> {
+  /**
+   * De a uno por vez.
+   *
+   * Leer, elegir el número y guardar no puede solaparse: dos recortes elegidos seguidos leerían
+   * los dos la misma tabla, se llevarían el mismo número, y el segundo guardado dejaría afuera al
+   * primero. Las celdas ya pintadas con ese número pasarían a mostrar otro gráfico.
+   */
+  ejecutar(recorte: { archivo: string; x: number; y: number; ancho: number; alto: number }): Promise<{ numero: number; creado: boolean }> {
+    const siguiente = this.cola.then(
+      () => this.resolver(recorte),
+      () => this.resolver(recorte),
+    );
+    this.cola = siguiente.catch(() => undefined);
+    return siguiente;
+  }
+
+  private async resolver(recorte: { archivo: string; x: number; y: number; ancho: number; alto: number }): Promise<{ numero: number; creado: boolean }> {
     const tabla = (await this.tablas.leer()) ?? TablaDeGrh.vacia();
     const existente = tabla.buscarRecorte(recorte.archivo, recorte.x, recorte.y, recorte.ancho, recorte.alto);
     if (existente) return { numero: existente.numero, creado: false };

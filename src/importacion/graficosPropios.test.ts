@@ -50,6 +50,24 @@ describe("números de GRH propios", () => {
     expect(await new GrhDeRecorte(repo).ejecutar({ archivo: "77", x: 0, y: 0, ancho: 32, alto: 32 })).toEqual({ numero: 506, creado: false });
   });
 
+  it("dos recortes elegidos a la vez se llevan números distintos", async () => {
+    // Elegir dos tiles seguidos es lo normal, y leer-elegir-guardar no puede solaparse: si los dos
+    // leen la misma tabla se llevan el mismo número y el segundo guardado borra al primero.
+    const repo = new MemoriaTablaDeGrh();
+    await repo.guardar(TablaDeGrh.desde([estatico(10, "1", 0, 0)]));
+    const caso = new GrhDeRecorte(repo);
+
+    const [a, b] = await Promise.all([
+      caso.ejecutar({ archivo: "2", x: 0, y: 0, ancho: 32, alto: 32 }),
+      caso.ejecutar({ archivo: "2", x: 32, y: 0, ancho: 32, alto: 32 }),
+    ]);
+
+    expect([a.numero, b.numero].sort((x, y) => x - y)).toEqual([11, 12]);
+    const tabla = await repo.leer();
+    expect(tabla?.obtener(11)).not.toBeNull();
+    expect(tabla?.obtener(12)).not.toBeNull();
+  });
+
   it("sirve aunque nunca se haya importado un Graficos.ini", async () => {
     const repo = new MemoriaTablaDeGrh();
 
