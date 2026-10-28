@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { Mapa } from "./dominio/Mapa";
 import { FormatoMapaClasico } from "./infraestructura/FormatoMapaClasico";
+import { MapaMapper } from "./infraestructura/MapaDto";
 
 /**
  * La prueba que de verdad dice si el formato se entendió: tomar los mapas del juego, leerlos,
@@ -51,6 +52,34 @@ describe.skipIf(!CARPETA)("mapas reales del juego", () => {
     console.log(`  ${nombres.length} mapas · anchos de gráfico usados: ${[...anchos].map(([a, n]) => `${a} bytes ×${n}`).join(", ")}`);
     // Son 317 mapas leídos y reescritos: con el disco frío no entra en los 5 segundos de siempre.
   }, 120_000);
+
+  it("guardarlos en el proyecto no desbarranca el tamaño", () => {
+    /*
+     * El formato del proyecto se mide contra mapas de verdad y no contra uno de prueba con el piso
+     * parejo, que comprimiría de maravilla y no diría nada.
+     *
+     * Pesa más que el binario del juego —JSON contra bytes crudos, y un mapa real tiene el piso
+     * salpicado de variantes de pasto— y está bien: a cambio es legible, se diffea en git y no
+     * depende del formato de ninguna versión de AO. Lo que este test cuida es que no se dispare:
+     * sin comprimir por repetición serían 40.000 números sueltos por mapa.
+     */
+    let delJuego = 0;
+    let delProyecto = 0;
+
+    for (const nombre of nombres.slice(0, 40)) {
+      const base = join(carpeta, nombre.slice(0, -4));
+      const map = readFileSync(`${base}.map`);
+      const inf = readFileSync(`${base}.inf`);
+      const numero = Number(nombre.replace(/[^0-9]/g, "")) || 1;
+      const { mapa, ancho } = formato.leer(numero, aBuffer(map), aBuffer(inf));
+
+      delJuego += map.length + inf.length;
+      delProyecto += JSON.stringify(MapaMapper.aDto({ mapa, anchoDeGrafico: ancho, nombreArchivo: nombre.slice(0, -4) })).length;
+    }
+
+    expect(delProyecto).toBeLessThan(delJuego * 2);
+    console.log(`  40 mapas: ${Math.round(delJuego / 1024)} KB en el juego · ${Math.round(delProyecto / 1024)} KB en data/mapas`);
+  }, 60_000);
 
   it("el .dat se lee cuando está al lado", () => {
     const conDat = nombres.find((n) => {

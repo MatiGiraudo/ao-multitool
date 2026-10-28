@@ -2,6 +2,7 @@ import type { HojaRepositorio } from "@/graficos/dominio/HojaRepositorio";
 import { esElArchivo } from "@/importacion/dominio/nombres";
 import type { TablaDeGrhRepositorio } from "@/importacion/dominio/TablaDeGrhRepositorio";
 import type { Mapa } from "../dominio/Mapa";
+import type { MapaGuardado, MapaRepositorio, ResumenDeMapa } from "../dominio/MapaRepositorio";
 import { FormatoMapaClasico, type AnchoDeGrafico, type ArchivosDeMapa } from "../infraestructura/FormatoMapaClasico";
 
 /*
@@ -27,6 +28,38 @@ export class AbrirMapaClasico {
   /** Para la ida y vuelta: devuelve los tres archivos tal como los espera el juego. */
   escribir(mapa: Mapa, ancho: AnchoDeGrafico = 4): ArchivosDeMapa {
     return this.formato.escribir(mapa, ancho);
+  }
+}
+
+/*
+ * Los mapas del proyecto, que son los que sobreviven a cerrar la pestaña. Son cuatro llamadas al
+ * repositorio y no mucho más: la gracia está en el formato (ver `MapaDto`), no acá.
+ */
+export class ListarMapasGuardados {
+  constructor(private readonly repo: MapaRepositorio) {}
+  ejecutar(): Promise<ResumenDeMapa[]> {
+    return this.repo.listar();
+  }
+}
+
+export class AbrirMapaGuardado {
+  constructor(private readonly repo: MapaRepositorio) {}
+  ejecutar(numero: number): Promise<MapaGuardado | null> {
+    return this.repo.obtener(numero);
+  }
+}
+
+export class GuardarMapa {
+  constructor(private readonly repo: MapaRepositorio) {}
+  ejecutar(guardado: MapaGuardado): Promise<void> {
+    return this.repo.guardar(guardado);
+  }
+}
+
+export class EliminarMapaGuardado {
+  constructor(private readonly repo: MapaRepositorio) {}
+  ejecutar(numero: number): Promise<void> {
+    return this.repo.eliminar(numero);
   }
 }
 

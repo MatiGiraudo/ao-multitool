@@ -19,6 +19,7 @@ Se apoya en **[ARQUITECTURA.md](ARQUITECTURA.md)**, en especial en la receta de 
 | Hechizos | ✅ Lista | `src/hechizos/` | `ao-spells` |
 | NPCs | ✅ Lista | `src/npcs/` | `ao-npcs` |
 | Mapas | ✅ Lista (visor + editor) | `src/mapas/` | `.map` + `.inf` + `.dat` |
+| Guardar mapas en el proyecto | ✅ Lista | `src/mapas/` | `data/mapas/<numero>.json` |
 | Exportar todo de una vez | ✅ Lista | `src/proyecto/` | — |
 | Diagnóstico del mundo | ✅ Lista | `src/proyecto/` | — |
 
@@ -302,7 +303,9 @@ Lo que salió distinto de lo previsto, y por qué:
 - **Las herramientas son cuentas, no botones.** `herramientas.ts` calcula los cambios sin tocar el mapa; el que escribe es siempre el historial. Por eso se prueban sin lienzo ni mouse.
 - **Todavía no hay `data/mapas/<numero>.json`.** La salida del editor son los `.map`/`.inf`/`.dat`, que es lo que el juego lee y lo que se pidió: crear mapas desde el navegador listos para cualquier versión de AO. El guardado propio del proyecto queda pendiente, con su cadencia aparte.
 
-Pendiente de la entrega B: el `CatalogoDeTiles` que evite depender de la tabla de GRH importada, y guardar el mapa en el proyecto (`data/mapas/<numero>.json`) para no perder lo hecho al recargar.
+**Guardado en el proyecto ✅ (27/10/2026).** Un mapa = un archivo `data/mapas/<numero>.json`, con su propio formato (`ao-mapa` v1). Las capas, los bloqueos, los triggers y las partículas van comprimidos por repetición —una capa que nadie usó son dos números— y lo del `.inf` va como lista de celdas. Pesa más que el binario del juego (40 mapas de Alkon: 2.446 KB contra 3.342 KB) y a cambio se lee, se diffea en git y no depende del formato de ninguna versión de AO. El editor lo guarda solo un segundo después de cada cambio, pero recién a partir del primer «Guardar en el proyecto»: abrir un mapa del juego para mirarlo no lo copia a `data/`.
+
+Pendiente de la entrega B: el `CatalogoDeTiles` que evite depender de la tabla de GRH importada.
 
 Lo que hace a Mapas distinto de todo lo anterior:
 

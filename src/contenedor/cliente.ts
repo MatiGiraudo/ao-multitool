@@ -91,7 +91,15 @@ import {
   ImportarTablaDeGrh,
 } from "@/importacion/aplicacion/casosDeUso";
 import { PuenteDeGrh } from "@/importacion/aplicacion/PuenteDeGrh";
-import { AbrirMapaClasico, ResolverGraficosDelMapa } from "@/mapas/aplicacion/casosDeUso";
+import {
+  AbrirMapaClasico,
+  AbrirMapaGuardado,
+  EliminarMapaGuardado,
+  GuardarMapa,
+  ListarMapasGuardados,
+  ResolverGraficosDelMapa,
+} from "@/mapas/aplicacion/casosDeUso";
+import { HttpMapaRepositorio } from "@/mapas/infraestructura/navegador/HttpMapaRepositorio";
 import { LectorAparienciasIni } from "@/importacion/infraestructura/LectorAparienciasIni";
 import { LectorFxsIni } from "@/importacion/infraestructura/LectorFxsIni";
 import { LectorGraficosIni } from "@/importacion/infraestructura/LectorGraficosIni";
@@ -137,6 +145,7 @@ function crear() {
   const puente = new PuenteDeGrh(hojas, ids);
 
   const quitarFondoDeHoja = new QuitarFondoDeHoja(hojas, imagenes, procesador);
+  const mapasGuardados = new HttpMapaRepositorio();
 
   return {
     ubicadorDeImagenes: imagenes,
@@ -217,6 +226,10 @@ function crear() {
     mapas: {
       abrir: new AbrirMapaClasico(),
       resolverGraficos: new ResolverGraficosDelMapa(tablaDeGrh, hojas),
+      listarGuardados: new ListarMapasGuardados(mapasGuardados),
+      abrirGuardado: new AbrirMapaGuardado(mapasGuardados),
+      guardar: new GuardarMapa(mapasGuardados),
+      eliminarGuardado: new EliminarMapaGuardado(mapasGuardados),
     },
     clasico: {
       tablaDeGrh: new ImportarTablaDeGrh(new LectorGraficosIni(), tablaDeGrh, hojas),

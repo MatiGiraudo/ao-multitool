@@ -11,6 +11,8 @@ import { ArchivosCabezaRepositorio, ArchivosCuerpoRepositorio } from "@/aparienc
 import { EliminarEfecto, GuardarEfecto, ListarEfectos } from "@/fx/aplicacion/casosDeUso";
 import { EliminarHechizo, GuardarHechizo, ListarHechizos } from "@/hechizos/aplicacion/casosDeUso";
 import { ArchivosHechizoRepositorio } from "@/hechizos/infraestructura/servidor/ArchivosHechizoRepositorio";
+import { EliminarMapaGuardado, GuardarMapa, ListarMapasGuardados } from "@/mapas/aplicacion/casosDeUso";
+import { ArchivosMapaRepositorio } from "@/mapas/infraestructura/servidor/ArchivosMapaRepositorio";
 import { ArchivosTablaDeGrh } from "@/importacion/infraestructura/servidor/ArchivosTablaDeGrh";
 import { EliminarNpc, GuardarNpc, ListarNpcs } from "@/npcs/aplicacion/casosDeUso";
 import { ArchivosNpcRepositorio } from "@/npcs/infraestructura/servidor/ArchivosNpcRepositorio";
@@ -34,6 +36,7 @@ const cabezas = new ArchivosCabezaRepositorio();
 const hechizos = new ArchivosHechizoRepositorio();
 const npcs = new ArchivosNpcRepositorio();
 const tablaDeGrh = new ArchivosTablaDeGrh();
+const mapas = new ArchivosMapaRepositorio();
 
 export const servidor = {
   hojas,
@@ -65,6 +68,10 @@ export const servidor = {
   listarNpcs: new ListarNpcs(npcs),
   guardarNpc: new GuardarNpc(npcs),
   eliminarNpc: new EliminarNpc(npcs),
+  mapas,
+  listarMapas: new ListarMapasGuardados(mapas),
+  guardarMapa: new GuardarMapa(mapas),
+  eliminarMapa: new EliminarMapaGuardado(mapas),
   tablaDeGrh,
   guardarExportacion: new GuardarExportacion(new ArchivosAlmacenDeExportacion()),
 };

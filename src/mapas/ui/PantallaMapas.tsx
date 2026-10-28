@@ -1,12 +1,13 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAplicacion } from "@/compartido/ui/Aplicacion";
-import { BotonArchivos, CampoNumero, Cargando } from "@/compartido/ui/componentes";
+import { BotonArchivos, BotonConfirmar, CampoNumero, Cargando } from "@/compartido/ui/componentes";
 import { descargar } from "@/compartido/ui/utilidades";
 import type { GraficosDelMapa } from "../aplicacion/casosDeUso";
 import { Historial } from "../dominio/Historial";
 import { AJUSTES_POR_DEFECTO, type Ajustes, type Herramienta } from "../dominio/herramientas";
 import { Mapa, type InfoDeMapa } from "../dominio/Mapa";
+import type { ResumenDeMapa } from "../dominio/MapaRepositorio";
 import type { AnchoDeGrafico } from "../infraestructura/FormatoMapaClasico";
 import { DatosDelMapa } from "./DatosDelMapa";
 import { ATAJOS, BarraDeEdicion, PaletaDeGraficos } from "./HerramientasDeMapa";
@@ -56,6 +57,10 @@ export function PantallaMapas() {
   const [revision, setRevision] = useState(0);
   const [sinGuardar, setSinGuardar] = useState(false);
   const [numeroNuevo, setNumeroNuevo] = useState(1);
+  const [guardados, setGuardados] = useState<ResumenDeMapa[]>([]);
+  /* El mapa abierto ya vive en el proyecto: a partir de ahí se guarda solo, como el resto del editor. */
+  const [enProyecto, setEnProyecto] = useState(false);
+  const [guardando, setGuardando] = useState(false);
   /** Gráficos que ya se pidieron para el pincel, resueltos o no, para no pedirlos en cada tecla. */
   const intentados = useRef(new Set<number>());
   const usadosAnteriores = useRef<number[]>([]);
@@ -82,6 +87,62 @@ export function PantallaMapas() {
     avisar(encontrados.length ? `${encontrados.length} mapas encontrados.` : "No encontré ningún .map con su .inf al lado.");
   };
 
+  /** Lo que hace falta para poner un mapa en pantalla, venga de donde venga. */
+  const montar = useCallback(
+    async (mapa: Mapa, ancho: AnchoDeGrafico, nombreArchivo: string, empezo: number): Promise<Abierto> => {
+      const graficos = await casos.mapas.resolverGraficos.ejecutar(mapa);
+      const imagenes = await cargarHojas(graficos, (hojaId, version) => casos.ubicadorDeImagenes.urlDe(hojaId, version));
+      return { mapa, ancho, nombreArchivo, graficos, imagenes, historial: new Historial(), ms: Math.round(performance.now() - empezo) };
+    },
+    [casos],
+  );
+
+  const refrescarGuardados = useCallback(async () => {
+    const lista = await intentar(() => casos.mapas.listarGuardados.ejecutar());
+    if (lista) setGuardados(lista);
+  }, [casos, intentar]);
+
+  useEffect(() => {
+    void refrescarGuardados();
+  }, [refrescarGuardados]);
+
+  const abrirDelProyecto = useCallback(
+    async (numero: number) => {
+      if (sinGuardar && !confirm("Tenés cambios sin exportar en el mapa abierto. ¿Abrir otro y perderlos?")) return;
+      setAbriendo(numero);
+      const empezo = performance.now();
+      const resultado = await intentar(async () => {
+        const guardado = await casos.mapas.abrirGuardado.ejecutar(numero);
+        if (!guardado) throw new Error("Ese mapa ya no está guardado.");
+        return montar(guardado.mapa, guardado.anchoDeGrafico, guardado.nombreArchivo, empezo);
+      }, `Abriendo el mapa ${numero}`);
+      setAbriendo(null);
+      if (!resultado) return;
+      intentados.current.clear();
+      setAbierto(resultado);
+      setSinGuardar(false);
+      setEnProyecto(true);
+      setSello((n) => n + 1);
+      setRevision((n) => n + 1);
+    },
+    [casos, intentar, montar, sinGuardar],
+  );
+
+  const guardarEnProyecto = useCallback(
+    async (abierto: Abierto) => {
+      setGuardando(true);
+      const ok = await intentar(async () => {
+        await casos.mapas.guardar.ejecutar({ mapa: abierto.mapa, anchoDeGrafico: abierto.ancho, nombreArchivo: abierto.nombreArchivo });
+        return true;
+      });
+      setGuardando(false);
+      if (!ok) return;
+      setEnProyecto(true);
+      void refrescarGuardados();
+    },
+    [casos, intentar, refrescarGuardados],
+  );
+
   const abrir = useCallback(
     async (trio: Trio) => {
       if (sinGuardar && !confirm("Tenés cambios sin exportar en el mapa abierto. ¿Abrir otro y perderlos?")) return;
@@ -91,27 +152,18 @@ export function PantallaMapas() {
         const [map, inf] = await Promise.all([trio.map.arrayBuffer(), trio.inf.arrayBuffer()]);
         const dat = trio.dat ? await leerAnsi(trio.dat) : undefined;
         const { mapa, ancho } = casos.mapas.abrir.ejecutar({ numero: trio.numero, map, inf, dat });
-        const graficos = await casos.mapas.resolverGraficos.ejecutar(mapa);
-        const imagenes = await cargarHojas(graficos, (hojaId, version) => casos.ubicadorDeImagenes.urlDe(hojaId, version));
-        return {
-          mapa,
-          ancho,
-          nombreArchivo: trio.nombre,
-          graficos,
-          imagenes,
-          historial: new Historial(),
-          ms: Math.round(performance.now() - empezo),
-        };
+        return montar(mapa, ancho, trio.nombre, empezo);
       }, `Abriendo ${trio.nombre}`);
       setAbriendo(null);
       if (!resultado) return;
       intentados.current.clear();
       setAbierto(resultado);
       setSinGuardar(false);
+      setEnProyecto(false);
       setSello((n) => n + 1);
       setRevision((n) => n + 1);
     },
-    [casos, intentar, sinGuardar],
+    [casos, intentar, montar, sinGuardar],
   );
 
   /**
@@ -137,6 +189,7 @@ export function PantallaMapas() {
       ms: 0,
     });
     setSinGuardar(false);
+    setEnProyecto(false);
     setEditando(true);
     setSello((n) => n + 1);
     setRevision((n) => n + 1);
@@ -222,6 +275,17 @@ export function PantallaMapas() {
     };
   }, [abierto, ajustes.grh, casos]);
 
+  /*
+   * Una vez que el mapa está en el proyecto se guarda solo, como todo el resto del editor: un
+   * segundo después del último cambio. Antes no, porque guardar sería decidir por el usuario que
+   * un mapa del juego que sólo estaba mirando ahora vive en `data/mapas`.
+   */
+  useEffect(() => {
+    if (!abierto || !enProyecto || !sello) return;
+    const t = setTimeout(() => void guardarEnProyecto(abierto), 1000);
+    return () => clearTimeout(t);
+  }, [abierto, enProyecto, sello, guardarEnProyecto]);
+
   // Avisar antes de cerrar la pestaña con cambios sin exportar.
   useEffect(() => {
     if (!sinGuardar) return;
@@ -259,7 +323,7 @@ export function PantallaMapas() {
   return (
     <main className="mapa-layout">
       <section className="panel">
-        <h2>Mapas ({trios.length})</h2>
+        <h2>Mapas</h2>
         <BotonArchivos accept=".map,.inf,.dat" carpeta onArchivos={elegirCarpeta} className="primary">
           Elegir la carpeta Mundos…
         </BotonArchivos>
@@ -270,6 +334,38 @@ export function PantallaMapas() {
             + Mapa nuevo
           </button>
         </div>
+        {!!guardados.length && (
+          <>
+            <h2>En el proyecto ({guardados.length})</h2>
+            <div className="olist-items">
+              {guardados.map((g) => (
+                <div key={g.numero} className="row between">
+                  <button
+                    className={`oitem${abierto?.mapa.numero === g.numero && enProyecto ? " on" : ""}`}
+                    style={{ gridTemplateColumns: "minmax(0, 1fr)" }}
+                    onClick={() => void abrirDelProyecto(g.numero)}
+                  >
+                    <span style={{ minWidth: 0 }}>
+                      <span className="nm">{g.nombre || g.nombreArchivo}</span>
+                      <span className="meta">#{g.numero}</span>
+                    </span>
+                  </button>
+                  <BotonConfirmar
+                    confirmacion="¿Seguro?"
+                    onConfirmar={async () => {
+                      await intentar(async () => (await casos.mapas.eliminarGuardado.ejecutar(g.numero), true));
+                      if (abierto?.mapa.numero === g.numero) setEnProyecto(false);
+                      void refrescarGuardados();
+                    }}
+                  >
+                    ✕
+                  </BotonConfirmar>
+                </div>
+              ))}
+            </div>
+            <h2>Del juego ({trios.length})</h2>
+          </>
+        )}
         <div className="olist-items">
           {trios.map((t) => (
             <button
@@ -319,6 +415,10 @@ export function PantallaMapas() {
                   correría el mapa para abajo justo mientras se pinta. */}
               <div className="row">
                 {sinGuardar && <span className="pill warn">sin exportar</span>}
+                <span className="status">{guardando ? "Guardando…" : enProyecto ? "Guardado en data/mapas" : ""}</span>
+                <button onClick={() => void guardarEnProyecto(abierto)} disabled={guardando || enProyecto} title="Para no perderlo al recargar">
+                  {enProyecto ? "En el proyecto" : "Guardar en el proyecto"}
+                </button>
                 <button className="primary" onClick={exportar}>
                   Exportar .map .inf .dat
                 </button>
