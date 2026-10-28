@@ -10,6 +10,7 @@ import { FormatoAoAnim } from "@/graficos/infraestructura/FormatoAoAnim";
 import { CatalogoGraficoDesdeHojas } from "@/graficos/infraestructura/CatalogoGraficoDesdeHojas";
 import { MemoriaHojaRepositorio } from "@/graficos/infraestructura/memoria";
 import { Hechizo } from "@/hechizos/dominio/Hechizo";
+import { Mapa } from "@/mapas/dominio/Mapa";
 import { Npc } from "@/npcs/dominio/Npc";
 import { Objeto } from "@/objetos/dominio/Objeto";
 import { ExportarTodo, type ArchivoExportado } from "./aplicacion/ExportarTodo";
@@ -116,7 +117,7 @@ describe("ArchivoExportado por HTTP", () => {
 describe("RevisarMundo", () => {
   const hoja = hojaCon("h1", "cuerpo.png", "caminar_sur");
   const revisor = new RevisarMundo(new MemoriaHojaRepositorio(), {} as never, fabricaDeCatalogo);
-  const vacio: MundoParaRevisar = { hojas: [hoja], objetos: [], efectos: [], cuerpos: [], cabezas: [], hechizos: [], npcs: [] };
+  const vacio: MundoParaRevisar = { hojas: [hoja], objetos: [], efectos: [], cuerpos: [], cabezas: [], hechizos: [], npcs: [], mapas: [], grhConocidos: [] };
 
   const pergamino = (numero: number, hechizo: number | null) => {
     let o = Objeto.crear(`p${numero}`, numero).renombrado("Pergamino").conTipo("pergamino");
@@ -147,6 +148,33 @@ describe("RevisarMundo", () => {
     const sinNumero = revisor.revisar({ ...vacio, objetos: [pergamino(1, null)] });
     expect(sinNumero.items.flatMap((i) => i.problemas.map((p) => p.mensaje))).toContain("Pergamino sin hechizo");
     expect(sinNumero.errores).toBe(0);
+  });
+
+  it("ve el mapa que pone un NPC que no existe: el otro gran cruce", () => {
+    const mapa = Mapa.vacio(1, { nombre: "Ullathorpe" });
+    mapa.ponerGrafico(10, 10, 1, 1000);
+    mapa.ponerNpc(10, 10, 999);
+    mapa.ponerTraslado(5, 5, { mapa: 77, x: 50, y: 50 });
+
+    const r = revisor.revisar({ ...vacio, mapas: [{ mapa, anchoDeGrafico: 4, nombreArchivo: "Mapa1" }] });
+
+    const mapas = r.items.find((i) => i.familia === "Mapas")!;
+    expect(mapas.etiqueta).toBe("#1 Ullathorpe");
+    expect(mapas.href).toBe("/mapas");
+    expect(mapas.problemas.map((p) => p.mensaje)).toEqual([
+      "Traslados a mapas que no están en el proyecto: 77",
+      "NPCs que no existen: 999",
+    ]);
+    expect(r.familias.find((f) => f.familia === "Mapas")).toMatchObject({ revisadas: 1, errores: 2, avisos: 0 });
+  });
+
+  it("un mapa que apunta a lo que sí existe no molesta", () => {
+    const mapa = Mapa.vacio(1, { nombre: "Ullathorpe" });
+    mapa.ponerGrafico(10, 10, 1, 1000);
+    mapa.ponerNpc(10, 10, 25);
+    const npc = Npc.crear("n1", 25).renombrado("Lobo");
+    const r = revisor.revisar({ ...vacio, npcs: [npc], mapas: [{ mapa, anchoDeGrafico: 4, nombreArchivo: "Mapa1" }] });
+    expect(r.items.some((i) => i.familia === "Mapas")).toBe(false);
   });
 
   it("marca como error los nombres de animación repetidos, porque el JSON los referencia por nombre", () => {

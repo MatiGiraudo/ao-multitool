@@ -48,7 +48,11 @@ export function PantallaDiagnostico() {
           </div>
           <p className="hint">
             Un <b>error</b> rompe la exportación o deja algo sin dibujar del otro lado: un ID repetido, un vínculo gráfico roto, un pergamino que
-            apunta a un hechizo que no existe. Un <b>aviso</b> es algo a medio terminar que el juego igual puede leer.
+            apunta a un hechizo que no existe, un traslado a un mapa que no está en el proyecto. Un <b>aviso</b> es algo a medio terminar que el juego
+            igual puede leer.
+          </p>
+          <p className="hint">
+            De los mapas se revisan los que guardaste en el proyecto; los que abrís desde la carpeta del juego viven en memoria y no entran.
           </p>
         </section>
 

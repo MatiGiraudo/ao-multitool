@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ExportarMapasAlJuego } from "./aplicacion/casosDeUso";
+import { ExportarMapasAlJuego, LeerTodosLosMapas } from "./aplicacion/casosDeUso";
 import { ALTO, ANCHO, Mapa } from "./dominio/Mapa";
 import type { MapaGuardado } from "./dominio/MapaRepositorio";
 import { FormatoMapaClasico } from "./infraestructura/FormatoMapaClasico";
@@ -87,7 +87,7 @@ describe("ExportarMapasAlJuego", () => {
   }
 
   it("da los tres archivos de cada mapa, en la carpeta que espera el juego", async () => {
-    const archivos = await new ExportarMapasAlJuego(await conDosMapas()).ejecutar();
+    const archivos = await new ExportarMapasAlJuego(new LeerTodosLosMapas(await conDosMapas())).ejecutar();
 
     expect(archivos.map((a) => `${a.carpeta}/${a.nombreArchivo}`)).toEqual([
       "Mundos/Mapa7.map",
@@ -106,7 +106,7 @@ describe("ExportarMapasAlJuego", () => {
     const repo = new MemoriaMapaRepositorio();
     await repo.guardar(guardado());
 
-    const archivos = await new ExportarMapasAlJuego(repo).ejecutar();
+    const archivos = await new ExportarMapasAlJuego(new LeerTodosLosMapas(repo)).ejecutar();
     const map = archivos.find((a) => a.nombreArchivo.endsWith(".map"))!.contenido as Uint8Array;
     const inf = archivos.find((a) => a.nombreArchivo.endsWith(".inf"))!.contenido as Uint8Array;
     const dat = archivos.find((a) => a.nombreArchivo.endsWith(".dat"))!.contenido as string;
@@ -122,7 +122,7 @@ describe("ExportarMapasAlJuego", () => {
   });
 
   it("sin mapas guardados no exporta nada, y eso no es un error", async () => {
-    expect(await new ExportarMapasAlJuego(new MemoriaMapaRepositorio()).ejecutar()).toEqual([]);
+    expect(await new ExportarMapasAlJuego(new LeerTodosLosMapas(new MemoriaMapaRepositorio())).ejecutar()).toEqual([]);
   });
 });
 

@@ -8,6 +8,8 @@ import type { HojaDeSprites } from "@/graficos/dominio/HojaDeSprites";
 import type { HojaRepositorio } from "@/graficos/dominio/HojaRepositorio";
 import type { Hechizo } from "@/hechizos/dominio/Hechizo";
 import { ValidadorDeHechizos } from "@/hechizos/dominio/servicios";
+import type { MapaGuardado } from "@/mapas/dominio/MapaRepositorio";
+import { ValidadorDeMapas } from "@/mapas/dominio/servicios";
 import type { Npc } from "@/npcs/dominio/Npc";
 import { ValidadorDeNpcs } from "@/npcs/dominio/servicios";
 import type { Objeto } from "@/objetos/dominio/Objeto";
@@ -60,6 +62,10 @@ export interface MundoParaRevisar {
   cabezas: Apariencia[];
   hechizos: Hechizo[];
   npcs: Npc[];
+  /** Los mapas guardados en el proyecto; los que sólo se abrieron del juego no se revisan. */
+  mapas: MapaGuardado[];
+  /** Los números de GRH que la tabla conoce, para ver si un mapa pinta con algo que no existe. */
+  grhConocidos: number[];
 }
 
 /** De dónde sale cada familia. Se pasa entera para poder revisar sin montar las pantallas. */
@@ -70,6 +76,8 @@ export interface LectoresDelMundo {
   cabezas(): Promise<Apariencia[]>;
   hechizos(): Promise<Hechizo[]>;
   npcs(): Promise<Npc[]>;
+  mapas(): Promise<MapaGuardado[]>;
+  grhConocidos(): Promise<number[]>;
 }
 
 export class RevisarMundo {
@@ -80,7 +88,7 @@ export class RevisarMundo {
   ) {}
 
   async ejecutar(): Promise<RevisionDelMundo> {
-    const [hojas, objetos, efectos, cuerpos, cabezas, hechizos, npcs] = await Promise.all([
+    const [hojas, objetos, efectos, cuerpos, cabezas, hechizos, npcs, mapas, grhConocidos] = await Promise.all([
       this.hojas.listar(),
       this.lectores.objetos(),
       this.lectores.efectos(),
@@ -88,8 +96,10 @@ export class RevisarMundo {
       this.lectores.cabezas(),
       this.lectores.hechizos(),
       this.lectores.npcs(),
+      this.lectores.mapas(),
+      this.lectores.grhConocidos(),
     ]);
-    return this.revisar({ hojas, objetos, efectos, cuerpos, cabezas, hechizos, npcs });
+    return this.revisar({ hojas, objetos, efectos, cuerpos, cabezas, hechizos, npcs, mapas, grhConocidos });
   }
 
   /** Lo mismo, con todo ya cargado: así los tests no necesitan repositorios. */
@@ -166,6 +176,24 @@ export class RevisarMundo {
       "/npcs",
       mundo.npcs.length,
       mundo.npcs.map((n) => ({ etiqueta: `#${n.numero} ${n.nombre || "(sin nombre)"}`, problemas: ValidadorDeNpcs.problemas(n, mundo.npcs, catalogosDelNpc) })),
+    );
+
+    /* El mapa es el otro gran cruce, junto con el NPC: apunta a otros mapas, a NPCs, a objetos y
+     * a gráficos, todo por número y sin que ninguno de ellos sepa que lo apuntan. */
+    const catalogosDelMapa = {
+      npcs: catalogoDe(mundo.npcs),
+      objetos: catalogoDe(mundo.objetos),
+      mapas: catalogoDe(mundo.mapas.map((g) => ({ numero: g.mapa.numero, nombre: g.mapa.info.nombre }))),
+      graficos: catalogoDe(mundo.grhConocidos.map((numero) => ({ numero, nombre: `grh ${numero}` }))),
+    };
+    sumar(
+      "Mapas",
+      "/mapas",
+      mundo.mapas.length,
+      mundo.mapas.map((g) => ({
+        etiqueta: `#${g.mapa.numero} ${g.mapa.info.nombre || "(sin nombre)"}`,
+        problemas: ValidadorDeMapas.problemas(g.mapa, catalogosDelMapa),
+      })),
     );
 
     // Primero lo que está roto, y dentro de eso el orden en que se revisó.

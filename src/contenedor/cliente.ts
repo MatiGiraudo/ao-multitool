@@ -99,6 +99,7 @@ import {
   EliminarMapaGuardado,
   ExportarMapasAlJuego,
   GuardarMapa,
+  LeerTodosLosMapas,
   ListarMapasGuardados,
   ResolverGraficosDelMapa,
 } from "@/mapas/aplicacion/casosDeUso";
@@ -152,6 +153,7 @@ function crear() {
   const mapasGuardados = new HttpMapaRepositorio();
   /* Uno solo: lo usan el botón de «Importar» y la exportación del mundo entero. */
   const exportarGraficosIni = new ExportarGraficosIni(tablaDeGrh, new EscritorGraficosIni());
+  const leerTodosLosMapas = new LeerTodosLosMapas(mapasGuardados);
 
   return {
     ubicadorDeImagenes: imagenes,
@@ -276,7 +278,7 @@ function crear() {
       ],
       [
         // El mundo: los tres archivos de cada mapa, y la tabla de GRH que les da sentido.
-        () => new ExportarMapasAlJuego(mapasGuardados).ejecutar(),
+        () => new ExportarMapasAlJuego(leerTodosLosMapas).ejecutar(),
         () => exportarGraficosIni.archivoSiHay(),
       ]),
       guardarExportacion: new GuardarExportacion(new HttpAlmacenDeExportacion()),
@@ -289,6 +291,8 @@ function crear() {
           cabezas: () => new ListarApariencias(cabezas).ejecutar(),
           hechizos: () => new ListarHechizos(hechizos).ejecutar(),
           npcs: () => new ListarNpcs(npcs).ejecutar(),
+          mapas: () => leerTodosLosMapas.ejecutar(),
+          grhConocidos: async () => (await tablaDeGrh.leer())?.datos().map((g) => g.numero) ?? [],
         },
         fabricaDeCatalogo,
       ),
