@@ -107,6 +107,17 @@ export class HojaDeSprites {
   }
 
   /**
+   * Los píxeles de la imagen cambiaron pero el tamaño no (sacarle el fondo, por ejemplo).
+   *
+   * Sube la versión para que el navegador no siga mostrando la copia vieja, y no toca el tamaño
+   * original: si la hoja venía redimensionada, lo sigue estando.
+   */
+  conImagenRetocada(): HojaDeSprites {
+    asegurar(this.d.tamanio !== null, "Esta hoja todavía no tiene imagen.");
+    return this.con({ versionImagen: this.d.versionImagen + 1 });
+  }
+
+  /**
    * La imagen cambió de tamaño. Si `escalarContenido` es true, frames y grilla
    * se escalan en la misma proporción para que los recortes sigan calzando.
    */

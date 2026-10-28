@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Cargando } from "@/compartido/ui/componentes";
 import { colorCss } from "@/compartido/ui/utilidades";
 import type { Animacion } from "../dominio/Animacion";
@@ -23,6 +23,8 @@ interface Props {
   onSeleccion(seleccion: Set<number>, ultimo: number): void;
   onDesplazar(indices: number[], dx: number, dy: number, sinAjuste: boolean): void;
   onEstado(e: { posicion?: string; detalle?: string }): void;
+  /** Un escalón de zoom; devuelve el que quedó (el mismo si ya estaba en el tope). */
+  onZoom(direccion: 1 | -1): number;
   onSoltarArchivo(f: File): void;
 }
 
@@ -38,6 +40,8 @@ type Arrastre =
  */
 export function LienzoDeHoja(p: Props) {
   const canvas = useRef<HTMLCanvasElement>(null);
+  const caja = useRef<HTMLDivElement>(null);
+  const foco = useRef<{ ix: number; iy: number; cx: number; cy: number } | null>(null);
   const [arrastre, setArrastre] = useState<Arrastre | null>(null);
   const [hover, setHover] = useState<Celda | null>(null);
   const [soltando, setSoltando] = useState(false);
@@ -165,8 +169,9 @@ export function LienzoDeHoja(p: Props) {
     return { dx: r.dx, dy: r.dy };
   };
 
+  // Sin animación elegida igual se marca: el padre crea una con el primer frame.
   const alBajar = (e: React.PointerEvent) => {
-    if (!t || !p.img || !p.animacion || e.button !== 0) return;
+    if (!t || !p.img || e.button !== 0) return;
     const { x, y } = punto(e);
     if (p.modo === "grilla") {
       const celda = p.hoja.grilla.celdaEn(x, y, t);
@@ -245,10 +250,44 @@ export function LienzoDeHoja(p: Props) {
     }
   };
 
+  /*
+   * La rueda hace zoom sobre la hoja; con Shift sigue desplazando, que es para lo que sirven las
+   * barras. Va como listener nativo y no como la prop onWheel de React, porque React la registra
+   * como pasiva y ahí preventDefault no hace nada: la página se movería igual.
+   */
+  useEffect(() => {
+    const d = caja.current;
+    if (!d) return;
+    const alRodar = (e: WheelEvent) => {
+      if (e.shiftKey || e.deltaY === 0) return;
+      e.preventDefault();
+      const c = canvas.current;
+      if (!c) return;
+      const r = c.getBoundingClientRect();
+      const ix = (e.clientX - r.left) / p.zoom,
+        iy = (e.clientY - r.top) / p.zoom;
+      if (p.onZoom(e.deltaY < 0 ? 1 : -1) !== p.zoom) foco.current = { ix, iy, cx: e.clientX, cy: e.clientY };
+    };
+    d.addEventListener("wheel", alRodar, { passive: false });
+    return () => d.removeEventListener("wheel", alRodar);
+  }, [p.zoom, p.onZoom]);
+
+  // Al cambiar el zoom, el píxel que estaba bajo el cursor se queda bajo el cursor.
+  useLayoutEffect(() => {
+    const f = foco.current,
+      d = caja.current;
+    foco.current = null;
+    if (!f || !d) return;
+    const r = d.getBoundingClientRect();
+    d.scrollLeft = f.ix * p.zoom - (f.cx - r.left - d.clientLeft);
+    d.scrollTop = f.iy * p.zoom - (f.cy - r.top - d.clientTop);
+  }, [p.zoom]);
+
   const cursor = p.modo === "mover" ? "default" : "crosshair";
 
   return (
     <div
+      ref={caja}
       className={`lienzo checker${soltando ? " soltando" : ""}`}
       onDragOver={(e) => {
         e.preventDefault();

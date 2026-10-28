@@ -1,6 +1,6 @@
 import { ErrorDeDominio } from "@/compartido/dominio/ErrorDeDominio";
 import { Tamanio } from "../../dominio/Tamanio";
-import type { CalidadDeEscalado, ImagenDecodificada, ProcesadorDeImagenes } from "../../aplicacion/puertos";
+import type { CalidadDeEscalado, ColorRgb, ImagenDecodificada, ProcesadorDeImagenes } from "../../aplicacion/puertos";
 
 /** Procesa imágenes con el canvas del navegador. */
 export class CanvasProcesadorDeImagenes implements ProcesadorDeImagenes {
@@ -13,6 +13,26 @@ export class CanvasProcesadorDeImagenes implements ProcesadorDeImagenes {
     const c = lienzo(img.width, img.height);
     c.getContext("2d")!.drawImage(img, 0, 0);
     return { png: await aPng(c), tamanio };
+  }
+
+  async quitarColor(png: Blob, color: ColorRgb): Promise<{ png: Blob; pixeles: number }> {
+    const img = await cargar(png);
+    const c = lienzo(img.width, img.height);
+    const ctx = c.getContext("2d", { willReadFrequently: true })!;
+    ctx.drawImage(img, 0, 0);
+    const datos = ctx.getImageData(0, 0, c.width, c.height);
+    const p = datos.data;
+    let pixeles = 0;
+    for (let i = 0; i < p.length; i += 4) {
+      if (p[i + 3] !== 0 && p[i] === color.r && p[i + 1] === color.g && p[i + 2] === color.b) {
+        p[i + 3] = 0;
+        pixeles++;
+      }
+    }
+    // Si no había nada de ese color, devolvemos el PNG original en vez de volver a comprimirlo.
+    if (!pixeles) return { png, pixeles };
+    ctx.putImageData(datos, 0, 0);
+    return { png: await aPng(c), pixeles };
   }
 
   async redimensionar(png: Blob, t: Tamanio, calidad: CalidadDeEscalado): Promise<Blob> {

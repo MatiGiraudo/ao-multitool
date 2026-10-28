@@ -5,7 +5,7 @@ import { Animacion } from "../dominio/Animacion";
 import { HojaDeSprites } from "../dominio/HojaDeSprites";
 import type { HojaRepositorio } from "../dominio/HojaRepositorio";
 import type { Tamanio } from "../dominio/Tamanio";
-import type { AlmacenDeImagenes, CalidadDeEscalado, FormatoDeAnimaciones, ProcesadorDeImagenes } from "./puertos";
+import { NEGRO, type AlmacenDeImagenes, type CalidadDeEscalado, type ColorRgb, type FormatoDeAnimaciones, type ProcesadorDeImagenes } from "./puertos";
 
 /*
  * Casos de uso del módulo Gráficos. Cada clase hace UNA cosa (principio de responsabilidad única)
@@ -229,6 +229,82 @@ export class RestaurarImagenOriginal {
     await this.imagenes.guardar(hoja.id, original, "actual");
     await this.repo.guardar(nueva);
     return nueva;
+  }
+}
+
+/**
+ * Deja transparente el fondo de una hoja.
+ *
+ * En el AO clásico las imágenes no tienen canal alfa: el cliente dibuja todo menos los píxeles de
+ * un color, y ese color es el negro puro. Traídas al editor tal cual, esas hojas se ven con el
+ * fondo negro y los sprites recortados contra él.
+ *
+ * No guarda copia «original»: serían cientos de megas duplicados para algo que se puede deshacer
+ * volviendo a cargar la imagen con «Reemplazar imagen…».
+ */
+export class QuitarFondoDeHoja {
+  constructor(
+    private readonly repo: HojaRepositorio,
+    private readonly imagenes: AlmacenDeImagenes,
+    private readonly procesador: ProcesadorDeImagenes,
+  ) {}
+  async ejecutar(e: { hojaId: string; color?: ColorRgb }): Promise<{ hoja: HojaDeSprites; pixeles: number }> {
+    const hoja = await obtenerOFallar(this.repo, e.hojaId);
+    const actual = await this.imagenes.leer(hoja.id, "actual");
+    if (!actual) throw new ErrorDeDominio("Esta hoja todavía no tiene imagen.");
+    const { png, pixeles } = await this.procesador.quitarColor(actual, e.color ?? NEGRO);
+    if (!pixeles) return { hoja, pixeles: 0 };
+    const nueva = hoja.conImagenRetocada();
+    await this.imagenes.guardar(hoja.id, png, "actual");
+    await this.repo.guardar(nueva);
+    return { hoja: nueva, pixeles };
+  }
+}
+
+export interface ResultadoDeFondos {
+  /** Las hojas que quedaron con fondo transparente, ya actualizadas. */
+  limpiadas: HojaDeSprites[];
+  /** Cuántas no tenían un solo píxel de ese color. */
+  sinFondo: number;
+  pixeles: number;
+  fallidas: { hojaId: string; motivo: string }[];
+}
+
+/**
+ * Lo mismo para muchas hojas. Existe porque importar un cliente entero deja miles, y sacarles el
+ * fondo de a una es inviable; por lo demás se comporta igual que `CargarHojasEnLote`: va de a
+ * varias en paralelo, avisa el avance y una hoja que falla no corta el lote.
+ */
+export class QuitarFondoEnLote {
+  constructor(private readonly unaHoja: QuitarFondoDeHoja) {}
+
+  async ejecutar(entrada: {
+    hojaIds: readonly string[];
+    color?: ColorRgb;
+    alAvanzar?: (hechas: number, total: number) => void;
+    enParalelo?: number;
+  }): Promise<ResultadoDeFondos> {
+    const total = entrada.hojaIds.length;
+    const r: ResultadoDeFondos = { limpiadas: [], sinFondo: 0, pixeles: 0, fallidas: [] };
+    let proxima = 0,
+      hechas = 0;
+    const obrero = async () => {
+      while (proxima < total) {
+        const hojaId = entrada.hojaIds[proxima++]!;
+        try {
+          const { hoja, pixeles } = await this.unaHoja.ejecutar({ hojaId, color: entrada.color });
+          if (pixeles) {
+            r.limpiadas.push(hoja);
+            r.pixeles += pixeles;
+          } else r.sinFondo++;
+        } catch (e) {
+          r.fallidas.push({ hojaId, motivo: e instanceof Error ? e.message : String(e) });
+        }
+        entrada.alAvanzar?.(++hechas, total);
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(entrada.enParalelo ?? 4, total) }, obrero));
+    return r;
   }
 }
 

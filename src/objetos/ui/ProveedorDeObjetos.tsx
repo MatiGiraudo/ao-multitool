@@ -44,6 +44,7 @@ export function ProveedorDeObjetos({ children }: { children: ReactNode }) {
     claveDe: (o) => o.clave,
     listar: () => c.listar.ejecutar(),
     guardar: (o) => c.guardar.ejecutar(o),
+    recordarComo: "objetos",
   });
   const { items, cargando, estadoGuardado, actualizar, poner, quitar, cancelarPendiente, guardarPendientes, recargar } = coleccion;
 

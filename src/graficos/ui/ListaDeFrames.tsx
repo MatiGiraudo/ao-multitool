@@ -115,7 +115,8 @@ export function ListaDeFrames(p: Props) {
       <p className="hint">
         Flechas <kbd>←↑↓→</kbd> mueven los frames seleccionados (con <kbd>Shift</kbd>, de a 8 px). <kbd>Ctrl</kbd>+clic o <kbd>Shift</kbd>+clic
         en la lista para elegir varios, <kbd>Ctrl</kbd>+<kbd>A</kbd> todos, <kbd>Esc</kbd> ninguno, <kbd>Supr</kbd> borra. Modos: <kbd>G</kbd>{" "}
-        grilla, <kbd>R</kbd> recuadro, <kbd>V</kbd> mover.
+        grilla, <kbd>R</kbd> recuadro, <kbd>V</kbd> mover. <kbd>Ctrl</kbd>+<kbd>Z</kbd> deshace y <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd>{" "}
+        rehace; la rueda sobre la hoja hace zoom.
       </p>
     </section>
   );

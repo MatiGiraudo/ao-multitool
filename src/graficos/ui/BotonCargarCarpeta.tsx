@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useAplicacion } from "@/compartido/ui/Aplicacion";
 import { BotonArchivos, PuntosDeCarga } from "@/compartido/ui/componentes";
+import { cuantas } from "@/compartido/ui/utilidades";
 import type { ResultadoDeLote } from "../aplicacion/casosDeUso";
 
 /** Lo que el selector de archivos deja elegir cuando se piden imágenes sueltas. */
@@ -85,9 +86,4 @@ function resumen(r: ResultadoDeLote): string {
   if (r.deMas) partes.push(cuantas(r.deMas, "que no hacía falta", "que no hacían falta"));
   if (r.fallidas.length) partes.push(cuantas(r.fallidas.length, "ilegible", "ilegibles"));
   return partes.join(", ") + ".";
-}
-
-/** «1 hoja nueva» y no «1 hojas nuevas»: son mensajes que se leen mil veces. */
-function cuantas(cantidad: number, singular: string, plural: string): string {
-  return `${cantidad.toLocaleString("es-AR")} ${cantidad === 1 ? singular : plural}`;
 }

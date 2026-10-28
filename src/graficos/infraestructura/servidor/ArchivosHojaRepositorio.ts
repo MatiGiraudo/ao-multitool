@@ -6,6 +6,9 @@ import type { HojaDeSprites } from "../../dominio/HojaDeSprites";
 import type { HojaRepositorio } from "../../dominio/HojaRepositorio";
 import { HojaMapper, type HojaDto } from "../HojaDto";
 
+/** Cuántos archivos se leen a la vez al listar. Más arriba no se gana nada: deja de ser el disco. */
+const POR_TANDA = 64;
+
 /**
  * Adaptador de persistencia en disco: una hoja = un archivo `data/graficos/<id>.json`.
  * Un archivo por hoja hace que los cambios se vean claros en git y que dos hojas no choquen.
@@ -21,9 +24,17 @@ export class ArchivosHojaRepositorio implements HojaRepositorio {
     await asegurarCarpeta(this.carpeta);
     const archivos = (await fs.readdir(this.carpeta)).filter((f) => f.endsWith(".json"));
     const hojas: HojaDeSprites[] = [];
-    for (const f of archivos) {
-      const crudo = await fs.readFile(path.join(this.carpeta, f), "utf8");
-      hojas.push(HojaMapper.aDominio(JSON.parse(crudo) as HojaDto));
+    // De a tandas y no de a una: con las miles de hojas que deja importar un cliente clásico, leer
+    // en serie son segundos de espera en cada pantalla. Todas juntas tampoco, que se queda sin
+    // descriptores de archivo.
+    for (let i = 0; i < archivos.length; i += POR_TANDA) {
+      const tanda = await Promise.all(
+        archivos.slice(i, i + POR_TANDA).map(async (f) => {
+          const crudo = await fs.readFile(path.join(this.carpeta, f), "utf8");
+          return HojaMapper.aDominio(JSON.parse(crudo) as HojaDto);
+        }),
+      );
+      hojas.push(...tanda);
     }
     return hojas;
   }

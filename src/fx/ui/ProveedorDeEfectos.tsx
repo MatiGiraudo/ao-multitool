@@ -39,6 +39,7 @@ export function ProveedorDeEfectos({ children }: { children: ReactNode }) {
     claveDe: (e) => e.clave,
     listar: () => c.listar.ejecutar(),
     guardar: (e) => c.guardar.ejecutar(e),
+    recordarComo: "fx",
   });
   const { items, cargando, estadoGuardado, actualizar, poner, quitar, cancelarPendiente, guardarPendientes, recargar } = coleccion;
 
