@@ -42,6 +42,8 @@ interface ValorGraficos {
   eliminar(hojaId: string): Promise<boolean>;
   redimensionar(hojaId: string, tamanio: Tamanio, calidad: CalidadDeEscalado, escalarContenido: boolean): Promise<HojaDeSprites | undefined>;
   restaurarOriginal(hojaId: string, escalarContenido: boolean): Promise<HojaDeSprites | undefined>;
+  /** Deja transparente el fondo de la hoja. Devuelve cuántos píxeles cambió (0 = no tenía fondo). */
+  quitarFondo(hojaId: string): Promise<number | undefined>;
   importar(texto: string): Promise<{ hoja: HojaDeSprites; creada: boolean } | undefined>;
   recargar(): Promise<void>;
   urlImagen(hoja: HojaDeSprites | undefined): string | null;
@@ -108,6 +110,12 @@ export function ProveedorDeGraficos({ children }: { children: ReactNode }) {
         const h = await intentar(() => g.restaurarOriginal.ejecutar({ hojaId, escalarContenido }), "Restaurando el original…");
         if (h) poner(h);
         return h;
+      },
+      async quitarFondo(hojaId) {
+        await guardarPendientes(hojaId);
+        const r = await intentar(() => g.quitarFondo.ejecutar({ hojaId }), "Quitando el fondo…");
+        if (r?.pixeles) poner(r.hoja);
+        return r?.pixeles;
       },
       async importar(texto) {
         await guardarPendientes();

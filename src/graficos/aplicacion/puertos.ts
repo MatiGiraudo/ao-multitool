@@ -30,11 +30,27 @@ export interface ImagenDecodificada {
   tamanio: Tamanio;
 }
 
+export interface ColorRgb {
+  r: number;
+  g: number;
+  b: number;
+}
+
+/** El color que el AO clásico usa como «esto no se dibuja». */
+export const NEGRO: ColorRgb = { r: 0, g: 0, b: 0 };
+
 /** Operaciones sobre píxeles (en el navegador se hacen con canvas). */
 export interface ProcesadorDeImagenes {
   /** Lee cualquier imagen (PNG, BMP, GIF, JPG, WebP) y la devuelve como PNG con su tamaño. */
   decodificar(archivo: Blob): Promise<ImagenDecodificada>;
   redimensionar(png: Blob, tamanio: Tamanio, calidad: CalidadDeEscalado): Promise<Blob>;
+  /**
+   * Vuelve transparentes los píxeles de ese color exacto, y dice cuántos cambió.
+   *
+   * Exacto y sin tolerancia a propósito: los sprites del clásico tienen sombras y contornos casi
+   * negros que son parte del dibujo, y el color de fondo siempre es el negro puro.
+   */
+  quitarColor(png: Blob, color: ColorRgb): Promise<{ png: Blob; pixeles: number }>;
 }
 
 export type DatosAnimacionImportada = Omit<DatosAnimacion, "id">;

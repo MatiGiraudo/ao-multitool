@@ -40,6 +40,11 @@ export function useImagen(url: string | null): HTMLImageElement | null {
   return img;
 }
 
+/** «1 hoja nueva» y no «1 hojas nuevas»: son mensajes que se leen mil veces. */
+export function cuantas(cantidad: number, singular: string, plural: string): string {
+  return `${cantidad.toLocaleString("es-AR")} ${cantidad === 1 ? singular : plural}`;
+}
+
 /** En la app local sí podemos descargar con un enlace normal. */
 export function descargar(nombre: string, contenido: string | Blob, tipo = "application/json") {
   const blob = typeof contenido === "string" ? new Blob([contenido], { type: tipo }) : contenido;

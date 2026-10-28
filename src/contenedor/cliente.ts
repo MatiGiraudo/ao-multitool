@@ -9,6 +9,8 @@ import {
   GuardarHoja,
   ImportarAnimaciones,
   ListarHojas,
+  QuitarFondoDeHoja,
+  QuitarFondoEnLote,
   RedimensionarHoja,
   ReemplazarImagenDeHoja,
   RestaurarImagenOriginal,
@@ -134,6 +136,8 @@ function crear() {
   // El puente GRH → animación lo comparten los cuatro importadores del clásico.
   const puente = new PuenteDeGrh(hojas, ids);
 
+  const quitarFondoDeHoja = new QuitarFondoDeHoja(hojas, imagenes, procesador);
+
   return {
     ubicadorDeImagenes: imagenes,
     crearCatalogo: fabricaDeCatalogo,
@@ -147,6 +151,8 @@ function crear() {
       eliminar: new EliminarHoja(hojas, imagenes),
       redimensionar: new RedimensionarHoja(hojas, imagenes, procesador),
       restaurarOriginal: new RestaurarImagenOriginal(hojas, imagenes),
+      quitarFondo: quitarFondoDeHoja,
+      quitarFondoEnLote: new QuitarFondoEnLote(quitarFondoDeHoja),
       exportar: new ExportarAnimaciones(hojas, formatoAnim),
       importar: new ImportarAnimaciones(hojas, formatoAnim, ids),
       nuevoId: () => ids.nuevo(),

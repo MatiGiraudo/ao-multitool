@@ -9,6 +9,7 @@ import type { Frame } from "../dominio/Frame";
 import type { DatosGrilla } from "../dominio/Grilla";
 import type { HojaDeSprites } from "../dominio/HojaDeSprites";
 import { ACEPTA_IMG, BotonCargarCarpeta } from "./BotonCargarCarpeta";
+import { BotonQuitarFondoDeTodas } from "./BotonQuitarFondoDeTodas";
 import { LienzoDeHoja, type ModoDeLienzo } from "./LienzoDeHoja";
 import { ListaDeFrames } from "./ListaDeFrames";
 import { PanelRedimensionar } from "./PanelRedimensionar";
@@ -244,6 +245,7 @@ export function EditorDeHojas({ renderUso }: { renderUso?: (hoja: HojaDeSprites,
           + Agregar hoja…
         </BotonArchivo>
         <BotonCargarCarpeta etiqueta="+ Cargar carpeta…" />
+        <BotonQuitarFondoDeTodas />
         {coinciden > tira.length && (
           <span className="hint">
             {tira.length} de {coinciden.toLocaleString("es-AR")} hojas; filtrá para ver otras
@@ -294,6 +296,18 @@ export function EditorDeHojas({ renderUso }: { renderUso?: (hoja: HojaDeSprites,
                 <BotonArchivo accept={ACEPTA_IMG} onArchivo={reemplazar} className="abajo">
                   Reemplazar imagen…
                 </BotonArchivo>
+                <button
+                  className="abajo"
+                  disabled={!hoja.tieneImagen}
+                  title="En el AO clásico el negro es el color que no se dibuja"
+                  onClick={async () => {
+                    const pixeles = await graficos.quitarFondo(hoja.id);
+                    if (pixeles === undefined) return;
+                    avisar(pixeles ? `Fondo transparente: ${pixeles.toLocaleString("es-AR")} píxeles.` : "Esta hoja no tenía negro de fondo.");
+                  }}
+                >
+                  Quitar el fondo negro
+                </button>
                 <BotonConfirmar className="danger abajo" confirmacion="¿Seguro? Se borra del disco" onConfirmar={async () => (await graficos.eliminar(hoja.id)) && avisar("Hoja eliminada.")}>
                   Quitar hoja
                 </BotonConfirmar>

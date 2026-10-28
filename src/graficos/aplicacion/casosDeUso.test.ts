@@ -4,17 +4,32 @@ import { ErrorDeDominio } from "@/compartido/dominio/ErrorDeDominio";
 import { Tamanio } from "../dominio/Tamanio";
 import { FormatoAoAnim } from "../infraestructura/FormatoAoAnim";
 import { MemoriaAlmacenDeImagenes, MemoriaHojaRepositorio } from "../infraestructura/memoria";
-import { CargarHojasEnLote, CrearHojaDesdeImagen, ExportarAnimaciones, ImportarAnimaciones, RedimensionarHoja, RestaurarImagenOriginal } from "./casosDeUso";
-import type { ProcesadorDeImagenes } from "./puertos";
+import {
+  CargarHojasEnLote,
+  CrearHojaDesdeImagen,
+  ExportarAnimaciones,
+  ImportarAnimaciones,
+  QuitarFondoDeHoja,
+  QuitarFondoEnLote,
+  RedimensionarHoja,
+  RestaurarImagenOriginal,
+} from "./casosDeUso";
+import type { ColorRgb, ProcesadorDeImagenes } from "./puertos";
 
 /** Un procesador falso: no toca píxeles, sólo "dice" el tamaño. Así testeamos la lógica sin navegador. */
 class ProcesadorFalso implements ProcesadorDeImagenes {
+  /** Cuántos píxeles de fondo va a decir que encontró. En 0 simula una hoja sin fondo que sacar. */
+  pixelesDeFondo = 10;
   constructor(private tamanio = Tamanio.crear(192, 192)) {}
   async decodificar(archivo: Blob) {
     return { png: archivo, tamanio: this.tamanio };
   }
   async redimensionar(_png: Blob, t: Tamanio) {
     return new Blob([`png ${t}`], { type: "image/png" });
+  }
+  async quitarColor(png: Blob, color: ColorRgb) {
+    if (!this.pixelesDeFondo) return { png, pixeles: 0 };
+    return { png: new Blob([`sin ${color.r},${color.g},${color.b}`], { type: "image/png" }), pixeles: this.pixelesDeFondo };
   }
 }
 
@@ -134,5 +149,48 @@ describe("Cargar hojas en lote", () => {
     await lote.ejecutar({ imagenes: [imagen("1.png"), imagen("2.png"), imagen("3.png")], alAvanzar: (hechas) => avances.push(hechas), enParalelo: 1 });
 
     expect(avances).toEqual([1, 2, 3]);
+  });
+  describe("Quitar el fondo", () => {
+    it("deja la imagen nueva y sube la versión, sin tocar el tamaño original", async () => {
+      const { crear, repo, imagenes, proc } = armar();
+      const h = await crear.ejecutar({ archivo: new Blob(["x"]), nombreArchivo: "cuerpo.png" });
+      const antes = await imagenes.leer(h.id, "actual");
+
+      const r = await new QuitarFondoDeHoja(repo, imagenes, proc).ejecutar({ hojaId: h.id });
+
+      expect(r.pixeles).toBe(10);
+      expect(r.hoja.versionImagen).toBe(h.versionImagen + 1);
+      expect(r.hoja.tamanio?.toString()).toBe(h.tamanio?.toString());
+      expect(await (await imagenes.leer(h.id, "actual"))!.text()).toBe("sin 0,0,0");
+      // La original queda como estaba: sacar el fondo no es redimensionar.
+      expect(await (await imagenes.leer(h.id, "original"))!.text()).toBe(await antes!.text());
+    });
+
+    it("una hoja sin ese color no se vuelve a guardar", async () => {
+      const { crear, repo, imagenes, proc } = armar();
+      const h = await crear.ejecutar({ archivo: new Blob(["x"]), nombreArchivo: "cuerpo.png" });
+      proc.pixelesDeFondo = 0;
+
+      const r = await new QuitarFondoDeHoja(repo, imagenes, proc).ejecutar({ hojaId: h.id });
+
+      expect(r.pixeles).toBe(0);
+      expect(r.hoja.versionImagen).toBe(h.versionImagen);
+    });
+
+    it("en lote cuenta las limpiadas, las que no tenían fondo y las que fallan", async () => {
+      const { crear, repo, imagenes, proc } = armar();
+      const a = await crear.ejecutar({ archivo: new Blob(["x"]), nombreArchivo: "a.png" });
+      const b = await crear.ejecutar({ archivo: new Blob(["x"]), nombreArchivo: "b.png" });
+      const lote = new QuitarFondoEnLote(new QuitarFondoDeHoja(repo, imagenes, proc));
+      const avances: number[] = [];
+
+      const r = await lote.ejecutar({ hojaIds: [a.id, b.id, "no-existe"], alAvanzar: (h) => avances.push(h), enParalelo: 1 });
+
+      expect(r.limpiadas.map((h) => h.nombreArchivo)).toEqual(["a.png", "b.png"]);
+      expect(r.pixeles).toBe(20);
+      expect(r.sinFondo).toBe(0);
+      expect(r.fallidas).toEqual([{ hojaId: "no-existe", motivo: "Esa hoja ya no existe." }]);
+      expect(avances).toEqual([1, 2, 3]);
+    });
   });
 });
