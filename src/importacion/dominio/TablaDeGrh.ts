@@ -22,6 +22,14 @@ export interface Grh {
   cuadros: number[];
   /** Cuánto dura el ciclo completo, en ms (así lo guarda el clásico en `Speed`). */
   msDelCiclo: number;
+  /**
+   * true si lo inventó el editor, pintando un mapa con un recorte del proyecto.
+   *
+   * Es lo que distingue los gráficos que no existen en ningún `Graficos.ini`: volver a importar
+   * uno reemplaza los del clásico, pero éstos tienen que quedarse, porque los mapas guardados ya
+   * los referencian por número y nadie los puede volver a deducir del archivo.
+   */
+  propio?: boolean;
 }
 
 /** Un GRH resuelto a lo que este editor entiende: recortes de una hoja. */
@@ -73,6 +81,32 @@ export class TablaDeGrh {
       if (!g.cuadros.length && g.archivo === archivo && g.x === x && g.y === y && g.ancho === ancho && g.alto === alto) return g;
     }
     return null;
+  }
+
+  /** Los que inventó el editor y no salen de ningún `Graficos.ini`. */
+  propios(): Grh[] {
+    return this.datos().filter((g) => g.propio);
+  }
+
+  /**
+   * Esta tabla con los gráficos propios de otra sumados encima.
+   *
+   * Es lo que hace que reimportar el `Graficos.ini` no borre lo que el editor inventó: los del
+   * clásico se reemplazan enteros —es lo que el usuario pidió al importar— y los propios se
+   * conservan, porque los mapas guardados los referencian por número y no hay de dónde volver a
+   * sacarlos.
+   *
+   * Si un número está en los dos lados gana el propio, y se avisa: perder un gráfico del clásico
+   * se arregla reimportando, perder uno propio rompe mapas que ya existen.
+   */
+  sumandoLosPropiosDe(otra: TablaDeGrh): { tabla: TablaDeGrh; pisados: number[] } {
+    const m = new Map(this.porNumero);
+    const pisados: number[] = [];
+    for (const g of otra.propios()) {
+      if (m.has(g.numero)) pisados.push(g.numero);
+      m.set(g.numero, g);
+    }
+    return { tabla: new TablaDeGrh(m), pisados };
   }
 
   /** Otra tabla con ese GRH sumado (o reemplazado, si el número ya estaba). */

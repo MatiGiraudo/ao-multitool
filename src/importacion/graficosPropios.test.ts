@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { ExportarGraficosIni, GrhDeRecorte } from "./aplicacion/casosDeUso";
+import type { HojaRepositorio } from "@/graficos/dominio/HojaRepositorio";
+import { ExportarGraficosIni, GrhDeRecorte, ImportarTablaDeGrh } from "./aplicacion/casosDeUso";
 import { TablaDeGrh, type Grh } from "./dominio/TablaDeGrh";
 import { EscritorGraficosIni } from "./infraestructura/EscritorGraficosIni";
 import { LectorGraficosIni } from "./infraestructura/LectorGraficosIni";
 import { MemoriaTablaDeGrh } from "./infraestructura/memoria";
+import { TablaDeGrhMapper } from "./infraestructura/TablaDeGrhDto";
 
 /*
  * Los gráficos que no vienen del clásico: los que el editor inventa cuando pintás un mapa con un
@@ -74,6 +76,70 @@ describe("números de GRH propios", () => {
     const r = await new GrhDeRecorte(repo).ejecutar({ archivo: "3", x: 64, y: 0, ancho: 32, alto: 48 });
 
     expect(r).toEqual({ numero: 1, creado: true });
+  });
+
+  it("queda marcado como propio, y la marca sobrevive al ida y vuelta del archivo", async () => {
+    const repo = new MemoriaTablaDeGrh();
+    await new GrhDeRecorte(repo).ejecutar({ archivo: "77", x: 0, y: 0, ancho: 32, alto: 32 });
+
+    const tabla = (await repo.leer())!;
+    expect(tabla.obtener(1)?.propio).toBe(true);
+    expect(tabla.propios()).toHaveLength(1);
+
+    // Sin la marca en el DTO, el gráfico se guarda pero vuelve como si fuera del clásico, y la
+    // próxima importación se lo lleva igual.
+    const vuelta = TablaDeGrhMapper.aDominio(TablaDeGrhMapper.aDto(tabla))!;
+    expect(vuelta.obtener(1)?.propio).toBe(true);
+  });
+});
+
+describe("reimportar el Graficos.ini", () => {
+  const INI = ["[Graphics]", "NumGrh=2", "Grh1=1-12-0-0-32-32", "Grh2=1-12-32-0-32-32", ""].join("\r\n");
+  const sinHojas = { listar: async () => [] } as unknown as HojaRepositorio;
+
+  const importador = (repo: MemoriaTablaDeGrh) => new ImportarTablaDeGrh(new LectorGraficosIni(), repo, sinHojas);
+
+  it("no se lleva puestos los gráficos del proyecto", async () => {
+    const repo = new MemoriaTablaDeGrh();
+    const importar = importador(repo);
+    await importar.ejecutar(INI);
+
+    // El usuario pinta un mapa con un tile de una hoja propia: el editor le inventa el grh 3.
+    const propio = await new GrhDeRecorte(repo).ejecutar({ archivo: "77", x: 0, y: 0, ancho: 32, alto: 32 });
+    expect(propio).toEqual({ numero: 3, creado: true });
+
+    // Y más tarde vuelve a importar el Graficos.ini, que no sabe nada de ese gráfico.
+    const r = await importar.ejecutar(INI);
+
+    const tabla = await repo.leer();
+    expect(tabla?.obtener(3)).toMatchObject({ archivo: "77", propio: true });
+    expect(r.propiosConservados).toBe(1);
+    expect(r.pisados).toEqual([]);
+    expect(r.grhs).toBe(3);
+  });
+
+  it("si el archivo nuevo define ese número, gana el propio y lo avisa", async () => {
+    const repo = new MemoriaTablaDeGrh();
+    const importar = importador(repo);
+    await importar.ejecutar(INI);
+    await new GrhDeRecorte(repo).ejecutar({ archivo: "77", x: 0, y: 0, ancho: 32, alto: 32 });
+
+    // El cliente nuevo llega más alto y define el 3 como otra cosa. Pisarlo cambiaría, sin avisar,
+    // lo que muestran las celdas ya pintadas con el 3.
+    const masGrande = ["[Graphics]", "NumGrh=3", "Grh1=1-12-0-0-32-32", "Grh2=1-12-32-0-32-32", "Grh3=1-12-64-0-32-32", ""].join("\r\n");
+    const r = await importar.ejecutar(masGrande);
+
+    expect((await repo.leer())?.obtener(3)).toMatchObject({ archivo: "77", propio: true });
+    expect(r.pisados).toEqual([3]);
+  });
+
+  it("la primera importación no inventa propios", async () => {
+    const r = await importador(new MemoriaTablaDeGrh()).ejecutar(INI);
+    expect({ propiosConservados: r.propiosConservados, pisados: r.pisados, grhs: r.grhs }).toEqual({
+      propiosConservados: 0,
+      pisados: [],
+      grhs: 2,
+    });
   });
 });
 

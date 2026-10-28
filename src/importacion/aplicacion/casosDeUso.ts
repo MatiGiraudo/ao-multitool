@@ -44,6 +44,10 @@ export interface ResultadoDeTablaDeGrh {
   /** De esos, los que ya están cargados como hoja en el editor. */
   cargados: string[];
   faltantes: string[];
+  /** Gráficos propios del proyecto que la importación respetó. */
+  propiosConservados: number;
+  /** Números donde el propio le ganó al que traía el archivo: ésos del clásico no entraron. */
+  pisados: number[];
 }
 
 /**
@@ -85,7 +89,8 @@ export class GrhDeRecorte {
     const existente = tabla.buscarRecorte(recorte.archivo, recorte.x, recorte.y, recorte.ancho, recorte.alto);
     if (existente) return { numero: existente.numero, creado: false };
     const numero = tabla.proximoNumero();
-    await this.tablas.guardar(tabla.con({ numero, ...recorte, cuadros: [], msDelCiclo: 0 }));
+    // `propio` es lo que lo salva de la próxima importación del Graficos.ini.
+    await this.tablas.guardar(tabla.con({ numero, ...recorte, cuadros: [], msDelCiclo: 0, propio: true }));
     return { numero, creado: true };
   }
 }
@@ -111,10 +116,19 @@ export class ImportarTablaDeGrh {
     private readonly hojas: HojaRepositorio,
   ) {}
 
+  /**
+   * Importar reemplaza la tabla del clásico, pero no los gráficos propios del proyecto.
+   *
+   * Ésos los inventó el editor al pintar un mapa con un recorte de una hoja, y los mapas guardados
+   * los referencian por número: si la importación los borrara, esas celdas quedarían apuntando a
+   * un gráfico que ya no existe —o, peor, a otro distinto del archivo nuevo— sin que nadie avise.
+   */
   async ejecutar(texto: string): Promise<ResultadoDeTablaDeGrh> {
-    const tabla = TablaDeGrh.desde(this.lector.leer(texto));
+    const delArchivo = TablaDeGrh.desde(this.lector.leer(texto));
+    const anterior = await this.tablas.leer();
+    const { tabla, pisados } = anterior ? delArchivo.sumandoLosPropiosDe(anterior) : { tabla: delArchivo, pisados: [] };
     await this.tablas.guardar(tabla);
-    return this.revisar(tabla, await this.hojas.listar());
+    return this.revisar(tabla, await this.hojas.listar(), pisados);
   }
 
   /** El estado actual, sin importar nada: para mostrarlo al abrir la pantalla. */
@@ -123,10 +137,17 @@ export class ImportarTablaDeGrh {
     return tabla ? this.revisar(tabla, await this.hojas.listar()) : null;
   }
 
-  private revisar(tabla: TablaDeGrh, hojas: readonly HojaDeSprites[]): ResultadoDeTablaDeGrh {
+  private revisar(tabla: TablaDeGrh, hojas: readonly HojaDeSprites[], pisados: number[] = []): ResultadoDeTablaDeGrh {
     const archivos = tabla.archivos();
     const cargados = archivos.filter((a) => hojas.some((h) => esElArchivo(h.nombreArchivo, a)));
-    return { grhs: tabla.cantidad, archivos, cargados, faltantes: archivos.filter((a) => !cargados.includes(a)) };
+    return {
+      grhs: tabla.cantidad,
+      archivos,
+      cargados,
+      faltantes: archivos.filter((a) => !cargados.includes(a)),
+      propiosConservados: tabla.propios().length,
+      pisados,
+    };
   }
 }
 

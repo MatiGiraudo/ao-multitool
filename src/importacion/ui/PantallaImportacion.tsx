@@ -72,7 +72,13 @@ export function PantallaImportacion() {
     "graficos",
     (t) => casos.clasico.tablaDeGrh.ejecutar(t),
     setTabla,
-    (r) => `Tabla de GRH lista: ${r.grhs.toLocaleString("es-AR")} gráficos de ${r.archivos.length} archivos.`,
+    (r) =>
+      `Tabla de GRH lista: ${r.grhs.toLocaleString("es-AR")} gráficos de ${r.archivos.length} archivos.` +
+      (r.propiosConservados
+        ? r.propiosConservados === 1
+          ? " Se conservó 1 gráfico propio del proyecto."
+          : ` Se conservaron ${r.propiosConservados} gráficos propios del proyecto.`
+        : ""),
   );
   const importarCuerpos = importador(
     "cuerpos",
@@ -138,7 +144,22 @@ export function PantallaImportacion() {
               <div className="row">
                 <span className={`pill ${tabla.cargados.length ? "ok" : "warn"}`}>{tabla.cargados.length} hojas cargadas</span>
                 {!!tabla.faltantes.length && <span className="pill warn">{tabla.faltantes.length} sin cargar</span>}
+                {!!tabla.propiosConservados && (
+                  <span className="pill ok" title="Los que el editor inventó al pintar mapas. Importar no se los lleva.">
+                    {tabla.propiosConservados} {tabla.propiosConservados === 1 ? "propio" : "propios"} del proyecto
+                  </span>
+                )}
               </div>
+              {/* Pasa sólo si el archivo nuevo llega más alto que los números que el editor ya había
+                  repartido: ahí el gráfico propio gana, porque hay mapas que lo usan. */}
+              {!!tabla.pisados.length && (
+                <p className="hint aviso">
+                  {tabla.pisados.length === 1 ? "El número" : "Los números"} {tabla.pisados.slice(0, 10).join(", ")}
+                  {tabla.pisados.length > 10 ? "…" : ""} ya {tabla.pisados.length === 1 ? "era" : "eran"} de un gráfico propio del proyecto, así que
+                  quedó el del proyecto y no el del archivo: hay mapas que lo usan con ese número. Si necesitás el del clásico, cambiá el tile en el
+                  mapa y volvé a importar.
+                </p>
+              )}
               {!!tabla.faltantes.length && (
                 <div className="row">
                   <BotonCargarCarpeta

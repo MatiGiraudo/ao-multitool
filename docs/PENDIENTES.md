@@ -9,6 +9,10 @@ lo que se decidió dejar para después, así no se pierde.
 > Revisión del 27/10/2026, sobre la rama `mapas-de-cero`. Los dos hallazgos graves de esa misma
 > revisión —guardar un mapa pisaba otro con el mismo número, y elegir dos tiles seguidos se llevaba
 > el mismo número de GRH— ya están arreglados en `d925788`.
+>
+> Segunda revisión del 28/10/2026, sobre la misma rama. El hallazgo grave —reimportar el
+> `Graficos.ini` borraba los gráficos propios del proyecto— está arreglado; los otros tres quedaron
+> acá como los puntos 5, 6 y 7.
 
 ---
 
@@ -67,3 +71,36 @@ cumple lo que promete el tipo.
 **Qué haría falta:** guardar el resumen aparte (un `data/mapas/indice.json`, escrito en el mismo
 guardado) o leer sólo la cabecera de cada archivo. La primera opción es la que ya usan las
 colecciones de un solo JSON.
+
+## 5. Los nombres de las hojas se enciman en el catálogo de tiles
+
+**Dónde:** `src/mapas/ui/CatalogoDeTiles.tsx`, la lista de hojas.
+
+Reusa la clase `.mapa-paleta`, cuya grilla son columnas de 40 px pensadas para miniaturas de 32×32.
+Con nombres de archivo adentro, los botones se superponen y no se lee cuál es cuál.
+
+**Qué haría falta:** una clase propia para esa lista, con columnas anchas y el nombre recortado con
+ellipsis, o miniaturas en vez de nombres.
+
+## 6. La caché de la tabla de GRH sólo se entera de sus propias escrituras
+
+**Dónde:** `src/importacion/infraestructura/navegador/HttpTablaDeGrh.ts`.
+
+La tabla queda en memoria y se refresca únicamente cuando este mismo adaptador guarda. Con el editor
+abierto en dos pestañas, la segunda sigue con la tabla vieja: al elegir un tile, `proximoNumero()`
+puede devolver un número que la primera ya repartió, y el segundo guardado pisa al primero. Es la
+carrera que arregla `d925788`, pero entre pestañas en vez de entre clics.
+
+**Qué haría falta:** que el guardado mande la versión que leyó y el servidor rechace la escritura si
+cambió mientras tanto, o que la tabla se relea antes de repartir un número nuevo.
+
+## 7. Abrir un mapa del proyecto lo vuelve a guardar al segundo
+
+**Dónde:** `src/mapas/ui/PantallaMapas.tsx`, el mismo efecto del punto 3.
+
+`abrirDelProyecto` sube el `sello` y pone `enProyecto` en true, así que el guardado automático
+escribe el archivo un segundo después de abrirlo aunque nadie haya tocado nada: 83 KB y un PUT por
+cada apertura.
+
+**Qué haría falta:** que el efecto distinga «cambió el mapa» de «se abrió uno», por ejemplo
+guardando el sello con el que se abrió y comparando.

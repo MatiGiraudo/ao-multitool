@@ -247,7 +247,7 @@ describe("ImportarTablaDeGrh", () => {
     const tablas = new MemoriaTablaDeGrh();
 
     const r = await new ImportarTablaDeGrh(new LectorGraficosIni(), tablas, hojas).ejecutar(GRAFICOS_INI);
-    expect(r).toEqual({ grhs: 4, archivos: ["12", "99"], cargados: ["12"], faltantes: ["99"] });
+    expect(r).toEqual({ grhs: 4, archivos: ["12", "99"], cargados: ["12"], faltantes: ["99"], propiosConservados: 0, pisados: [] });
     expect((await tablas.leer())?.cantidad).toBe(4);
   });
 });
