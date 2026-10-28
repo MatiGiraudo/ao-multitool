@@ -29,6 +29,23 @@ export type ExportarCatalogo = (catalogo: CatalogoGrafico) => Promise<ArchivoExp
 /** Los módulos que aportan varios archivos de una: los mapas son tres por cada uno. */
 export type ExportarVarios = () => Promise<ArchivoExportado[]>;
 
+/**
+ * Qué llevarse. Son cuatro cosas distintas y casi nunca se quieren las cuatro:
+ *
+ * - **catálogos**: los JSON del remake (`objetos.json`, `npcs.json`…).
+ * - **animaciones**: un `.anim.json` por hoja, también para el remake.
+ * - **mundo**: los mapas como los lee el juego, más el `Graficos.ini`.
+ * - **clásico**: los `.dat` y `.ini` del AO original, para devolvérselos a un servidor 13.x.
+ */
+export interface QueExportar {
+  catalogos: boolean;
+  animaciones: boolean;
+  mundo: boolean;
+  clasico: boolean;
+}
+
+export const TODO: QueExportar = { catalogos: true, animaciones: true, mundo: true, clasico: true };
+
 export class ExportarTodo {
   constructor(
     private readonly hojas: HojaRepositorio,
@@ -36,24 +53,29 @@ export class ExportarTodo {
     private readonly fabricaDeCatalogo: FabricaDeCatalogo,
     /** Los exportadores de los catálogos (objetos, FX, cuerpos, cabezas, hechizos). */
     private readonly catalogos: readonly ExportarCatalogo[],
-    /** Los que aportan varios archivos: los mapas del proyecto y el `Graficos.ini`. */
-    private readonly varios: readonly ExportarVarios[] = [],
+    /** Los mapas del proyecto y el `Graficos.ini`. */
+    private readonly mundo: readonly ExportarVarios[] = [],
+    /** Los archivos del AO clásico, que vuelven con todo lo que el editor no entiende. */
+    private readonly clasico: readonly ExportarVarios[] = [],
   ) {}
 
-  async ejecutar(): Promise<ArchivoExportado[]> {
+  async ejecutar(que: QueExportar = TODO): Promise<ArchivoExportado[]> {
     const hojas = await this.hojas.listar();
     const catalogo = this.fabricaDeCatalogo(hojas);
-    const archivos = await Promise.all(this.catalogos.map((exportar) => exportar(catalogo)));
-    for (const exportar of this.varios) archivos.push(...(await exportar()));
+    const archivos: ArchivoExportado[] = que.catalogos ? await Promise.all(this.catalogos.map((exportar) => exportar(catalogo))) : [];
+    if (que.mundo) for (const exportar of this.mundo) archivos.push(...(await exportar()));
+    if (que.clasico) for (const exportar of this.clasico) archivos.push(...(await exportar()));
 
     // Un .anim.json por hoja, pero sólo de las que tienen animaciones: después de importar los
     // gráficos del clásico hay miles de hojas cargadas y la mayoría todavía no tiene ninguna.
-    for (const hoja of hojas) {
-      if (!hoja.animaciones.length) continue;
-      archivos.push({
-        nombreArchivo: this.formatoDeAnimaciones.nombreDeArchivoPara(hoja),
-        contenido: this.formatoDeAnimaciones.exportar(hoja),
-      });
+    if (que.animaciones) {
+      for (const hoja of hojas) {
+        if (!hoja.animaciones.length) continue;
+        archivos.push({
+          nombreArchivo: this.formatoDeAnimaciones.nombreDeArchivoPara(hoja),
+          contenido: this.formatoDeAnimaciones.exportar(hoja),
+        });
+      }
     }
 
     // Los de cada subcarpeta quedan juntos, y dentro por nombre.

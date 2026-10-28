@@ -13,6 +13,7 @@ import { EliminarHechizo, GuardarHechizo, ListarHechizos } from "@/hechizos/apli
 import { ArchivosHechizoRepositorio } from "@/hechizos/infraestructura/servidor/ArchivosHechizoRepositorio";
 import { EliminarMapaGuardado, GuardarMapa, ListarMapasGuardados } from "@/mapas/aplicacion/casosDeUso";
 import { ArchivosMapaRepositorio } from "@/mapas/infraestructura/servidor/ArchivosMapaRepositorio";
+import { ArchivosOriginales } from "@/importacion/infraestructura/servidor/ArchivosOriginales";
 import { ArchivosTablaDeGrh } from "@/importacion/infraestructura/servidor/ArchivosTablaDeGrh";
 import { EliminarNpc, GuardarNpc, ListarNpcs } from "@/npcs/aplicacion/casosDeUso";
 import { ArchivosNpcRepositorio } from "@/npcs/infraestructura/servidor/ArchivosNpcRepositorio";
@@ -36,6 +37,7 @@ const cabezas = new ArchivosCabezaRepositorio();
 const hechizos = new ArchivosHechizoRepositorio();
 const npcs = new ArchivosNpcRepositorio();
 const tablaDeGrh = new ArchivosTablaDeGrh();
+const originales = new ArchivosOriginales();
 const mapas = new ArchivosMapaRepositorio();
 
 export const servidor = {
@@ -73,5 +75,6 @@ export const servidor = {
   guardarMapa: new GuardarMapa(mapas),
   eliminarMapa: new EliminarMapaGuardado(mapas),
   tablaDeGrh,
+  originales,
   guardarExportacion: new GuardarExportacion(new ArchivosAlmacenDeExportacion()),
 };

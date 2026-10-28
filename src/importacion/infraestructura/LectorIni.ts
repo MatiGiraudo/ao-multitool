@@ -27,27 +27,65 @@ function sinComentarioAlFinal(valor: string): string {
 }
 
 export class ArchivoIni {
-  private constructor(private readonly secciones: Map<string, Map<string, string>>) {}
+  private constructor(
+    private readonly secciones: Map<string, Map<string, string>>,
+    private readonly crudas: Map<string, { nombre: string; lineas: string[] }>,
+    private readonly preambulo: string[],
+  ) {}
 
   static parsear(texto: string): ArchivoIni {
     const secciones = new Map<string, Map<string, string>>();
+    const crudas = new Map<string, { nombre: string; lineas: string[] }>();
+    const preambulo: string[] = [];
     let actual: Map<string, string> | null = null;
+    let actualCruda: string[] | null = null;
 
     for (const cruda of texto.replace(/^﻿/, "").split(/\r?\n/)) {
       const linea = cruda.trim();
-      if (!linea || linea.startsWith("'") || linea.startsWith(";")) continue;
       if (linea.startsWith("[")) {
         const fin = linea.indexOf("]");
-        const nombre = (fin > 0 ? linea.slice(1, fin) : linea.slice(1)).trim().toLowerCase();
+        const comoVino = (fin > 0 ? linea.slice(1, fin) : linea.slice(1)).trim();
+        const nombre = comoVino.toLowerCase();
         actual = new Map();
         secciones.set(nombre, actual);
+        // La línea entera queda dentro de la sección, con el comentario que algunas traen al lado
+        // del nombre: `[OBJ7] 'Puerta para negocio`.
+        actualCruda = [cruda];
+        crudas.set(nombre, { nombre: comoVino, lineas: actualCruda });
         continue;
       }
+      // Las líneas se guardan tal como vinieron —comentarios, mayúsculas, espacios y renglones en
+      // blanco— porque son lo que permite devolver el archivo igual al que entró, con las claves
+      // que el editor no sabe leer en su lugar.
+      (actualCruda ?? preambulo).push(cruda);
+      if (!linea || linea.startsWith("'") || linea.startsWith(";")) continue;
       const igual = linea.indexOf("=");
       if (igual < 0 || !actual) continue;
       actual.set(linea.slice(0, igual).trim().toLowerCase(), sinComentarioAlFinal(linea.slice(igual + 1).trim()));
     }
-    return new ArchivoIni(secciones);
+    return new ArchivoIni(secciones, crudas, preambulo);
+  }
+
+  /**
+   * Todo lo que hay en el archivo antes de las secciones que interesan, tal como vino.
+   *
+   * En un `OBJ.dat` eso es la tabla de tipos comentada que explica cada `ObjType` y, en varios
+   * servidores, una sección `[INIT]` con el total de objetos. Nada de eso es un objeto, pero es
+   * parte del archivo: al devolverlo tiene que estar.
+   */
+  encabezado(prefijoDeLasQueInteresan: string): string[] {
+    const p = prefijoDeLasQueInteresan.toLowerCase();
+    const lineas = [...this.preambulo];
+    for (const [clave, seccion] of this.crudas) {
+      if (clave.startsWith(p)) continue;
+      lineas.push(...seccion.lineas);
+    }
+    return lineas;
+  }
+
+  /** Las líneas de una sección tal como estaban en el archivo. Vacío si la sección no existe. */
+  lineasDe(seccion: string): string[] {
+    return this.crudas.get(seccion.toLowerCase())?.lineas ?? [];
   }
 
   tiene(seccion: string): boolean {

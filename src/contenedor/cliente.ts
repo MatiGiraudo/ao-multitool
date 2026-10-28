@@ -89,6 +89,7 @@ import {
   ImportarNpcsClasicos,
   ImportarObjetosClasicos,
   ExportarGraficosIni,
+  ExportarObjetosClasicos,
   GrhDeRecorte,
   ImportarTablaDeGrh,
 } from "@/importacion/aplicacion/casosDeUso";
@@ -113,12 +114,15 @@ import { CarpetaObjetoRepositorio } from "@/objetos/infraestructura/carpeta/Carp
 import type { AlmacenDeImagenes, UbicadorDeImagenes } from "@/graficos/aplicacion/puertos";
 import { CarpetaAlmacenDeImagenes } from "@/graficos/infraestructura/carpeta/CarpetaAlmacenDeImagenes";
 import { CarpetaHojaRepositorio } from "@/graficos/infraestructura/carpeta/CarpetaHojaRepositorio";
+import { CarpetaOriginales } from "@/importacion/infraestructura/carpeta/CarpetaOriginales";
 import { CarpetaTablaDeGrh } from "@/importacion/infraestructura/carpeta/CarpetaTablaDeGrh";
+import { HttpOriginales } from "@/importacion/infraestructura/navegador/HttpOriginales";
 import { CarpetaMapaRepositorio } from "@/mapas/infraestructura/carpeta/CarpetaMapaRepositorio";
 import { CarpetaAlmacenDeExportacion } from "@/proyecto/infraestructura/carpeta/CarpetaAlmacenDeExportacion";
 import { LectorAparienciasIni } from "@/importacion/infraestructura/LectorAparienciasIni";
 import { LectorFxsIni } from "@/importacion/infraestructura/LectorFxsIni";
 import { EscritorGraficosIni } from "@/importacion/infraestructura/EscritorGraficosIni";
+import { EscritorObjDat } from "@/importacion/infraestructura/EscritorObjDat";
 import { LectorGraficosIni } from "@/importacion/infraestructura/LectorGraficosIni";
 import { LectorHechizosDat } from "@/importacion/infraestructura/LectorHechizosDat";
 import { LectorNpcsDat } from "@/importacion/infraestructura/LectorNpcsDat";
@@ -173,6 +177,7 @@ function crear() {
   const cabezas = enCarpeta ? new CarpetaCabezaRepositorio(carpetaDelProyecto) : new HttpCabezaRepositorio();
   const formatoCabezas = new FormatoAoHeads();
   const tablaDeGrh = enCarpeta ? new CarpetaTablaDeGrh(carpetaDelProyecto) : new HttpTablaDeGrh();
+  const originales = enCarpeta ? new CarpetaOriginales(carpetaDelProyecto) : new HttpOriginales();
   const hechizos = enCarpeta ? new CarpetaHechizoRepositorio(carpetaDelProyecto) : new HttpHechizoRepositorio();
   const npcs = enCarpeta ? new CarpetaNpcRepositorio(carpetaDelProyecto) : new HttpNpcRepositorio();
   const formatoNpcs = new FormatoAoNpcs();
@@ -277,7 +282,7 @@ function crear() {
     },
     clasico: {
       tablaDeGrh: new ImportarTablaDeGrh(new LectorGraficosIni(), tablaDeGrh, hojas),
-      objetos: new ImportarObjetosClasicos(new LectorObjDat(), tablaDeGrh, puente, hojas, importarObjetos, fabricaDeCatalogo),
+      objetos: new ImportarObjetosClasicos(new LectorObjDat(), tablaDeGrh, puente, hojas, importarObjetos, fabricaDeCatalogo, originales),
       cuerpos: new ImportarCuerposClasicos(
         new LectorAparienciasIni("body", "Walk", "Personajes.ini"),
         tablaDeGrh,
@@ -316,6 +321,10 @@ function crear() {
         // El mundo: los tres archivos de cada mapa, y la tabla de GRH que les da sentido.
         () => new ExportarMapasAlJuego(leerTodosLosMapas).ejecutar(),
         () => exportarGraficosIni.archivoSiHay(),
+      ],
+      [
+        // Los archivos del AO original, con todo lo que el editor no entiende de vuelta en su lugar.
+        () => new ExportarObjetosClasicos(() => new ListarObjetos(objetos).ejecutar(), originales, new EscritorObjDat()).ejecutar(),
       ]),
       guardarExportacion: new GuardarExportacion(enCarpeta ? new CarpetaAlmacenDeExportacion(carpetaDelProyecto) : new HttpAlmacenDeExportacion()),
       revisar: new RevisarMundo(

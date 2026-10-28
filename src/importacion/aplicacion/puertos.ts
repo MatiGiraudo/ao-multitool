@@ -2,6 +2,8 @@ import type { Direccion } from "@/compartido/dominio/Direccion";
 import type { HechizoImportado } from "@/hechizos/aplicacion/casosDeUso";
 import type { NpcImportado } from "@/npcs/aplicacion/casosDeUso";
 import type { ObjetoImportado } from "@/objetos/aplicacion/puertos";
+import type { Objeto } from "@/objetos/dominio/Objeto";
+import type { OriginalesDeFamilia } from "../dominio/OriginalesRepositorio";
 import type { Grh, TablaDeGrh } from "../dominio/TablaDeGrh";
 
 /** Puerto: sabe leer el `Graficos.ini` y devolver los GRH que define. */
@@ -15,6 +17,16 @@ export interface EscritorDeGraficosClasicos {
 }
 
 /**
+ * Puerto: sabe devolver el `OBJ.dat`.
+ *
+ * Recibe los originales porque el editor entiende una quinta parte de las claves del archivo: lo
+ * que no maneja se devuelve tal como vino, en vez de perderse.
+ */
+export interface EscritorDeObjetosClasicos {
+  escribir(objetos: readonly Objeto[], originales: OriginalesDeFamilia): string;
+}
+
+/**
  * Un objeto tal como viene del `OBJ.dat`: ya traducido al vocabulario del editor, pero con su
  * gráfico todavía como número de GRH. Resolverlo es trabajo del caso de uso, que es quien tiene
  * la tabla y las hojas.
@@ -22,11 +34,25 @@ export interface EscritorDeGraficosClasicos {
 export type ObjetoClasico = Omit<ObjetoImportado, "graficos"> & {
   /** El `GrhIndex`: el gráfico que se ve en el inventario. 0 si el objeto no trae ninguno. */
   grhIcono: number;
+  /**
+   * La sección entera tal como estaba en el archivo.
+   *
+   * De las 90 claves que tiene un `OBJ.dat` el editor entiende unas veinte; guardar el texto es
+   * lo que después permite devolver el archivo completo en vez de uno recortado.
+   */
+  crudo: string;
 };
+
+/** Un `OBJ.dat` leido: sus objetos y la documentacion que trae arriba de todo. */
+export interface ArchivoDeObjetosClasicos {
+  objetos: ObjetoClasico[];
+  /** Las lineas antes de la primera seccion. Vuelven tal cual al exportar. */
+  encabezado: string;
+}
 
 /** Puerto: sabe leer el `OBJ.dat`. */
 export interface LectorDeObjetosClasicos {
-  leer(texto: string): ObjetoClasico[];
+  leer(texto: string): ArchivoDeObjetosClasicos;
 }
 
 /**

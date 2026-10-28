@@ -78,3 +78,19 @@ cada apertura.
 
 **Qué haría falta:** que el efecto distinga «cambió el mapa» de «se abrió uno», por ejemplo
 guardando el sello con el que se abrió y comparando.
+
+## 6. Faltan los demás archivos del clásico
+
+**Dónde:** `src/importacion/infraestructura/`, al lado de `EscritorObjDat.ts`.
+
+El ida y vuelta con el AO clásico está hecho y probado para el `OBJ.dat`: las claves que el editor
+no entiende vuelven intactas porque al importar se guarda el texto original de cada sección. Falta
+repetirlo para `NPCs.dat` (124 claves distintas en un servidor real), `Hechizos.dat` (60), `FXs.ini`,
+`Personajes.ini` y `Cabezas.ini`.
+
+Cada uno es un escritor chico más su verificación contra el archivo de un servidor de verdad, como
+la que ya corre con `AO_DAT_DIR`.
+
+**Qué haría falta además:** que el `GrhIndex` se recalcule cuando se cambia el icono en el editor.
+Hoy vuelve el del archivo, porque el editor guarda «tal hoja, tal animación» y traducir eso a un
+número de GRH pide buscar el recorte en la tabla. `TablaDeGrh.buscarRecorte` ya hace esa búsqueda.

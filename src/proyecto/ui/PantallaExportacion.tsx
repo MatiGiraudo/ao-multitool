@@ -4,22 +4,33 @@ import { useCallback, useEffect, useState } from "react";
 import { useAplicacion } from "@/compartido/ui/Aplicacion";
 import { Cargando } from "@/compartido/ui/componentes";
 import { descargar } from "@/compartido/ui/utilidades";
-import type { ArchivoExportado, ResultadoDeGuardado } from "../aplicacion/ExportarTodo";
+import { TODO, type ArchivoExportado, type QueExportar, type ResultadoDeGuardado } from "../aplicacion/ExportarTodo";
 
 /**
- * Todo el mundo exportado de una vez: los cinco catálogos y un `.anim.json` por hoja con
- * animaciones. Es lo que el lado de Unity quiere leer, junto y en una sola carpeta.
+ * Todo el mundo exportado de una vez, y por partes.
+ *
+ * Son cuatro cosas distintas y casi nadie quiere las cuatro: los catálogos JSON y las animaciones
+ * son para el remake; los mapas y el `Graficos.ini`, para el juego; los `.dat` del clásico, para
+ * un servidor 13.x que ya anda. Por eso se eligen.
  */
+
+const ETIQUETAS: { clave: keyof QueExportar; titulo: string; ayuda: string }[] = [
+  { clave: "catalogos", titulo: "Catálogos (JSON)", ayuda: "objetos.json, npcs.json y los demás: lo que lee el remake." },
+  { clave: "animaciones", titulo: "Animaciones (JSON)", ayuda: "Un .anim.json por cada hoja que tenga animaciones." },
+  { clave: "mundo", titulo: "Mundo del juego", ayuda: "Los mapas como .map/.inf/.dat y el Graficos.ini." },
+  { clave: "clasico", titulo: "Archivos del AO clásico", ayuda: "El OBJ.dat, con todo lo que el editor no entiende en su lugar." },
+];
 export function PantallaExportacion() {
   const { casos, avisar, intentar } = useAplicacion();
   const [archivos, setArchivos] = useState<ArchivoExportado[] | null>(null);
   const [guardado, setGuardado] = useState<ResultadoDeGuardado | null>(null);
   const [guardando, setGuardando] = useState(false);
+  const [que, setQue] = useState<QueExportar>(TODO);
 
   const armar = useCallback(async () => {
-    const r = await intentar(() => casos.proyecto.exportarTodo.ejecutar());
+    const r = await intentar(() => casos.proyecto.exportarTodo.ejecutar(que));
     if (r) setArchivos(r);
-  }, [casos, intentar]);
+  }, [casos, intentar, que]);
 
   useEffect(() => {
     void armar();
@@ -38,10 +49,12 @@ export function PantallaExportacion() {
   const total = archivos?.reduce((n, a) => n + a.contenido.length, 0) ?? 0;
   /* Tres grupos, porque son tres cosas distintas: los catálogos que lee Unity, un archivo por
    * hoja con animaciones, y el mundo tal como lo lee el servidor del clásico. */
-  const esDelMundo = (a: ArchivoExportado) => !!a.carpeta || a.nombreArchivo === "Graficos.ini";
+  const esClasico = (a: ArchivoExportado) => a.carpeta === "Dat";
+  const esDelMundo = (a: ArchivoExportado) => (!!a.carpeta && !esClasico(a)) || a.nombreArchivo === "Graficos.ini";
   const animaciones = archivos?.filter((a) => a.nombreArchivo.endsWith(".anim.json")) ?? [];
   const mundo = archivos?.filter(esDelMundo) ?? [];
-  const catalogos = archivos?.filter((a) => !a.nombreArchivo.endsWith(".anim.json") && !esDelMundo(a)) ?? [];
+  const clasico = archivos?.filter(esClasico) ?? [];
+  const catalogos = archivos?.filter((a) => !a.nombreArchivo.endsWith(".anim.json") && !esDelMundo(a) && !esClasico(a)) ?? [];
   const mapas = mundo.filter((a) => a.nombreArchivo.endsWith(".map")).length;
 
   return (
@@ -61,6 +74,14 @@ export function PantallaExportacion() {
             como los tres archivos que lee el juego. Se puede guardar la carpeta entera de una vez, que es lo práctico cuando son cientos, o bajar un
             archivo suelto para mirarlo.
           </p>
+
+          <div className="flags">
+            {ETIQUETAS.map(({ clave, titulo, ayuda }) => (
+              <label key={clave} title={ayuda}>
+                <input type="checkbox" checked={que[clave]} onChange={(e) => setQue({ ...que, [clave]: e.target.checked })} /> {titulo}
+              </label>
+            ))}
+          </div>
 
           {!archivos ? (
             <Cargando bloque>Armando la exportación…</Cargando>
@@ -90,6 +111,16 @@ export function PantallaExportacion() {
               <ListaDeArchivos archivos={animaciones} limite={40} />
             ) : (
               <p className="hint">Ninguna hoja tiene animaciones todavía. Marcá frames en «Animaciones» o importá los gráficos del clásico.</p>
+            )}
+            {!!clasico.length && (
+              <>
+                <h3>El AO clásico ({clasico.length})</h3>
+                <ListaDeArchivos archivos={clasico} />
+                <p className="hint">
+                  Van en <code>Dat/</code>. Vuelven con las claves que el editor no entiende —ropaje, sonidos, requisitos de herrería— tal como
+                  estaban: sólo cambian las líneas que editaste.
+                </p>
+              </>
             )}
             <h3>El mundo ({mapas} {mapas === 1 ? "mapa" : "mapas"})</h3>
             {mundo.length ? (

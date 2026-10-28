@@ -1,7 +1,7 @@
 import { ErrorDeDominio } from "@/compartido/dominio/ErrorDeDominio";
 import type { ValorDeAtributo } from "@/compartido/dominio/Atributos";
 import { tipoDeObjeto, type TipoDeObjetoId } from "@/objetos/dominio/TipoDeObjeto";
-import type { LectorDeObjetosClasicos, ObjetoClasico } from "../aplicacion/puertos";
+import type { ArchivoDeObjetosClasicos, LectorDeObjetosClasicos } from "../aplicacion/puertos";
 import { ArchivoIni } from "./LectorIni";
 
 /*
@@ -49,12 +49,12 @@ const EFECTOS: Readonly<Record<number, string>> = {
 };
 
 export class LectorObjDat implements LectorDeObjetosClasicos {
-  leer(texto: string): ObjetoClasico[] {
+  leer(texto: string): ArchivoDeObjetosClasicos {
     const ini = ArchivoIni.parsear(texto);
     const secciones = ini.numeradas("obj");
     if (!secciones.length) throw new ErrorDeDominio("No encontré ninguna sección [OBJn]: ¿seguro que es un OBJ.dat?");
 
-    return secciones.map(({ seccion, numero }) => {
+    const objetos = secciones.map(({ seccion, numero }) => {
       const tipo = TIPOS[ini.entero(seccion, "ObjType")] ?? "otro";
       return {
         numero,
@@ -68,8 +68,10 @@ export class LectorObjDat implements LectorDeObjetosClasicos {
         banderas: banderas(ini, seccion),
         atributos: atributos(ini, seccion, tipo),
         grhIcono: ini.entero(seccion, "GrhIndex"),
+        crudo: ini.lineasDe(seccion).join("\r\n"),
       };
     });
+    return { objetos, encabezado: ini.encabezado("obj").join("\r\n") };
   }
 }
 

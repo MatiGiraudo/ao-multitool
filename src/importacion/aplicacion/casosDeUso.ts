@@ -11,15 +11,18 @@ import type { ImportarEfectos, ResultadoDeImportacionDeEfectos } from "@/fx/apli
 import type { ImportarHechizos, ResultadoDeImportacionDeHechizos } from "@/hechizos/aplicacion/casosDeUso";
 import type { ImportarNpcs, ResultadoDeImportacionDeNpcs } from "@/npcs/aplicacion/casosDeUso";
 import type { ImportarObjetos, ResultadoDeImportacion } from "@/objetos/aplicacion/casosDeUso";
+import type { Objeto } from "@/objetos/dominio/Objeto";
 import type { FabricaDeCatalogo } from "@/proyecto/aplicacion/ImportarProyectoLegado";
 import { esElArchivo } from "../dominio/nombres";
 import { ErrorDeDominio } from "@/compartido/dominio/ErrorDeDominio";
 import { TablaDeGrh } from "../dominio/TablaDeGrh";
+import { ENCABEZADO, SIN_ORIGINALES, type OriginalesRepositorio } from "../dominio/OriginalesRepositorio";
 import type { TablaDeGrhRepositorio } from "../dominio/TablaDeGrhRepositorio";
 import type { PuenteDeGrh, VinculosDeGrh } from "./PuenteDeGrh";
 import type {
   AparienciaClasica,
   EscritorDeGraficosClasicos,
+  EscritorDeObjetosClasicos,
   LectorDeAparienciasClasicas,
   LectorDeEfectosClasicos,
   LectorDeGraficosClasicos,
@@ -120,6 +123,26 @@ export class ExportarGraficosIni {
   }
 }
 
+/**
+ * El `OBJ.dat` de vuelta, con lo editado adentro.
+ *
+ * Va en `Dat/`, que es donde el servidor del clásico busca sus archivos. Sin objetos no devuelve
+ * nada: un proyecto vacío no tiene por qué pisar el OBJ.dat de nadie.
+ */
+export class ExportarObjetosClasicos {
+  constructor(
+    private readonly listar: () => Promise<Objeto[]>,
+    private readonly originales: OriginalesRepositorio,
+    private readonly escritor: EscritorDeObjetosClasicos,
+  ) {}
+
+  async ejecutar(): Promise<{ nombreArchivo: string; contenido: string; carpeta: string }[]> {
+    const objetos = await this.listar();
+    if (!objetos.length) return [];
+    return [{ nombreArchivo: "OBJ.dat", contenido: this.escritor.escribir(objetos, await this.originales.leer("obj")), carpeta: "Dat" }];
+  }
+}
+
 export class ImportarTablaDeGrh {
   constructor(
     private readonly lector: LectorDeGraficosClasicos,
@@ -215,10 +238,17 @@ export class ImportarObjetosClasicos implements ConGraficos {
     readonly hojas: HojaRepositorio,
     private readonly importarObjetos: ImportarObjetos,
     readonly fabricaDeCatalogo: FabricaDeCatalogo,
+    private readonly originales: OriginalesRepositorio = SIN_ORIGINALES,
   ) {}
 
   async ejecutar(texto: string): Promise<ResultadoDeObjetosClasicos> {
-    const clasicos = this.lector.leer(texto);
+    const { objetos: clasicos, encabezado } = this.lector.leer(texto);
+    /* El texto de cada sección se guarda aparte: es lo que permite devolver el OBJ.dat entero.
+     * El 0 no es ningún objeto, así que ahí va el encabezado del archivo. */
+    await this.originales.guardar("obj", {
+      [ENCABEZADO]: encabezado,
+      ...Object.fromEntries(clasicos.map((o) => [o.numero, o.crudo])),
+    });
     const { vinculos, catalogo } = await conGraficos(
       this,
       clasicos.map((o) => o.grhIcono),

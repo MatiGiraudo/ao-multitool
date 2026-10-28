@@ -218,7 +218,7 @@ describe("LectorGraficosIni, formato de una línea", () => {
 });
 
 describe("LectorObjDat", () => {
-  const objetos = new LectorObjDat().leer(OBJ_DAT);
+  const { objetos } = new LectorObjDat().leer(OBJ_DAT);
 
   it("traduce los ObjType del clásico a los tipos del editor", () => {
     expect(objetos.map((o) => o.tipo)).toEqual(["arma", "pocion", "casco"]);
