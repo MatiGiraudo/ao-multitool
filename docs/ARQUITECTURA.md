@@ -197,9 +197,33 @@ El dominio nunca se convierte a JSON directamente. `HojaDto.ts` y `ObjetoDto.ts`
 ¿Quién decide qué adaptador va con qué caso de uso? Un solo lugar por entorno:
 
 - `src/contenedor/servidor.ts`: adaptadores de disco.
-- `src/contenedor/cliente.ts`: adaptadores HTTP y canvas.
+- `src/contenedor/cliente.ts`: adaptadores HTTP y canvas, o de carpeta.
 
 Si mañana querés guardar en SQLite, escribís un `SqliteHojaRepositorio implements HojaRepositorio` y cambiás **una línea** en `servidor.ts`.
+
+### Los dos modos de datos
+
+Esto dejó de ser hipotético: hay tres familias de adaptadores para los mismos puertos.
+
+| Familia | Dónde está el disco | Carpeta |
+|---|---|---|
+| `infraestructura/servidor/` | En la máquina que corre Next | `Archivos*` |
+| `infraestructura/navegador/` | Del otro lado de la API, o sea el mismo | `Http*` |
+| `infraestructura/carpeta/` | En la máquina del usuario, elegida por él | `Carpeta*` |
+
+`MODO_DE_DATOS` en `cliente.ts` elige entre las dos últimas, y se fija al compilar con
+`NEXT_PUBLIC_AO_MODO`:
+
+- **`servidor`** (por defecto): el navegador le habla por HTTP a las rutas de `app/api/`, que
+  escriben en `data/`. Es la app que corrés en tu máquina.
+- **`carpeta`**: no hay API de datos; el navegador lee y escribe directo en una carpeta que elige
+  el usuario con la File System Access API. Es lo que permite desplegar el editor en un servidor
+  público sin que los archivos de nadie suban a ningún lado.
+
+Las dos escriben **exactamente el mismo formato**, así que la misma carpeta sirve para las dos y
+podés pasar de una a la otra sin convertir nada. La de carpeta necesita Chromium (Chrome, Edge,
+Brave): `showDirectoryPicker` todavía no está en Firefox ni en Safari, y `PuertaDeCarpeta` lo dice
+en vez de fallar raro.
 
 ---
 

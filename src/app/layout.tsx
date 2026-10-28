@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { ProveedorDeAplicacion } from "@/compartido/ui/Aplicacion";
+import { PuertaDeCarpeta } from "@/compartido/ui/PuertaDeCarpeta";
 import { Encabezado } from "./_componentes/Encabezado";
 import "./globals.css";
 
@@ -30,7 +31,8 @@ export default function Layout({ children }: { children: ReactNode }) {
       <body>
         <ProveedorDeAplicacion>
           <Encabezado />
-          {children}
+          {/* En el modo carpeta, las pantallas no se montan hasta que haya una carpeta elegida. */}
+          <PuertaDeCarpeta>{children}</PuertaDeCarpeta>
         </ProveedorDeAplicacion>
       </body>
     </html>

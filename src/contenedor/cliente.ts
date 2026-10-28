@@ -104,6 +104,12 @@ import {
   ResolverGraficosDelMapa,
 } from "@/mapas/aplicacion/casosDeUso";
 import { HttpMapaRepositorio } from "@/mapas/infraestructura/navegador/HttpMapaRepositorio";
+import { CarpetaDelProyecto } from "@/compartido/infraestructura/carpeta/CarpetaDelProyecto";
+import { CarpetaCabezaRepositorio, CarpetaCuerpoRepositorio } from "@/apariencias/infraestructura/carpeta/CarpetaApariencias";
+import { CarpetaEfectoRepositorio } from "@/fx/infraestructura/carpeta/CarpetaEfectoRepositorio";
+import { CarpetaHechizoRepositorio } from "@/hechizos/infraestructura/carpeta/CarpetaHechizoRepositorio";
+import { CarpetaNpcRepositorio } from "@/npcs/infraestructura/carpeta/CarpetaNpcRepositorio";
+import { CarpetaObjetoRepositorio } from "@/objetos/infraestructura/carpeta/CarpetaObjetoRepositorio";
 import { LectorAparienciasIni } from "@/importacion/infraestructura/LectorAparienciasIni";
 import { LectorFxsIni } from "@/importacion/infraestructura/LectorFxsIni";
 import { EscritorGraficosIni } from "@/importacion/infraestructura/EscritorGraficosIni";
@@ -119,26 +125,46 @@ import { HttpAlmacenDeExportacion } from "@/proyecto/infraestructura/navegador/H
 import { LectorAoProj } from "@/proyecto/infraestructura/LectorAoProj";
 
 /*
+ * De dónde salen los datos. Son dos modos con los mismos casos de uso y los mismos formatos:
+ *
+ * - `servidor`: el disco lo toca el servidor y el navegador le habla por HTTP. Es lo que corre
+ *   cuando levantás la app en tu máquina, y lo que viene por defecto.
+ * - `carpeta`: no hay servidor de datos; el navegador lee y escribe directamente en una carpeta
+ *   que elige el usuario. Es lo que hace falta para desplegar el editor en un servidor público
+ *   sin que los archivos de nadie suban a ningún lado.
+ *
+ * Se elige al compilar, con `NEXT_PUBLIC_AO_MODO=carpeta`, porque lo que cambia es qué adaptadores
+ * se enchufan y eso se decide una vez, no por pantalla.
+ */
+export type ModoDeDatos = "servidor" | "carpeta";
+export const MODO_DE_DATOS: ModoDeDatos = process.env.NEXT_PUBLIC_AO_MODO === "carpeta" ? "carpeta" : "servidor";
+
+/** La carpeta elegida, compartida por todos los adaptadores del modo carpeta. */
+export const carpetaDelProyecto = new CarpetaDelProyecto();
+
+/*
  * Raíz de composición del NAVEGADOR: los mismos casos de uso que podrían correr en el servidor,
- * pero enchufados a adaptadores HTTP y a canvas. La interfaz sólo habla con este objeto.
+ * pero enchufados a adaptadores HTTP (o a la carpeta del usuario) y a canvas. La interfaz sólo
+ * habla con este objeto.
  */
 function crear() {
+  const enCarpeta = MODO_DE_DATOS === "carpeta";
   const ids = new GeneradorDeIdsAleatorio();
   const hojas = new HttpHojaRepositorio();
   const imagenes = new HttpAlmacenDeImagenes();
   const procesador = new CanvasProcesadorDeImagenes();
   const formatoAnim = new FormatoAoAnim();
-  const objetos = new HttpObjetoRepositorio();
+  const objetos = enCarpeta ? new CarpetaObjetoRepositorio(carpetaDelProyecto) : new HttpObjetoRepositorio();
   const formatoObjs = new FormatoAoObjs();
-  const efectos = new HttpEfectoRepositorio();
+  const efectos = enCarpeta ? new CarpetaEfectoRepositorio(carpetaDelProyecto) : new HttpEfectoRepositorio();
   const formatoFx = new FormatoAoFx();
-  const cuerpos = new HttpCuerpoRepositorio();
+  const cuerpos = enCarpeta ? new CarpetaCuerpoRepositorio(carpetaDelProyecto) : new HttpCuerpoRepositorio();
   const formatoCuerpos = new FormatoAoBodies();
-  const cabezas = new HttpCabezaRepositorio();
+  const cabezas = enCarpeta ? new CarpetaCabezaRepositorio(carpetaDelProyecto) : new HttpCabezaRepositorio();
   const formatoCabezas = new FormatoAoHeads();
   const tablaDeGrh = new HttpTablaDeGrh();
-  const hechizos = new HttpHechizoRepositorio();
-  const npcs = new HttpNpcRepositorio();
+  const hechizos = enCarpeta ? new CarpetaHechizoRepositorio(carpetaDelProyecto) : new HttpHechizoRepositorio();
+  const npcs = enCarpeta ? new CarpetaNpcRepositorio(carpetaDelProyecto) : new HttpNpcRepositorio();
   const formatoNpcs = new FormatoAoNpcs();
   const formatoHechizos = new FormatoAoSpells();
   const importarObjetos = new ImportarObjetos(objetos, formatoObjs, ids);
