@@ -80,8 +80,12 @@ Se enciende con una variable al compilar:
 NEXT_PUBLIC_AO_MODO=carpeta npm run build
 ```
 
-En Vercel, esa misma variable va en *Settings → Environment Variables*. Lo demás es el build de
-siempre.
+Con esa variable el build cambia de forma: las rutas de `app/api/` quedan afuera —no hace falta
+ninguna, y en un servidor sin disco donde escribir sólo podrían fallar— y lo que sale es un
+**sitio estático** en `out/`, que se sube tal cual. No queda nada corriendo del otro lado.
+
+En Vercel alcanza con poner `NEXT_PUBLIC_AO_MODO=carpeta` en *Settings → Environment Variables*:
+detecta el export solo.
 
 Un par de cosas que conviene saber:
 
