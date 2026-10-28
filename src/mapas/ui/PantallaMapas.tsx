@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAplicacion } from "@/compartido/ui/Aplicacion";
 import { BotonArchivos, BotonConfirmar, CampoNumero, Cargando } from "@/compartido/ui/componentes";
+import type { EstadoGuardado } from "@/compartido/ui/useColeccionEditable";
 import { descargar } from "@/compartido/ui/utilidades";
 import type { GraficosDelMapa } from "../aplicacion/casosDeUso";
 import { Historial } from "../dominio/Historial";
@@ -64,7 +65,12 @@ export function PantallaMapas() {
   const [guardados, setGuardados] = useState<ResumenDeMapa[]>([]);
   /* El mapa abierto ya vive en el proyecto: a partir de ahí se guarda solo, como el resto del editor. */
   const [enProyecto, setEnProyecto] = useState(false);
-  const [guardando, setGuardando] = useState(false);
+  const [estadoGuardado, setEstadoGuardado] = useState<EstadoGuardado>("guardado");
+  /* Si el último guardado falló hay que saberlo ya, sin esperar a que React vuelva a dibujar: lo
+   * mira el guardia que corre justo antes de dejar el mapa abierto. */
+  const falloElGuardado = useRef(false);
+  /** El guardado automático que todavía no salió. Se vacía antes de cambiar de mapa, no se tira. */
+  const pendiente = useRef<{ abierto: Abierto; timer: ReturnType<typeof setTimeout> } | null>(null);
   /** Gráficos que ya se pidieron para el pincel, resueltos o no, para no pedirlos en cada tecla. */
   const intentados = useRef(new Set<number>());
   const usadosAnteriores = useRef<number[]>([]);
@@ -115,9 +121,69 @@ export function PantallaMapas() {
     setNumeroNuevo(guardados.reduce((mayor, g) => Math.max(mayor, g.numero), 0) + 1);
   }, [guardados]);
 
+  /**
+   * Guardar el mapa abierto en el proyecto.
+   *
+   * El estado es uno solo —`guardando`, `guardado`, `error`— y lo mira tanto el cartel como el
+   * botón: si falla, la pantalla lo dice y el botón vuelve a habilitarse para reintentar. Antes
+   * quedaba diciendo «Guardado» aunque el disco hubiera rebotado, y se podía seguir editando
+   * creyendo que estaba todo a salvo.
+   */
+  const guardarEnProyecto = useCallback(
+    async (abierto: Abierto) => {
+      setEstadoGuardado("guardando");
+      const ok = await intentar(async () => {
+        await casos.mapas.guardar.ejecutar({ mapa: abierto.mapa, anchoDeGrafico: abierto.ancho, nombreArchivo: abierto.nombreArchivo });
+        return true;
+      });
+      falloElGuardado.current = !ok;
+      setEstadoGuardado(ok ? "guardado" : "error");
+      if (!ok) return;
+      setEnProyecto(true);
+      void refrescarGuardados();
+    },
+    [casos, intentar, refrescarGuardados],
+  );
+
+  /**
+   * Saca el guardado automático que esté programado, en vez de dejar que se pierda.
+   *
+   * El guardado va un segundo después del último cambio, así que al cambiar de mapa siempre hay
+   * una ventana donde lo último que pintaste todavía no salió. Esto es el `guardarPendientes()`
+   * de `useColeccionEditable`: vaciar lo que haya antes de cualquier cosa que cambie de mapa.
+   */
+  const guardarPendientes = useCallback(async () => {
+    const programado = pendiente.current;
+    if (!programado) return;
+    clearTimeout(programado.timer);
+    pendiente.current = null;
+    await guardarEnProyecto(programado.abierto);
+  }, [guardarEnProyecto]);
+
+  /** Lo que hay que resolver antes de dejar el mapa abierto: lo pendiente se guarda, lo roto se pregunta. */
+  const puedoDejarElMapa = useCallback(
+    async (accion: string) => {
+      await guardarPendientes();
+      if (falloElGuardado.current && !confirm(`No se pudo guardar el mapa abierto en el proyecto. ¿${accion} igual y perder esos cambios?`)) {
+        return false;
+      }
+      if (sinGuardar && !confirm(`Tenés cambios sin exportar en el mapa abierto. ¿${accion} y perderlos?`)) return false;
+      return true;
+    },
+    [guardarPendientes, sinGuardar],
+  );
+
+  /** Poner otro mapa en pantalla: lo que fallaba o faltaba guardar era del anterior. */
+  const empezarDeCero = useCallback((nuevo: Abierto) => {
+    falloElGuardado.current = false;
+    setEstadoGuardado("guardado");
+    setAbierto(nuevo);
+    setSinGuardar(false);
+  }, []);
+
   const abrirDelProyecto = useCallback(
     async (numero: number) => {
-      if (sinGuardar && !confirm("Tenés cambios sin exportar en el mapa abierto. ¿Abrir otro y perderlos?")) return;
+      if (!(await puedoDejarElMapa("Abrir otro"))) return;
       setAbriendo(numero);
       const empezo = performance.now();
       const resultado = await intentar(async () => {
@@ -128,33 +194,18 @@ export function PantallaMapas() {
       setAbriendo(null);
       if (!resultado) return;
       intentados.current.clear();
-      setAbierto(resultado);
-      setSinGuardar(false);
+      empezarDeCero(resultado);
       setEnProyecto(true);
       setSello((n) => n + 1);
       setRevision((n) => n + 1);
     },
-    [casos, intentar, montar, sinGuardar],
+    [casos, empezarDeCero, intentar, montar, puedoDejarElMapa],
   );
 
-  const guardarEnProyecto = useCallback(
-    async (abierto: Abierto) => {
-      setGuardando(true);
-      const ok = await intentar(async () => {
-        await casos.mapas.guardar.ejecutar({ mapa: abierto.mapa, anchoDeGrafico: abierto.ancho, nombreArchivo: abierto.nombreArchivo });
-        return true;
-      });
-      setGuardando(false);
-      if (!ok) return;
-      setEnProyecto(true);
-      void refrescarGuardados();
-    },
-    [casos, intentar, refrescarGuardados],
-  );
 
   const abrir = useCallback(
     async (trio: Trio) => {
-      if (sinGuardar && !confirm("Tenés cambios sin exportar en el mapa abierto. ¿Abrir otro y perderlos?")) return;
+      if (!(await puedoDejarElMapa("Abrir otro"))) return;
       setAbriendo(trio.numero);
       const empezo = performance.now();
       const resultado = await intentar(async () => {
@@ -166,13 +217,12 @@ export function PantallaMapas() {
       setAbriendo(null);
       if (!resultado) return;
       intentados.current.clear();
-      setAbierto(resultado);
-      setSinGuardar(false);
+      empezarDeCero(resultado);
       setEnProyecto(false);
       setSello((n) => n + 1);
       setRevision((n) => n + 1);
     },
-    [casos, intentar, montar, sinGuardar],
+    [casos, empezarDeCero, intentar, montar, puedoDejarElMapa],
   );
 
   /**
@@ -183,12 +233,12 @@ export function PantallaMapas() {
    * lo que el servidor espera de un mapa que no viene de otro (no valida ni el CRC ni la palabra
    * mágica: los lee y los descarta).
    */
-  const crearNuevo = () => {
-    if (sinGuardar && !confirm("Tenés cambios sin exportar en el mapa abierto. ¿Empezar uno nuevo y perderlos?")) return;
+  const crearNuevo = async () => {
+    if (!(await puedoDejarElMapa("Empezar uno nuevo"))) return;
     const creado = avisandoSiFalla(() => Mapa.vacio(numeroNuevo, { nombre: `Mapa ${numeroNuevo}` }));
     if (!creado) return;
     intentados.current.clear();
-    setAbierto({
+    empezarDeCero({
       mapa: creado,
       ancho: 4,
       nombreArchivo: `Mapa${numeroNuevo}`,
@@ -197,7 +247,6 @@ export function PantallaMapas() {
       historial: new Historial(),
       ms: 0,
     });
-    setSinGuardar(false);
     setEnProyecto(false);
     setEditando(true);
     setSello((n) => n + 1);
@@ -241,8 +290,10 @@ export function PantallaMapas() {
    * guardado automático depende de esa función, y la lista cambia justo después de cada guardado.
    */
   const guardarPreguntandoSiPisa = (abierto: Abierto) => {
-    const pisa = guardados.some((g) => g.numero === abierto.mapa.numero);
-    if (pisa && !confirm(`Ya hay un mapa ${abierto.mapa.numero} guardado en el proyecto. ¿Reemplazarlo por este?`)) return;
+    // Si el mapa abierto ya es el que vive en el proyecto, el archivo es suyo: ahí no hay nada que
+    // preguntar. Pasa al reintentar un guardado que falló, que es justo cuando menos ayuda.
+    const pisaOtro = !enProyecto && guardados.some((g) => g.numero === abierto.mapa.numero);
+    if (pisaOtro && !confirm(`Ya hay un mapa ${abierto.mapa.numero} guardado en el proyecto. ¿Reemplazarlo por este?`)) return;
     void guardarEnProyecto(abierto);
   };
 
@@ -322,8 +373,13 @@ export function PantallaMapas() {
    */
   useEffect(() => {
     if (!abierto || !enProyecto || !sello) return;
-    const t = setTimeout(() => void guardarEnProyecto(abierto), 1000);
-    return () => clearTimeout(t);
+    // Queda anotado en `pendiente` para que cambiar de mapa lo vacíe en vez de descartarlo.
+    const timer = setTimeout(() => {
+      pendiente.current = null;
+      void guardarEnProyecto(abierto);
+    }, 1000);
+    pendiente.current = { abierto, timer };
+    return () => clearTimeout(timer);
   }, [abierto, enProyecto, sello, guardarEnProyecto]);
 
   // Avisar antes de cerrar la pestaña con cambios sin exportar.
@@ -465,9 +521,21 @@ export function PantallaMapas() {
                   correría el mapa para abajo justo mientras se pinta. */}
               <div className="row">
                 {sinGuardar && <span className="pill warn">sin exportar</span>}
-                <span className="status">{guardando ? "Guardando…" : enProyecto ? "Guardado en data/mapas" : ""}</span>
-                <button onClick={() => guardarPreguntandoSiPisa(abierto)} disabled={guardando || enProyecto} title="Para no perderlo al recargar">
-                  {enProyecto ? "En el proyecto" : "Guardar en el proyecto"}
+                <span className={`guardado ${estadoGuardado}`} style={{ marginLeft: 0 }}>
+                  {estadoGuardado === "guardando"
+                    ? "Guardando…"
+                    : estadoGuardado === "error"
+                      ? "No se pudo guardar en el proyecto"
+                      : enProyecto
+                        ? "Guardado en data/mapas"
+                        : ""}
+                </span>
+                <button
+                  onClick={() => guardarPreguntandoSiPisa(abierto)}
+                  disabled={estadoGuardado === "guardando" || (enProyecto && estadoGuardado !== "error")}
+                  title="Para no perderlo al recargar"
+                >
+                  {estadoGuardado === "error" ? "Reintentar" : enProyecto ? "En el proyecto" : "Guardar en el proyecto"}
                 </button>
                 <button className="primary" onClick={exportar}>
                   Exportar .map .inf .dat

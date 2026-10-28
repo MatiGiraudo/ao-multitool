@@ -12,26 +12,16 @@ lo que se decidió dejar para después, así no se pierde.
 >
 > Segunda revisión del 28/10/2026, sobre la misma rama. El hallazgo grave —reimportar el
 > `Graficos.ini` borraba los gráficos propios del proyecto— está arreglado; los otros tres quedaron
-> acá como los puntos 5, 6 y 7.
+> acá.
+>
+> El 28/10/2026 se arreglaron también los dos del guardado de mapas, que eran los que perdían
+> trabajo: el guardado que fallaba en silencio y el automático que se descartaba al cambiar de
+> mapa. Con ellos se fue un tercero que apareció al probarlos: reintentar un guardado preguntaba
+> si querías pisar el mapa guardado, que era el mismo que estabas editando.
 
 ---
 
-## 1. Si falla el guardado, la pantalla sigue diciendo «Guardado»
-
-**Dónde:** `src/mapas/ui/PantallaMapas.tsx`, en `guardarEnProyecto`.
-
-Cuando el guardado falla —disco lleno, permisos, el `PUT /api/mapas/<n>` que devuelve 500—,
-`intentar` muestra el error en un aviso de tres segundos y la función vuelve sin tocar `enProyecto`,
-que ya estaba en true. La barra sigue mostrando «Guardado en data/mapas», el botón sigue
-deshabilitado y no hay reintento: el próximo intento recién llega si el usuario hace otro cambio.
-O sea que se puede seguir editando creyendo que está todo guardado.
-
-**Qué haría falta:** que el estado del guardado sea uno solo y refleje el error (`guardado`,
-`guardando`, `error`, como el `EstadoGuardado` que ya usa `useColeccionEditable`), que el botón
-vuelva a habilitarse para reintentar a mano, y que un guardado automático que falla no se quede en
-silencio.
-
-## 2. Una hoja con nombre no numérico rompe el `Graficos.ini` exportado
+## 1. Una hoja con nombre no numérico rompe el `Graficos.ini` exportado
 
 **Dónde:** `src/importacion/infraestructura/EscritorGraficosIni.ts`, y el camino que la lleva ahí
 es el catálogo de tiles (`src/mapas/ui/CatalogoDeTiles.tsx`).
@@ -45,20 +35,7 @@ número. Nadie avisa nada al elegir el tile.
 **Qué haría falta:** decidir qué queremos de los nombres de hoja. Lo mínimo es avisar en el catálogo
 cuando el nombre no es numérico; lo correcto, que el proyecto le asigne un `FileNum` propio a cada
 hoja (como hace con los números de GRH) y que exportar las imágenes las copie con ese nombre.
-
-## 3. Cambiar de mapa descarta el guardado automático pendiente
-
-**Dónde:** `src/mapas/ui/PantallaMapas.tsx`, el efecto que programa el guardado un segundo después
-del último cambio.
-
-El efecto depende de `abierto`, así que al abrir otro mapa su limpieza hace `clearTimeout` y lo que
-se editó en ese último segundo nunca llega al disco. El diálogo de confirmación que aparece al
-cambiar de mapa sólo mira `sinGuardar`, que es lo de exportar, no el guardado del proyecto.
-
-**Qué haría falta:** vaciar lo pendiente antes de cambiar de mapa, igual que
-`useColeccionEditable.guardarPendientes()` antes de cualquier operación que relea del servidor.
-
-## 4. Listar los mapas guardados los parsea enteros
+## 2. Listar los mapas guardados los parsea enteros
 
 **Dónde:** `src/mapas/infraestructura/servidor/ArchivosMapaRepositorio.ts`, en `listar()`.
 
@@ -71,8 +48,7 @@ cumple lo que promete el tipo.
 **Qué haría falta:** guardar el resumen aparte (un `data/mapas/indice.json`, escrito en el mismo
 guardado) o leer sólo la cabecera de cada archivo. La primera opción es la que ya usan las
 colecciones de un solo JSON.
-
-## 5. Los nombres de las hojas se enciman en el catálogo de tiles
+## 3. Los nombres de las hojas se enciman en el catálogo de tiles
 
 **Dónde:** `src/mapas/ui/CatalogoDeTiles.tsx`, la lista de hojas.
 
@@ -81,8 +57,7 @@ Con nombres de archivo adentro, los botones se superponen y no se lee cuál es c
 
 **Qué haría falta:** una clase propia para esa lista, con columnas anchas y el nombre recortado con
 ellipsis, o miniaturas en vez de nombres.
-
-## 6. La caché de la tabla de GRH sólo se entera de sus propias escrituras
+## 4. La caché de la tabla de GRH sólo se entera de sus propias escrituras
 
 **Dónde:** `src/importacion/infraestructura/navegador/HttpTablaDeGrh.ts`.
 
@@ -93,8 +68,7 @@ carrera que arregla `d925788`, pero entre pestañas en vez de entre clics.
 
 **Qué haría falta:** que el guardado mande la versión que leyó y el servidor rechace la escritura si
 cambió mientras tanto, o que la tabla se relea antes de repartir un número nuevo.
-
-## 7. Abrir un mapa del proyecto lo vuelve a guardar al segundo
+## 5. Abrir un mapa del proyecto lo vuelve a guardar al segundo
 
 **Dónde:** `src/mapas/ui/PantallaMapas.tsx`, el mismo efecto del punto 3.
 
