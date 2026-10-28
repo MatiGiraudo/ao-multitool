@@ -15,7 +15,9 @@ export class ArchivosAlmacenDeExportacion implements AlmacenDeExportacion {
   async guardar(archivos: readonly ArchivoExportado[]): Promise<ResultadoDeGuardado> {
     await asegurarCarpeta(this.carpeta);
     for (const archivo of archivos) {
-      await escribirAtomico(path.join(this.carpeta, nombreSeguroDeArchivo(archivo.nombreArchivo)), archivo.contenido);
+      // La subcarpeta pasa por el mismo filtro que el nombre: es un solo tramo, sin `..` ni rutas.
+      const subcarpeta = archivo.carpeta ? nombreSeguroDeArchivo(archivo.carpeta) : "";
+      await escribirAtomico(path.join(this.carpeta, subcarpeta, nombreSeguroDeArchivo(archivo.nombreArchivo)), archivo.contenido);
     }
     return { carpeta: this.carpeta, escritos: archivos.length };
   }

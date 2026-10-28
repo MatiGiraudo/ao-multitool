@@ -14,6 +14,7 @@ import { Npc } from "@/npcs/dominio/Npc";
 import { Objeto } from "@/objetos/dominio/Objeto";
 import { ExportarTodo, type ArchivoExportado } from "./aplicacion/ExportarTodo";
 import { RevisarMundo, type MundoParaRevisar } from "./aplicacion/RevisarMundo";
+import { ArchivoExportadoMapper } from "./infraestructura/ArchivoExportadoDto";
 
 const fabricaDeCatalogo = (hojas: readonly HojaDeSprites[]) => new CatalogoGraficoDesdeHojas(hojas);
 
@@ -26,13 +27,13 @@ function hojaCon(id: string, nombreArchivo: string, ...animaciones: string[]) {
 }
 
 describe("ExportarTodo", () => {
-  async function exportar(hojas: HojaDeSprites[]) {
+  async function exportar(hojas: HojaDeSprites[], varios: (() => Promise<ArchivoExportado[]>)[] = []) {
     const repo = new MemoriaHojaRepositorio();
     for (const h of hojas) await repo.guardar(h);
     const catalogos = ["objetos.json", "fx.json", "cuerpos.json", "cabezas.json", "hechizos.json"].map(
       (nombreArchivo) => async (): Promise<ArchivoExportado> => ({ nombreArchivo, contenido: "{}" }),
     );
-    return new ExportarTodo(repo, new FormatoAoAnim(), fabricaDeCatalogo, catalogos).ejecutar();
+    return new ExportarTodo(repo, new FormatoAoAnim(), fabricaDeCatalogo, catalogos, varios).ejecutar();
   }
 
   it("junta los cinco catálogos y un .anim.json por hoja con animaciones", async () => {
@@ -53,6 +54,62 @@ describe("ExportarTodo", () => {
     const archivos = await exportar([hojaCon("h1", "cuerpo.png", "caminar_sur"), vacia]);
     expect(archivos.some((a) => a.nombreArchivo === "905.anim.json")).toBe(false);
     expect(archivos).toHaveLength(6);
+  });
+
+  it("suma el mundo: los archivos de cada mapa y el Graficos.ini", async () => {
+    const mundo = async (): Promise<ArchivoExportado[]> => [
+      { nombreArchivo: "Mapa1.map", contenido: new Uint8Array([1, 2, 3]), carpeta: "Mundos" },
+      { nombreArchivo: "Mapa1.dat", contenido: "[MAPA1]", carpeta: "Mundos" },
+    ];
+    const graficos = async (): Promise<ArchivoExportado[]> => [{ nombreArchivo: "Graficos.ini", contenido: "[Graphics]" }];
+
+    const archivos = await exportar([hojaCon("h1", "cuerpo.png", "caminar_sur")], [mundo, graficos]);
+
+    // Primero lo que va suelto, por nombre, y después cada subcarpeta junta.
+    expect(archivos.map((a) => `${a.carpeta ?? ""}/${a.nombreArchivo}`)).toEqual([
+      "/cabezas.json",
+      "/cuerpo.anim.json",
+      "/cuerpos.json",
+      "/fx.json",
+      "/Graficos.ini",
+      "/hechizos.json",
+      "/objetos.json",
+      "Mundos/Mapa1.dat",
+      "Mundos/Mapa1.map",
+    ]);
+  });
+
+  it("un mundo sin mapas exporta los catálogos igual", async () => {
+    const archivos = await exportar([], [async () => [], async () => []]);
+    expect(archivos).toHaveLength(5);
+  });
+});
+
+describe("ArchivoExportado por HTTP", () => {
+  it("los bytes de un mapa cruzan enteros", () => {
+    // Todos los valores de un byte, que es donde se nota si la codificación rompe algo.
+    const bytes = new Uint8Array(256).map((_, i) => i);
+    const archivo: ArchivoExportado = { nombreArchivo: "Mapa1.map", contenido: bytes, carpeta: "Mundos" };
+
+    const dto = ArchivoExportadoMapper.aDto(archivo);
+    expect(dto.binario).toBe(true);
+    const vuelta = ArchivoExportadoMapper.aDominio(dto);
+
+    expect(vuelta.contenido).toBeInstanceOf(Uint8Array);
+    expect([...(vuelta.contenido as Uint8Array)]).toEqual([...bytes]);
+    expect(vuelta.carpeta).toBe("Mundos");
+  });
+
+  it("el texto no se codifica, para que el JSON se siga leyendo", () => {
+    const dto = ArchivoExportadoMapper.aDto({ nombreArchivo: "objetos.json", contenido: '{"a":1}' });
+    expect(dto).toEqual({ nombreArchivo: "objetos.json", contenido: '{"a":1}' });
+    expect(ArchivoExportadoMapper.aDominio(dto).contenido).toBe('{"a":1}');
+  });
+
+  it("rechaza lo que no tiene nombre y contenido", () => {
+    expect(ArchivoExportadoMapper.esValido({ nombreArchivo: "a", contenido: "b" })).toBe(true);
+    expect(ArchivoExportadoMapper.esValido({ nombreArchivo: "a" })).toBe(false);
+    expect(ArchivoExportadoMapper.esValido(null)).toBe(false);
   });
 });
 

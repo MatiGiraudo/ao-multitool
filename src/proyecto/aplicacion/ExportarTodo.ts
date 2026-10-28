@@ -12,11 +12,22 @@ import type { FabricaDeCatalogo } from "./ImportarProyectoLegado";
 
 export interface ArchivoExportado {
   nombreArchivo: string;
-  contenido: string;
+  /**
+   * Texto para los catálogos y el `Graficos.ini`; bytes crudos para los binarios del juego.
+   *
+   * Los `.map` y `.inf` no son texto, y escribirlos como si lo fueran los rompe: el formato está
+   * probado byte a byte contra los mapas del juego, así que acá viajan tal cual.
+   */
+  contenido: string | Uint8Array;
+  /** Subcarpeta donde va, si el juego lo espera en una: los mapas van en `Mundos`. */
+  carpeta?: string;
 }
 
 /** Lo que este caso de uso necesita de cada módulo: un archivo, dado el catálogo de gráficos. */
 export type ExportarCatalogo = (catalogo: CatalogoGrafico) => Promise<ArchivoExportado>;
+
+/** Los módulos que aportan varios archivos de una: los mapas son tres por cada uno. */
+export type ExportarVarios = () => Promise<ArchivoExportado[]>;
 
 export class ExportarTodo {
   constructor(
@@ -25,12 +36,15 @@ export class ExportarTodo {
     private readonly fabricaDeCatalogo: FabricaDeCatalogo,
     /** Los exportadores de los catálogos (objetos, FX, cuerpos, cabezas, hechizos). */
     private readonly catalogos: readonly ExportarCatalogo[],
+    /** Los que aportan varios archivos: los mapas del proyecto y el `Graficos.ini`. */
+    private readonly varios: readonly ExportarVarios[] = [],
   ) {}
 
   async ejecutar(): Promise<ArchivoExportado[]> {
     const hojas = await this.hojas.listar();
     const catalogo = this.fabricaDeCatalogo(hojas);
     const archivos = await Promise.all(this.catalogos.map((exportar) => exportar(catalogo)));
+    for (const exportar of this.varios) archivos.push(...(await exportar()));
 
     // Un .anim.json por hoja, pero sólo de las que tienen animaciones: después de importar los
     // gráficos del clásico hay miles de hojas cargadas y la mayoría todavía no tiene ninguna.
@@ -42,7 +56,8 @@ export class ExportarTodo {
       });
     }
 
-    return archivos.sort((a, b) => a.nombreArchivo.localeCompare(b.nombreArchivo));
+    // Los de cada subcarpeta quedan juntos, y dentro por nombre.
+    return archivos.sort((a, b) => (a.carpeta ?? "").localeCompare(b.carpeta ?? "") || a.nombreArchivo.localeCompare(b.nombreArchivo));
   }
 }
 

@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { ExportarMapasAlJuego } from "./aplicacion/casosDeUso";
 import { ALTO, ANCHO, Mapa } from "./dominio/Mapa";
 import type { MapaGuardado } from "./dominio/MapaRepositorio";
+import { FormatoMapaClasico } from "./infraestructura/FormatoMapaClasico";
+import { MemoriaMapaRepositorio } from "./infraestructura/memoria";
 import { comprimir, descomprimir, MapaMapper } from "./infraestructura/MapaDto";
 
 /** Un mapa con una celda de cada cosa, igual que el del formato clásico. */
@@ -73,3 +76,57 @@ describe("MapaDto", () => {
     expect(dto.capas[2]).toEqual([0, 10_000]);
   });
 });
+
+describe("ExportarMapasAlJuego", () => {
+  async function conDosMapas() {
+    const repo = new MemoriaMapaRepositorio();
+    await repo.guardar(guardado());
+    const otro = guardado();
+    await repo.guardar({ ...otro, mapa: otro.mapa.conNumero(7), nombreArchivo: "Mapa7" });
+    return repo;
+  }
+
+  it("da los tres archivos de cada mapa, en la carpeta que espera el juego", async () => {
+    const archivos = await new ExportarMapasAlJuego(await conDosMapas()).ejecutar();
+
+    expect(archivos.map((a) => `${a.carpeta}/${a.nombreArchivo}`)).toEqual([
+      "Mundos/Mapa7.map",
+      "Mundos/Mapa7.inf",
+      "Mundos/Mapa7.dat",
+      "Mundos/Mapa120.map",
+      "Mundos/Mapa120.inf",
+      "Mundos/Mapa120.dat",
+    ]);
+    // Los binarios salen como bytes: escribirlos como texto los rompería.
+    expect(archivos[0]!.contenido).toBeInstanceOf(Uint8Array);
+    expect(typeof archivos[2]!.contenido).toBe("string");
+  });
+
+  it("lo que exporta es un mapa que se puede volver a leer", async () => {
+    const repo = new MemoriaMapaRepositorio();
+    await repo.guardar(guardado());
+
+    const archivos = await new ExportarMapasAlJuego(repo).ejecutar();
+    const map = archivos.find((a) => a.nombreArchivo.endsWith(".map"))!.contenido as Uint8Array;
+    const inf = archivos.find((a) => a.nombreArchivo.endsWith(".inf"))!.contenido as Uint8Array;
+    const dat = archivos.find((a) => a.nombreArchivo.endsWith(".dat"))!.contenido as string;
+
+    const { mapa } = new FormatoMapaClasico().leer(120, aBuffer(map), aBuffer(inf), dat);
+    expect(mapa.grafico(5, 5, 2)).toBe(2500);
+    expect(mapa.bloqueada(5, 6)).toBe(true);
+    expect(mapa.traslado(5, 9)).toEqual({ mapa: 9, x: 60, y: 61 });
+    expect(mapa.npc(5, 10)).toBe(25);
+    expect(mapa.objeto(5, 11)).toEqual({ objeto: 12, cantidad: 100 });
+    expect(mapa.info.nombre).toBe("Pueblo nuevo");
+    expect(mapa.info.seCombate).toBe(false);
+  });
+
+  it("sin mapas guardados no exporta nada, y eso no es un error", async () => {
+    expect(await new ExportarMapasAlJuego(new MemoriaMapaRepositorio()).ejecutar()).toEqual([]);
+  });
+});
+
+/** El `.map` sale como `Uint8Array` y el lector pide un `ArrayBuffer` del tamaño justo. */
+function aBuffer(bytes: Uint8Array): ArrayBuffer {
+  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+}

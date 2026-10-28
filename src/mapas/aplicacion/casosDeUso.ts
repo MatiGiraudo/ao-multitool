@@ -56,6 +56,40 @@ export class GuardarMapa {
   }
 }
 
+/**
+ * Todos los mapas del proyecto, como los tres archivos que lee el juego.
+ *
+ * Es lo que le faltaba a «Exportar todo»: los catálogos salían en JSON pero el mundo se quedaba
+ * adentro del editor. Cada mapa vuelve con el mismo ancho de gráfico con que entró, así que uno
+ * importado y exportado sin tocar sale idéntico byte a byte.
+ *
+ * Los mapas van de a uno y no todos a la vez a propósito: son 83 KB cada uno y un mundo entero
+ * son cientos, así que pedirlos en paralelo sería abrir trescientas conexiones de una.
+ */
+export class ExportarMapasAlJuego {
+  constructor(
+    private readonly repo: MapaRepositorio,
+    private readonly formato = new FormatoMapaClasico(),
+  ) {}
+
+  async ejecutar(): Promise<{ nombreArchivo: string; contenido: string | Uint8Array; carpeta: string }[]> {
+    const archivos: { nombreArchivo: string; contenido: string | Uint8Array; carpeta: string }[] = [];
+    for (const resumen of await this.repo.listar()) {
+      const guardado = await this.repo.obtener(resumen.numero);
+      if (!guardado) continue;
+      const { map, inf, dat } = this.formato.escribir(guardado.mapa, guardado.anchoDeGrafico);
+      const base = guardado.nombreArchivo || `Mapa${resumen.numero}`;
+      // `Mundos` es la carpeta donde el servidor del clásico espera encontrarlos.
+      archivos.push(
+        { nombreArchivo: `${base}.map`, contenido: map, carpeta: "Mundos" },
+        { nombreArchivo: `${base}.inf`, contenido: inf, carpeta: "Mundos" },
+        { nombreArchivo: `${base}.dat`, contenido: dat, carpeta: "Mundos" },
+      );
+    }
+    return archivos;
+  }
+}
+
 export class EliminarMapaGuardado {
   constructor(private readonly repo: MapaRepositorio) {}
   ejecutar(numero: number): Promise<void> {

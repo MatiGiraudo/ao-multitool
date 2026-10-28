@@ -97,6 +97,7 @@ import {
   AbrirMapaClasico,
   AbrirMapaGuardado,
   EliminarMapaGuardado,
+  ExportarMapasAlJuego,
   GuardarMapa,
   ListarMapasGuardados,
   ResolverGraficosDelMapa,
@@ -149,6 +150,8 @@ function crear() {
 
   const quitarFondoDeHoja = new QuitarFondoDeHoja(hojas, imagenes, procesador);
   const mapasGuardados = new HttpMapaRepositorio();
+  /* Uno solo: lo usan el botón de «Importar» y la exportación del mundo entero. */
+  const exportarGraficosIni = new ExportarGraficosIni(tablaDeGrh, new EscritorGraficosIni());
 
   return {
     ubicadorDeImagenes: imagenes,
@@ -258,7 +261,7 @@ function crear() {
       npcs: new ImportarNpcsClasicos(new LectorNpcsDat(), new ImportarNpcs(npcs, formatoNpcs, ids)),
       /** Para los gráficos propios: el número con el que se dibuja un recorte, y la tabla de vuelta. */
       grhDeRecorte: new GrhDeRecorte(tablaDeGrh),
-      exportarGraficos: new ExportarGraficosIni(tablaDeGrh, new EscritorGraficosIni()),
+      exportarGraficos: exportarGraficosIni,
     },
     proyecto: {
       importarLegado: new ImportarProyectoLegado(new LectorAoProj(), hojas, imagenes, procesador, importarObjetos, fabricaDeCatalogo, ids),
@@ -270,6 +273,11 @@ function crear() {
         (catalogo) => new ExportarApariencias(cabezas, formatoCabezas).ejecutar(catalogo),
         () => new ExportarHechizos(hechizos, formatoHechizos).ejecutar(),
         () => new ExportarNpcs(npcs, formatoNpcs).ejecutar(),
+      ],
+      [
+        // El mundo: los tres archivos de cada mapa, y la tabla de GRH que les da sentido.
+        () => new ExportarMapasAlJuego(mapasGuardados).ejecutar(),
+        () => exportarGraficosIni.archivoSiHay(),
       ]),
       guardarExportacion: new GuardarExportacion(new HttpAlmacenDeExportacion()),
       revisar: new RevisarMundo(

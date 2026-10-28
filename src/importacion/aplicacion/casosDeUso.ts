@@ -107,6 +107,17 @@ export class ExportarGraficosIni {
     if (!tabla?.cantidad) throw new ErrorDeDominio("Todavía no hay tabla de GRH: importá un Graficos.ini o pintá un mapa con gráficos del proyecto.");
     return this.escritor.escribir(tabla);
   }
+
+  /**
+   * Lo mismo para la exportación del mundo entero, donde no tener tabla no es un error.
+   *
+   * El botón de la pantalla sí avisa —si lo apretaste es porque esperabas un archivo—, pero un
+   * proyecto que todavía no importó gráficos tiene que poder exportar sus catálogos igual.
+   */
+  async archivoSiHay(): Promise<{ nombreArchivo: string; contenido: string }[]> {
+    const tabla = await this.tablas.leer();
+    return tabla?.cantidad ? [{ nombreArchivo: "Graficos.ini", contenido: this.escritor.escribir(tabla) }] : [];
+  }
 }
 
 export class ImportarTablaDeGrh {

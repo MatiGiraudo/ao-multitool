@@ -36,8 +36,13 @@ export function PantallaExportacion() {
   };
 
   const total = archivos?.reduce((n, a) => n + a.contenido.length, 0) ?? 0;
-  const catalogos = archivos?.filter((a) => !a.nombreArchivo.endsWith(".anim.json")) ?? [];
+  /* Tres grupos, porque son tres cosas distintas: los catálogos que lee Unity, un archivo por
+   * hoja con animaciones, y el mundo tal como lo lee el servidor del clásico. */
+  const esDelMundo = (a: ArchivoExportado) => !!a.carpeta || a.nombreArchivo === "Graficos.ini";
   const animaciones = archivos?.filter((a) => a.nombreArchivo.endsWith(".anim.json")) ?? [];
+  const mundo = archivos?.filter(esDelMundo) ?? [];
+  const catalogos = archivos?.filter((a) => !a.nombreArchivo.endsWith(".anim.json") && !esDelMundo(a)) ?? [];
+  const mapas = mundo.filter((a) => a.nombreArchivo.endsWith(".map")).length;
 
   return (
     <main className="layout">
@@ -52,8 +57,9 @@ export function PantallaExportacion() {
             )}
           </div>
           <p className="hint">
-            Arma los cinco catálogos del mundo y un <code>.anim.json</code> por cada hoja que tenga animaciones. Se puede guardar la carpeta entera
-            de una vez, que es lo práctico cuando son cientos, o bajar un archivo suelto para mirarlo.
+            Arma los cinco catálogos del mundo, un <code>.anim.json</code> por cada hoja que tenga animaciones, y los mapas guardados en el proyecto
+            como los tres archivos que lee el juego. Se puede guardar la carpeta entera de una vez, que es lo práctico cuando son cientos, o bajar un
+            archivo suelto para mirarlo.
           </p>
 
           {!archivos ? (
@@ -85,6 +91,21 @@ export function PantallaExportacion() {
             ) : (
               <p className="hint">Ninguna hoja tiene animaciones todavía. Marcá frames en «Animaciones» o importá los gráficos del clásico.</p>
             )}
+            <h3>El mundo ({mapas} {mapas === 1 ? "mapa" : "mapas"})</h3>
+            {mundo.length ? (
+              <>
+                <ListaDeArchivos archivos={mundo} limite={30} />
+                <p className="hint">
+                  Los <code>.map</code>, <code>.inf</code> y <code>.dat</code> van en <code>Mundos/</code>, que es donde los busca el servidor del
+                  clásico. El <code>Graficos.ini</code> va suelto porque su lugar es <code>INIT/</code>.
+                </p>
+              </>
+            ) : (
+              <p className="hint">
+                No hay mapas guardados en el proyecto. Los que abrís desde la carpeta del juego viven en memoria hasta que les das «Guardar en el
+                proyecto», en <Link href="/mapas">Mapas</Link>.
+              </p>
+            )}
           </section>
         )}
       </div>
@@ -97,6 +118,10 @@ export function PantallaExportacion() {
             <code>fx.json</code>, <code>cuerpos.json</code>, <code>cabezas.json</code>, <code>hechizos.json</code> y un{" "}
             <code>&lt;hoja&gt;.anim.json</code> por hoja. Exportar de a uno y exportar todo pasan por el mismo caso de uso de cada módulo, así que
             no pueden quedar distintos.
+          </p>
+          <p className="hint">
+            Los mapas no van en JSON: salen como los <code>.map</code>, <code>.inf</code> y <code>.dat</code> que lee el servidor del clásico, con el
+            mismo ancho de gráfico con el que entraron. Un mapa importado y exportado sin tocar sale idéntico byte a byte.
           </p>
           <h3>Antes de exportar</h3>
           <p className="hint">
@@ -116,10 +141,13 @@ function ListaDeArchivos({ archivos, limite }: { archivos: ArchivoExportado[]; l
     <>
       <div className="olist-items">
         {visibles.map((a) => (
-          <div key={a.nombreArchivo} className="fr" style={{ gridTemplateColumns: "minmax(0, 1fr) auto auto" }}>
-            <span className="nm">{a.nombreArchivo}</span>
+          <div key={`${a.carpeta ?? ""}/${a.nombreArchivo}`} className="fr" style={{ gridTemplateColumns: "minmax(0, 1fr) auto auto" }}>
+            <span className="nm">
+              {a.carpeta ? `${a.carpeta}/` : ""}
+              {a.nombreArchivo}
+            </span>
             <span className="status">{pesar(a.contenido.length)}</span>
-            <button onClick={() => descargar(a.nombreArchivo, a.contenido)}>Bajar</button>
+            <button onClick={() => descargar(a.nombreArchivo, paraBajar(a.contenido))}>Bajar</button>
           </div>
         ))}
       </div>
@@ -128,6 +156,11 @@ function ListaDeArchivos({ archivos, limite }: { archivos: ArchivoExportado[]; l
       )}
     </>
   );
+}
+
+/** Los binarios del juego se bajan como blob; el texto, tal cual. */
+function paraBajar(contenido: string | Uint8Array): string | Blob {
+  return typeof contenido === "string" ? contenido : new Blob([contenido as BlobPart], { type: "application/octet-stream" });
 }
 
 /** El tamaño en texto. Es una cuenta de interfaz: el dominio no sabe de kilobytes. */

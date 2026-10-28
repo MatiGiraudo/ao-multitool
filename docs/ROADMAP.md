@@ -20,7 +20,7 @@ Se apoya en **[ARQUITECTURA.md](ARQUITECTURA.md)**, en especial en la receta de 
 | NPCs | ✅ Lista | `src/npcs/` | `ao-npcs` |
 | Mapas | ✅ Lista (visor + editor) | `src/mapas/` | `.map` + `.inf` + `.dat` |
 | Guardar mapas en el proyecto | ✅ Lista | `src/mapas/` | `data/mapas/<numero>.json` |
-| Exportar todo de una vez | ✅ Lista | `src/proyecto/` | — |
+| Exportar todo de una vez | ✅ Lista | `src/proyecto/` | los catálogos, las animaciones, `Mundos/` y `Graficos.ini` |
 | Diagnóstico del mundo | ✅ Lista | `src/proyecto/` | — |
 
 Dos aclaraciones sobre lo que **no** hace falta como módulo nuevo:
