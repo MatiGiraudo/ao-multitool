@@ -2,6 +2,8 @@ import type { Direccion } from "@/compartido/dominio/Direccion";
 import type { HechizoImportado } from "@/hechizos/aplicacion/casosDeUso";
 import type { NpcImportado } from "@/npcs/aplicacion/casosDeUso";
 import type { ObjetoImportado } from "@/objetos/aplicacion/puertos";
+import type { Apariencia } from "@/apariencias/dominio/Apariencia";
+import type { Efecto } from "@/fx/dominio/Efecto";
 import type { Hechizo } from "@/hechizos/dominio/Hechizo";
 import type { Npc } from "@/npcs/dominio/Npc";
 import type { Objeto } from "@/objetos/dominio/Objeto";
@@ -67,6 +69,16 @@ export interface LectorDeHechizosClasicos {
   leer(texto: string): HechizosClasicos;
 }
 
+/** Puerto: sabe devolver el `Fxs.ini`. Los GRH vuelven como vinieron; los corrimientos, editados. */
+export interface EscritorDeEfectosClasicos {
+  escribir(efectos: readonly Efecto[], originales: OriginalesDeFamilia): string;
+}
+
+/** Puerto: sabe devolver el `Personajes.ini` o el `Cabezas.ini`. */
+export interface EscritorDeAparienciasClasicas {
+  escribir(apariencias: readonly Apariencia[], originales: OriginalesDeFamilia): string;
+}
+
 /** Puerto: sabe devolver el `Hechizos.dat` sin perder lo que el editor no maneja. */
 export interface EscritorDeHechizosClasicos {
   escribir(hechizos: readonly Hechizo[], originales: OriginalesDeFamilia): string;
@@ -103,8 +115,13 @@ export interface AparienciaClasica {
 }
 
 /** Puerto: sabe leer un índice de apariencias (cuerpos, cabezas o cascos). */
+export interface ArchivoDeAparienciasClasicas {
+  apariencias: (AparienciaClasica & { crudo: string })[];
+  encabezado: string;
+}
+
 export interface LectorDeAparienciasClasicas {
-  leer(texto: string): AparienciaClasica[];
+  leer(texto: string): ArchivoDeAparienciasClasicas;
 }
 
 /** Un FX tal como viene del Fxs.ini, con su gráfico todavía como número de GRH. */
@@ -117,8 +134,13 @@ export interface EfectoClasico {
 }
 
 /** Puerto: sabe leer el `Fxs.ini`. */
+export interface ArchivoDeEfectosClasicos {
+  efectos: (EfectoClasico & { crudo: string })[];
+  encabezado: string;
+}
+
 export interface LectorDeEfectosClasicos {
-  leer(texto: string): EfectoClasico[];
+  leer(texto: string): ArchivoDeEfectosClasicos;
 }
 
 /**

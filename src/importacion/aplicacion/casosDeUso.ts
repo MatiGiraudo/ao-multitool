@@ -4,10 +4,11 @@ import type { Direccion } from "@/compartido/dominio/Direccion";
 import type { HojaDeSprites } from "@/graficos/dominio/HojaDeSprites";
 import type { HojaRepositorio } from "@/graficos/dominio/HojaRepositorio";
 import type { ImportarApariencias, ResultadoDeImportacionDeApariencias } from "@/apariencias/aplicacion/casosDeUso";
-import type { ReferenciaImportada } from "@/apariencias/dominio/Apariencia";
+import type { Apariencia, ReferenciaImportada } from "@/apariencias/dominio/Apariencia";
 import type { Cabeza, CabezaImportada } from "@/apariencias/dominio/Cabeza";
 import type { Cuerpo, CuerpoImportado } from "@/apariencias/dominio/Cuerpo";
 import type { ImportarEfectos, ResultadoDeImportacionDeEfectos } from "@/fx/aplicacion/casosDeUso";
+import type { Efecto } from "@/fx/dominio/Efecto";
 import type { ImportarHechizos, ResultadoDeImportacionDeHechizos } from "@/hechizos/aplicacion/casosDeUso";
 import type { ImportarNpcs, ResultadoDeImportacionDeNpcs } from "@/npcs/aplicacion/casosDeUso";
 import type { ImportarObjetos, ResultadoDeImportacion } from "@/objetos/aplicacion/casosDeUso";
@@ -18,12 +19,14 @@ import type { FabricaDeCatalogo } from "@/proyecto/aplicacion/ImportarProyectoLe
 import { esElArchivo } from "../dominio/nombres";
 import { ErrorDeDominio } from "@/compartido/dominio/ErrorDeDominio";
 import { TablaDeGrh } from "../dominio/TablaDeGrh";
-import { ENCABEZADO, SIN_ORIGINALES, type OriginalesRepositorio } from "../dominio/OriginalesRepositorio";
+import { ENCABEZADO, SIN_ORIGINALES, type FamiliaClasica, type OriginalesRepositorio } from "../dominio/OriginalesRepositorio";
 import type { TablaDeGrhRepositorio } from "../dominio/TablaDeGrhRepositorio";
 import type { PuenteDeGrh, VinculosDeGrh } from "./PuenteDeGrh";
 import type {
   AparienciaClasica,
   EscritorDeGraficosClasicos,
+  EscritorDeAparienciasClasicas,
+  EscritorDeEfectosClasicos,
   EscritorDeHechizosClasicos,
   EscritorDeNpcsClasicos,
   EscritorDeObjetosClasicos,
@@ -177,6 +180,39 @@ export class ExportarHechizosClasicos {
   }
 }
 
+/** El `Fxs.ini` de vuelta: los corrimientos editados, el resto como vino. */
+export class ExportarEfectosClasicos {
+  constructor(
+    private readonly listar: () => Promise<Efecto[]>,
+    private readonly originales: OriginalesRepositorio,
+    private readonly escritor: EscritorDeEfectosClasicos,
+  ) {}
+
+  async ejecutar(): Promise<{ nombreArchivo: string; contenido: string; carpeta: string }[]> {
+    const efectos = await this.listar();
+    if (!efectos.length) return [];
+    return [{ nombreArchivo: "Fxs.ini", contenido: this.escritor.escribir(efectos, await this.originales.leer("fxs")), carpeta: "Init" }];
+  }
+}
+
+/** El `Personajes.ini` o el `Cabezas.ini` de vuelta, con los corrimientos de cabeza editados. */
+export class ExportarAparienciasClasicas {
+  constructor(
+    private readonly listar: () => Promise<Apariencia[]>,
+    private readonly familia: FamiliaClasica,
+    private readonly nombreArchivo: string,
+    private readonly originales: OriginalesRepositorio,
+    private readonly escritor: EscritorDeAparienciasClasicas,
+  ) {}
+
+  async ejecutar(): Promise<{ nombreArchivo: string; contenido: string; carpeta: string }[]> {
+    const apariencias = await this.listar();
+    if (!apariencias.length) return [];
+    const contenido = this.escritor.escribir(apariencias, await this.originales.leer(this.familia));
+    return [{ nombreArchivo: this.nombreArchivo, contenido, carpeta: "Init" }];
+  }
+}
+
 export class ImportarTablaDeGrh {
   constructor(
     private readonly lector: LectorDeGraficosClasicos,
@@ -313,10 +349,12 @@ export class ImportarCuerposClasicos implements ConGraficos {
     readonly hojas: HojaRepositorio,
     private readonly cuerpos: ImportarApariencias<Cuerpo, CuerpoImportado>,
     readonly fabricaDeCatalogo: FabricaDeCatalogo,
+    private readonly originales: OriginalesRepositorio = SIN_ORIGINALES,
   ) {}
 
   async ejecutar(texto: string): Promise<ResultadoDeAparienciasClasicas> {
-    const clasicas = this.lector.leer(texto);
+    const { apariencias: clasicas, encabezado } = this.lector.leer(texto);
+    await this.originales.guardar("cuerpos", { [ENCABEZADO]: encabezado, ...Object.fromEntries(clasicas.map((c) => [c.numero, c.crudo])) });
     const { vinculos, catalogo } = await conGraficos(this, grhDe(clasicas));
     const apariencias = await this.cuerpos.importar(
       clasicas.map((c) => ({
@@ -344,10 +382,12 @@ export class ImportarCabezasClasicas implements ConGraficos {
     readonly hojas: HojaRepositorio,
     private readonly cabezas: ImportarApariencias<Cabeza, CabezaImportada>,
     readonly fabricaDeCatalogo: FabricaDeCatalogo,
+    private readonly originales: OriginalesRepositorio = SIN_ORIGINALES,
   ) {}
 
   async ejecutar(texto: string): Promise<ResultadoDeAparienciasClasicas> {
-    const clasicas = this.lector.leer(texto);
+    const { apariencias: clasicas, encabezado } = this.lector.leer(texto);
+    await this.originales.guardar("cabezas", { [ENCABEZADO]: encabezado, ...Object.fromEntries(clasicas.map((c) => [c.numero, c.crudo])) });
     const { vinculos, catalogo } = await conGraficos(this, grhDe(clasicas));
     const apariencias = await this.cabezas.importar(
       clasicas.map((c) => ({
@@ -373,10 +413,12 @@ export class ImportarEfectosClasicos implements ConGraficos {
     readonly hojas: HojaRepositorio,
     private readonly efectos: ImportarEfectos,
     readonly fabricaDeCatalogo: FabricaDeCatalogo,
+    private readonly originales: OriginalesRepositorio = SIN_ORIGINALES,
   ) {}
 
   async ejecutar(texto: string): Promise<ResultadoDeEfectosClasicos> {
-    const clasicos = this.lector.leer(texto);
+    const { efectos: clasicos, encabezado } = this.lector.leer(texto);
+    await this.originales.guardar("fxs", { [ENCABEZADO]: encabezado, ...Object.fromEntries(clasicos.map((e) => [e.numero, e.crudo])) });
     const { vinculos, catalogo } = await conGraficos(
       this,
       clasicos.map((e) => e.grh),

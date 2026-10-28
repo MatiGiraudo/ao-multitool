@@ -1,12 +1,21 @@
 import { describe, expect, it } from "vitest";
+
+/** El salto de línea de los archivos del clásico, que son todos de Windows. */
+const SALTO = String.fromCharCode(13, 10);
 import { Objeto } from "@/objetos/dominio/Objeto";
 import { ENCABEZADO } from "./dominio/OriginalesRepositorio";
 import { armarIni, reescribirSeccion } from "./infraestructura/EscritorIni";
+import { Cuerpo } from "@/apariencias/dominio/Cuerpo";
+import { Efecto } from "@/fx/dominio/Efecto";
 import { Hechizo } from "@/hechizos/dominio/Hechizo";
 import { Npc } from "@/npcs/dominio/Npc";
+import { EscritorAparienciasIni } from "./infraestructura/EscritorAparienciasIni";
+import { EscritorFxsIni } from "./infraestructura/EscritorFxsIni";
 import { EscritorHechizosDat } from "./infraestructura/EscritorHechizosDat";
 import { EscritorNpcsDat } from "./infraestructura/EscritorNpcsDat";
 import { EscritorObjDat } from "./infraestructura/EscritorObjDat";
+import { LectorAparienciasIni } from "./infraestructura/LectorAparienciasIni";
+import { LectorFxsIni } from "./infraestructura/LectorFxsIni";
 import { LectorHechizosDat } from "./infraestructura/LectorHechizosDat";
 import { LectorNpcsDat } from "./infraestructura/LectorNpcsDat";
 import { LectorObjDat } from "./infraestructura/LectorObjDat";
@@ -273,5 +282,50 @@ describe("EscritorHechizosDat", () => {
     expect(texto).toContain("NeedStaff=2");
     expect(texto).toContain("HechizeroMsg=has lanzado un dardo");
     expect(texto).toContain("Loops=3");
+  });
+});
+
+const FXS_INI = ["[INIT]", "NumFxs=1", "", "[FX1]", "Animacion=3", "OffsetX=0", "OffsetY=32", "Loops=2", ""].join(SALTO);
+
+const PERSONAJES_INI = [
+  "[INIT]",
+  "NumBodies=1",
+  "",
+  "[BODY1]",
+  "Walk1=4582	 ' arriba",
+  "Walk2=4584",
+  "Walk3=4581",
+  "Walk4=4583",
+  "HeadOffsetX=0",
+  "HeadOffsetY=-4",
+  "",
+].join(SALTO);
+
+describe("EscritorFxsIni y EscritorAparienciasIni", () => {
+  it("el Fxs.ini vuelve igual, y el corrimiento editado es lo único que cambia", () => {
+    const { efectos, encabezado } = new LectorFxsIni().leer(FXS_INI);
+    const originales = { [ENCABEZADO]: encabezado, ...Object.fromEntries(efectos.map((e) => [e.numero, e.crudo])) };
+    const efecto = Efecto.crear("e1", 1).conOffset(efectos[0]!.offsetX, efectos[0]!.offsetY);
+
+    expect(new EscritorFxsIni().escribir([efecto], originales)).toBe(FXS_INI + SALTO);
+
+    const movido = new EscritorFxsIni().escribir([efecto.conOffset(0, 20)], originales);
+    expect(movido).toContain("OffsetY=20");
+    // La animación es un número de GRH que el editor no sabe recalcular: vuelve como vino.
+    expect(movido).toContain("Animacion=3");
+    expect(movido).toContain("Loops=2");
+  });
+
+  it("el Personajes.ini vuelve igual, con sus comentarios y sus GRH", () => {
+    const { apariencias, encabezado } = new LectorAparienciasIni("body", "Walk", "Personajes.ini").leer(PERSONAJES_INI);
+    const originales = { [ENCABEZADO]: encabezado, ...Object.fromEntries(apariencias.map((a) => [a.numero, a.crudo])) };
+    const cuerpo = Cuerpo.crear("c1", 1).conOffsetCabeza(apariencias[0]!.offsetCabezaX, apariencias[0]!.offsetCabezaY);
+
+    const escritor = new EscritorAparienciasIni("BODY", "NumBodies");
+    expect(escritor.escribir([cuerpo], originales)).toBe(PERSONAJES_INI + SALTO);
+
+    const movido = escritor.escribir([cuerpo.conOffsetCabeza(1, -10)], originales);
+    expect(movido).toContain("HeadOffsetY=-10");
+    expect(movido).toContain("Walk1=4582	 ' arriba");
   });
 });

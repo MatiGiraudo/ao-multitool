@@ -1,5 +1,5 @@
 import { ErrorDeDominio } from "@/compartido/dominio/ErrorDeDominio";
-import type { EfectoClasico, LectorDeEfectosClasicos } from "../aplicacion/puertos";
+import type { ArchivoDeEfectosClasicos, LectorDeEfectosClasicos } from "../aplicacion/puertos";
 import { ArchivoIni } from "./LectorIni";
 
 /**
@@ -14,16 +14,18 @@ import { ArchivoIni } from "./LectorIni";
  * importador, y las repeticiones quedan en 1, que es lo que hace el cliente.
  */
 export class LectorFxsIni implements LectorDeEfectosClasicos {
-  leer(texto: string): EfectoClasico[] {
+  leer(texto: string): ArchivoDeEfectosClasicos {
     const ini = ArchivoIni.parsear(texto);
     const secciones = ini.numeradas("fx");
     if (!secciones.length) throw new ErrorDeDominio("No encontré ninguna sección [FXn]: ¿seguro que es un Fxs.ini?");
 
-    return secciones.map(({ seccion, numero }) => ({
+    const efectos = secciones.map(({ seccion, numero }) => ({
       numero,
       grh: ini.entero(seccion, "Animacion"),
       offsetX: ini.entero(seccion, "OffsetX"),
       offsetY: ini.entero(seccion, "OffsetY"),
+      crudo: ini.lineasDe(seccion).join("\r\n"),
     }));
+    return { efectos, encabezado: ini.encabezado("fx").join("\r\n") };
   }
 }

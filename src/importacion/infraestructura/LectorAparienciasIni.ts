@@ -1,6 +1,6 @@
 import type { Direccion } from "@/compartido/dominio/Direccion";
 import { ErrorDeDominio } from "@/compartido/dominio/ErrorDeDominio";
-import type { AparienciaClasica, LectorDeAparienciasClasicas } from "../aplicacion/puertos";
+import type { ArchivoDeAparienciasClasicas, LectorDeAparienciasClasicas } from "../aplicacion/puertos";
 import { ArchivoIni } from "./LectorIni";
 
 /**
@@ -37,7 +37,7 @@ export class LectorAparienciasIni implements LectorDeAparienciasClasicas {
     private readonly archivo: string,
   ) {}
 
-  leer(texto: string): AparienciaClasica[] {
+  leer(texto: string): ArchivoDeAparienciasClasicas {
     const ini = ArchivoIni.parsear(texto);
     const secciones = ini.numeradas(this.prefijoDeSeccion);
     if (!secciones.length) {
@@ -46,7 +46,7 @@ export class LectorAparienciasIni implements LectorDeAparienciasClasicas {
       );
     }
 
-    return secciones.map(({ seccion, numero }) => {
+    const apariencias = secciones.map(({ seccion, numero }) => {
       const grhPorDireccion: Partial<Record<Direccion, number>> = {};
       DIRECCION_DE_AO.forEach((direccion, i) => {
         const grh = ini.entero(seccion, `${this.prefijoDeClave}${i + 1}`);
@@ -57,7 +57,9 @@ export class LectorAparienciasIni implements LectorDeAparienciasClasicas {
         grhPorDireccion,
         offsetCabezaX: ini.entero(seccion, "HeadOffsetX"),
         offsetCabezaY: ini.entero(seccion, "HeadOffsetY"),
+        crudo: ini.lineasDe(seccion).join("\r\n"),
       };
     });
+    return { apariencias, encabezado: ini.encabezado(this.prefijoDeSeccion).join("\r\n") };
   }
 }

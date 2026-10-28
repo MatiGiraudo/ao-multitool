@@ -494,10 +494,11 @@ OffsetY=-15
 `;
 
 describe("LectorAparienciasIni", () => {
-  const cuerpos = new LectorAparienciasIni("body", "Walk", "Personajes.ini").leer(PERSONAJES_INI);
+  const { apariencias: cuerpos } = new LectorAparienciasIni("body", "Walk", "Personajes.ini").leer(PERSONAJES_INI);
 
   it("traduce el orden de AO (1 norte, 2 este, 3 sur, 4 oeste) y saltea las direcciones en 0", () => {
-    expect(cuerpos[0]).toEqual({
+    const { crudo: _, ...primero } = cuerpos[0]!;
+    expect(primero).toEqual({
       numero: 1,
       grhPorDireccion: { norte: 1, este: 2, sur: 3, oeste: 4 },
       offsetCabezaX: 0,
@@ -513,7 +514,7 @@ describe("LectorAparienciasIni", () => {
   });
 
   it("lee las cabezas con el mismo molde, sin corrimiento", () => {
-    const cabezas = new LectorAparienciasIni("head", "Head", "Cabezas.ini").leer(CABEZAS_INI);
+    const { apariencias: cabezas } = new LectorAparienciasIni("head", "Head", "Cabezas.ini").leer(CABEZAS_INI);
     expect(cabezas[0]!.grhPorDireccion).toEqual({ norte: 1, este: 2, sur: 3, oeste: 1 });
     expect(cabezas[1]!.grhPorDireccion).toEqual({});
   });
@@ -525,7 +526,8 @@ describe("LectorAparienciasIni", () => {
 
 describe("LectorFxsIni", () => {
   it("trae la animación y el corrimiento de cada efecto", () => {
-    expect(new LectorFxsIni().leer(FXS_INI)).toEqual([
+    const { efectos } = new LectorFxsIni().leer(FXS_INI);
+    expect(efectos.map(({ crudo: _, ...resto }) => resto)).toEqual([
       { numero: 1, grh: 3, offsetX: 0, offsetY: 32 },
       { numero: 2, grh: 99, offsetX: -5, offsetY: -15 },
     ]);

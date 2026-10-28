@@ -49,7 +49,8 @@ export function PantallaExportacion() {
   const total = archivos?.reduce((n, a) => n + a.contenido.length, 0) ?? 0;
   /* Tres grupos, porque son tres cosas distintas: los catálogos que lee Unity, un archivo por
    * hoja con animaciones, y el mundo tal como lo lee el servidor del clásico. */
-  const esClasico = (a: ArchivoExportado) => a.carpeta === "Dat";
+  // Los del clásico van en las dos carpetas que espera: `Dat/` el servidor, `Init/` el cliente.
+  const esClasico = (a: ArchivoExportado) => a.carpeta === "Dat" || a.carpeta === "Init";
   const esDelMundo = (a: ArchivoExportado) => (!!a.carpeta && !esClasico(a)) || a.nombreArchivo === "Graficos.ini";
   const animaciones = archivos?.filter((a) => a.nombreArchivo.endsWith(".anim.json")) ?? [];
   const mundo = archivos?.filter(esDelMundo) ?? [];
@@ -117,8 +118,9 @@ export function PantallaExportacion() {
                 <h3>El AO clásico ({clasico.length})</h3>
                 <ListaDeArchivos archivos={clasico} />
                 <p className="hint">
-                  Van en <code>Dat/</code>. Vuelven con las claves que el editor no entiende —ropaje, sonidos, requisitos de herrería— tal como
-                  estaban: sólo cambian las líneas que editaste.
+                  Van en <code>Dat/</code> los del servidor y en <code>Init/</code> los del cliente. Vuelven con las claves que el editor no
+                  entiende —ropaje, sonidos, requisitos de herrería— tal como estaban: sólo cambian las líneas que editaste. De los `.ini` del
+                  cliente, lo único que el editor puede reescribir son los corrimientos; los números de GRH vuelven como vinieron.
                 </p>
               </>
             )}

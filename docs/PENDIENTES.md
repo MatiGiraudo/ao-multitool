@@ -79,17 +79,21 @@ cada apertura.
 **Qué haría falta:** que el efecto distinga «cambió el mapa» de «se abrió uno», por ejemplo
 guardando el sello con el que se abrió y comparando.
 
-## 6. Faltan los demás archivos del clásico
+## 6. El ida y vuelta del cliente está a medias
 
 **Dónde:** `src/importacion/infraestructura/`, al lado de `EscritorObjDat.ts`.
 
-El ida y vuelta con el AO clásico está hecho y probado para `OBJ.dat`, `NPCs.dat` y
-`Hechizos.dat`: las claves que el editor no entiende vuelven intactas porque al importar se guarda
-el texto original de cada sección. Faltan `FXs.ini`, `Personajes.ini` y `Cabezas.ini`.
+Los seis archivos vuelven, pero hay una diferencia grande entre los tres del servidor y los tres
+del cliente. En `OBJ.dat`, `NPCs.dat` y `Hechizos.dat` el editor reescribe todo lo que maneja, y
+está medido contra un servidor de verdad. En `Fxs.ini`, `Personajes.ini` y `Cabezas.ini` lo único
+que puede reescribir son los corrimientos: el resto de cada entrada son números de GRH, y el editor
+guarda «tal hoja, tal animación», no un número.
 
-Cada uno es un escritor chico más su verificación contra el archivo de un servidor de verdad, como
-la que ya corre con `AO_DAT_DIR`.
+**Qué haría falta:** resolver el camino de vuelta, de una animación del proyecto a un número de
+GRH. `TablaDeGrh.buscarRecorte` ya encuentra el GRH de un recorte estático; faltaría el de una
+animación (buscar un GRH cuyos cuadros sean esos). Con eso resuelto se arreglan de una las tres
+cosas: el `GrhIndex` de los objetos, la `Animacion` de los FX y los `Walk1..4` de las apariencias.
 
-**Qué haría falta además:** que el `GrhIndex` se recalcule cuando se cambia el icono en el editor.
-Hoy vuelve el del archivo, porque el editor guarda «tal hoja, tal animación» y traducir eso a un
-número de GRH pide buscar el recorte en la tabla. `TablaDeGrh.buscarRecorte` ya hace esa búsqueda.
+Los tres del cliente tampoco están medidos contra archivos reales: en el servidor que tenemos a
+mano no están (viven en el cliente, en `INIT/`). El test con `AO_DAT_DIR` cubre los tres del
+servidor; para los otros haría falta apuntar a una carpeta `INIT` de verdad.

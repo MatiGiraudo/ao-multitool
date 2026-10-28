@@ -89,6 +89,8 @@ import {
   ImportarNpcsClasicos,
   ImportarObjetosClasicos,
   ExportarGraficosIni,
+  ExportarAparienciasClasicas,
+  ExportarEfectosClasicos,
   ExportarHechizosClasicos,
   ExportarNpcsClasicos,
   ExportarObjetosClasicos,
@@ -124,6 +126,8 @@ import { CarpetaAlmacenDeExportacion } from "@/proyecto/infraestructura/carpeta/
 import { LectorAparienciasIni } from "@/importacion/infraestructura/LectorAparienciasIni";
 import { LectorFxsIni } from "@/importacion/infraestructura/LectorFxsIni";
 import { EscritorGraficosIni } from "@/importacion/infraestructura/EscritorGraficosIni";
+import { EscritorAparienciasIni } from "@/importacion/infraestructura/EscritorAparienciasIni";
+import { EscritorFxsIni } from "@/importacion/infraestructura/EscritorFxsIni";
 import { EscritorHechizosDat } from "@/importacion/infraestructura/EscritorHechizosDat";
 import { EscritorNpcsDat } from "@/importacion/infraestructura/EscritorNpcsDat";
 import { EscritorObjDat } from "@/importacion/infraestructura/EscritorObjDat";
@@ -294,6 +298,7 @@ function crear() {
         hojas,
         importarCuerpos,
         fabricaDeCatalogo,
+        originales,
       ),
       cabezas: new ImportarCabezasClasicas(
         new LectorAparienciasIni("head", "Head", "Cabezas.ini"),
@@ -302,8 +307,9 @@ function crear() {
         hojas,
         importarCabezas,
         fabricaDeCatalogo,
+        originales,
       ),
-      fx: new ImportarEfectosClasicos(new LectorFxsIni(), tablaDeGrh, puente, hojas, importarEfectos, fabricaDeCatalogo),
+      fx: new ImportarEfectosClasicos(new LectorFxsIni(), tablaDeGrh, puente, hojas, importarEfectos, fabricaDeCatalogo, originales),
       hechizos: new ImportarHechizosClasicos(new LectorHechizosDat(), new ImportarHechizos(hechizos, formatoHechizos, ids), originales),
       npcs: new ImportarNpcsClasicos(new LectorNpcsDat(), new ImportarNpcs(npcs, formatoNpcs, ids), originales),
       /** Para los gráficos propios: el número con el que se dibuja un recorte, y la tabla de vuelta. */
@@ -331,6 +337,23 @@ function crear() {
         () => new ExportarObjetosClasicos(() => new ListarObjetos(objetos).ejecutar(), originales, new EscritorObjDat()).ejecutar(),
         () => new ExportarNpcsClasicos(() => new ListarNpcs(npcs).ejecutar(), originales, new EscritorNpcsDat()).ejecutar(),
         () => new ExportarHechizosClasicos(() => new ListarHechizos(hechizos).ejecutar(), originales, new EscritorHechizosDat()).ejecutar(),
+        () => new ExportarEfectosClasicos(() => new ListarEfectos(efectos).ejecutar(), originales, new EscritorFxsIni()).ejecutar(),
+        () =>
+          new ExportarAparienciasClasicas(
+            () => new ListarApariencias(cuerpos).ejecutar(),
+            "cuerpos",
+            "Personajes.ini",
+            originales,
+            new EscritorAparienciasIni("BODY", "NumBodies"),
+          ).ejecutar(),
+        () =>
+          new ExportarAparienciasClasicas(
+            () => new ListarApariencias(cabezas).ejecutar(),
+            "cabezas",
+            "Cabezas.ini",
+            originales,
+            new EscritorAparienciasIni("HEAD", "NumHeads"),
+          ).ejecutar(),
       ]),
       guardarExportacion: new GuardarExportacion(enCarpeta ? new CarpetaAlmacenDeExportacion(carpetaDelProyecto) : new HttpAlmacenDeExportacion()),
       revisar: new RevisarMundo(
