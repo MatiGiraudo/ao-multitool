@@ -2,7 +2,7 @@
 
 Este documento es el plan de trabajo: qué falta para que el AO World Editor cubra todo el mundo del juego, en qué orden conviene hacerlo y, para cada herramienta, los archivos concretos que hay que escribir.
 
-Se apoya en **[ARQUITECTURA.md](ARQUITECTURA.md)**, en especial en la receta de la sección 8. Acá se decide **qué** y **en qué orden**; allá está el **cómo**.
+Se apoya en **[ARQUITECTURA.md](ARQUITECTURA.md)**, en especial en la receta de la sección 8. Acá se decide **qué** y **en qué orden**; allá está el **cómo**. Lo que ya sabemos que está mal y quedó para después vive en **[PENDIENTES.md](PENDIENTES.md)**, y lo que frena el uso diario del editor, en **[FLUIDEZ.md](FLUIDEZ.md)**.
 
 ---
 
