@@ -1,5 +1,5 @@
 import type { Cambio, Trazo } from "./Historial";
-import { ALTO, ANCHO, Mapa, type Traslado } from "./Mapa";
+import { ALTO, ANCHO, Mapa, type ObjetoEnElSuelo, type Traslado } from "./Mapa";
 
 /*
  * Las herramientas de edición, como cuentas y no como botones.
@@ -9,7 +9,18 @@ import { ALTO, ANCHO, Mapa, type Traslado } from "./Mapa";
  * sin lienzo, sin mouse y sin React.
  */
 
-export type Herramienta = "pincel" | "goma" | "rectangulo" | "balde" | "bloquear" | "desbloquear" | "trigger" | "traslado" | "cuentagotas";
+export type Herramienta =
+  | "pincel"
+  | "goma"
+  | "rectangulo"
+  | "balde"
+  | "bloquear"
+  | "desbloquear"
+  | "trigger"
+  | "traslado"
+  | "npc"
+  | "objeto"
+  | "cuentagotas";
 
 export interface Punto {
   x: number;
@@ -26,9 +37,22 @@ export interface Ajustes {
   trigger: number;
   /** Adónde manda la herramienta «traslado»; null saca el que hubiera. */
   traslado: Traslado | null;
+  /** Qué NPC pone la herramienta «npc»; 0 saca el que hubiera. */
+  npc: number;
+  /** Qué objeto deja en el piso la herramienta «objeto»; null saca el que hubiera. */
+  objeto: ObjetoEnElSuelo | null;
 }
 
-export const AJUSTES_POR_DEFECTO: Ajustes = { herramienta: "pincel", capa: 1, grh: 0, tamanio: 1, trigger: 1, traslado: { mapa: 1, x: 50, y: 50 } };
+export const AJUSTES_POR_DEFECTO: Ajustes = {
+  herramienta: "pincel",
+  capa: 1,
+  grh: 0,
+  tamanio: 1,
+  trigger: 1,
+  traslado: { mapa: 1, x: 50, y: 50 },
+  npc: 1,
+  objeto: { objeto: 1, cantidad: 1 },
+};
 
 export const NOMBRES: Record<Herramienta, string> = {
   pincel: "Pincel",
@@ -39,6 +63,8 @@ export const NOMBRES: Record<Herramienta, string> = {
   desbloquear: "Desbloquear",
   trigger: "Trigger",
   traslado: "Traslado",
+  npc: "NPC",
+  objeto: "Objeto",
   cuentagotas: "Cuentagotas",
 };
 
@@ -49,7 +75,7 @@ export function seArrastra(h: Herramienta): boolean {
 
 /** Las que se resuelven con el clic y no esperan a que se suelte el botón. */
 export function esDeUnClic(h: Herramienta): boolean {
-  return h === "balde" || h === "traslado";
+  return h === "balde" || h === "traslado" || h === "npc" || h === "objeto";
 }
 
 /** Las que no tienen sentido con un pincel de más de una celda. */
@@ -88,6 +114,10 @@ export function calcular(mapa: Mapa, ajustes: Ajustes, desde: Punto, hasta: Punt
       return trazo(NOMBRES.trigger, triggers(mapa, pinceladas(desde, hasta, tamanio), ajustes.trigger));
     case "traslado":
       return trazo(NOMBRES.traslado, traslados(mapa, desde, ajustes.traslado));
+    case "npc":
+      return trazo(NOMBRES.npc, npcs(mapa, desde, ajustes.npc));
+    case "objeto":
+      return trazo(NOMBRES.objeto, objetos(mapa, desde, ajustes.objeto));
     case "cuentagotas":
       return trazo(NOMBRES.cuentagotas, []);
   }
@@ -223,6 +253,27 @@ function traslados(mapa: Mapa, donde: Punto, destino: Traslado | null): Cambio[]
   const antes = mapa.traslado(donde.x, donde.y);
   if (mismoTraslado(antes, destino)) return [];
   return [{ tipo: "traslado", indice: Mapa.indice(donde.x, donde.y), antes, despues: destino ? { ...destino } : null }];
+}
+
+/* NPCs y objetos también son de a una celda: cada uno es una criatura o una pila puntual, no
+ * una textura que se pinte por áreas. */
+function npcs(mapa: Mapa, donde: Punto, numero: number): Cambio[] {
+  if (!Mapa.dentro(donde.x, donde.y)) return [];
+  const antes = mapa.npc(donde.x, donde.y);
+  if (antes === numero) return [];
+  return [{ tipo: "npc", indice: Mapa.indice(donde.x, donde.y), antes, despues: numero }];
+}
+
+function objetos(mapa: Mapa, donde: Punto, objeto: ObjetoEnElSuelo | null): Cambio[] {
+  if (!Mapa.dentro(donde.x, donde.y)) return [];
+  const antes = mapa.objeto(donde.x, donde.y);
+  if (mismoObjeto(antes, objeto)) return [];
+  return [{ tipo: "objeto", indice: Mapa.indice(donde.x, donde.y), antes, despues: objeto ? { ...objeto } : null }];
+}
+
+function mismoObjeto(a: ObjetoEnElSuelo | null, b: ObjetoEnElSuelo | null): boolean {
+  if (!a || !b) return a === b;
+  return a.objeto === b.objeto && a.cantidad === b.cantidad;
 }
 
 function mismoTraslado(a: Traslado | null, b: Traslado | null): boolean {

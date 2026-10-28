@@ -6,8 +6,9 @@ import { descargar } from "@/compartido/ui/utilidades";
 import type { GraficosDelMapa } from "../aplicacion/casosDeUso";
 import { Historial } from "../dominio/Historial";
 import { AJUSTES_POR_DEFECTO, type Ajustes, type Herramienta } from "../dominio/herramientas";
-import { Mapa } from "../dominio/Mapa";
+import { Mapa, type InfoDeMapa } from "../dominio/Mapa";
 import type { AnchoDeGrafico } from "../infraestructura/FormatoMapaClasico";
+import { DatosDelMapa } from "./DatosDelMapa";
 import { ATAJOS, BarraDeEdicion, PaletaDeGraficos } from "./HerramientasDeMapa";
 import { CAPAS_POR_DEFECTO, LienzoDeMapa, type CapasVisibles } from "./LienzoDeMapa";
 
@@ -150,6 +151,13 @@ export function PantallaMapas() {
       avisar(e instanceof Error ? e.message : String(e));
       return undefined;
     }
+  };
+
+  const cambiarInfo = (cambios: Partial<InfoDeMapa>) => {
+    if (!abierto) return;
+    abierto.mapa.conInfo(cambios);
+    setSinGuardar(true);
+    setSello((n) => n + 1);
   };
 
   const deshacer = useCallback(() => {
@@ -387,6 +395,7 @@ export function PantallaMapas() {
             </section>
             <section className="panel">
               <h2>El mapa</h2>
+              {editando && <DatosDelMapa mapa={abierto.mapa} onCambio={cambiarInfo} />}
               <Resumen abierto={abierto} sello={sello} />
             </section>
           </>

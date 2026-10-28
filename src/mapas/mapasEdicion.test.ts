@@ -261,3 +261,57 @@ describe("triggers y traslados", () => {
     expect(calcular(mapa, ajustes({ herramienta: "traslado", traslado: { mapa: 2, x: 5, y: 5 } }), { x: 9, y: 9 }).cambios).toHaveLength(0);
   });
 });
+
+describe("NPCs y objetos en el piso", () => {
+  it("pone el NPC en la celda y deshacer lo saca", () => {
+    const mapa = conPiso();
+    const historial = new Historial();
+
+    const trazo = calcular(mapa, ajustes({ herramienta: "npc", npc: 25, tamanio: 5 }), { x: 20, y: 20 });
+    historial.aplicar(mapa, trazo);
+
+    // Un NPC es uno, no un área: el tamaño del pincel no lo multiplica.
+    expect(trazo.cambios).toHaveLength(1);
+    expect(mapa.npc(20, 20)).toBe(25);
+
+    historial.deshacer(mapa);
+    expect(mapa.npc(20, 20)).toBe(0);
+  });
+
+  it("el NPC 0 saca el que hubiera", () => {
+    const mapa = conPiso();
+    const historial = new Historial();
+    historial.aplicar(mapa, calcular(mapa, ajustes({ herramienta: "npc", npc: 7 }), { x: 2, y: 2 }));
+
+    historial.aplicar(mapa, calcular(mapa, ajustes({ herramienta: "npc", npc: 0 }), { x: 2, y: 2 }));
+
+    expect(mapa.npc(2, 2)).toBe(0);
+    expect(mapa.contar().npcs).toBe(0);
+  });
+
+  it("el objeto va con su cantidad y se deshace entero", () => {
+    const mapa = conPiso();
+    const historial = new Historial();
+    const oro = { objeto: 12, cantidad: 100 };
+
+    historial.aplicar(mapa, calcular(mapa, ajustes({ herramienta: "objeto", objeto: oro }), { x: 8, y: 9 }));
+    expect(mapa.objeto(8, 9)).toEqual(oro);
+
+    // Cambiar sólo la cantidad es otro cambio, y deshacerlo devuelve la de antes.
+    historial.aplicar(mapa, calcular(mapa, ajustes({ herramienta: "objeto", objeto: { objeto: 12, cantidad: 5 } }), { x: 8, y: 9 }));
+    expect(mapa.objeto(8, 9)).toEqual({ objeto: 12, cantidad: 5 });
+    historial.deshacer(mapa);
+    expect(mapa.objeto(8, 9)).toEqual(oro);
+  });
+
+  it("sin objeto elegido, el clic saca el que hubiera, y repetirlo no gasta un paso", () => {
+    const mapa = conPiso();
+    const historial = new Historial();
+    historial.aplicar(mapa, calcular(mapa, ajustes({ herramienta: "objeto", objeto: { objeto: 3, cantidad: 1 } }), { x: 4, y: 4 }));
+
+    historial.aplicar(mapa, calcular(mapa, ajustes({ herramienta: "objeto", objeto: null }), { x: 4, y: 4 }));
+
+    expect(mapa.objeto(4, 4)).toBeNull();
+    expect(calcular(mapa, ajustes({ herramienta: "objeto", objeto: null }), { x: 4, y: 4 }).cambios).toHaveLength(0);
+  });
+});

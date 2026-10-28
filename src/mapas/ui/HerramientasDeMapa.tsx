@@ -14,7 +14,19 @@ import { CELDA, dibujarGrh } from "./dibujo";
  * pared— y para traer uno nuevo están el número a mano y el cuentagotas.
  */
 
-const ORDEN: Herramienta[] = ["pincel", "rectangulo", "balde", "goma", "bloquear", "desbloquear", "trigger", "traslado", "cuentagotas"];
+const ORDEN: Herramienta[] = [
+  "pincel",
+  "rectangulo",
+  "balde",
+  "goma",
+  "bloquear",
+  "desbloquear",
+  "trigger",
+  "traslado",
+  "npc",
+  "objeto",
+  "cuentagotas",
+];
 
 /** La misma letra que escucha la pantalla, para que el botón la pueda mostrar. */
 export const ATAJOS: Record<Herramienta, string> = {
@@ -26,6 +38,8 @@ export const ATAJOS: Record<Herramienta, string> = {
   desbloquear: "d",
   trigger: "t",
   traslado: "p",
+  npc: "n",
+  objeto: "o",
   cuentagotas: "i",
 };
 
@@ -50,6 +64,7 @@ export function BarraDeEdicion({
 }) {
   const conTamanio = usaTamanio(ajustes.herramienta);
   const destino = ajustes.traslado;
+  const objeto = ajustes.objeto;
   return (
     <div className="mapa-barra">
       <div className="seg">
@@ -126,6 +141,34 @@ export function BarraDeEdicion({
           <button className={destino ? "" : "on"} title="Clic en una celda le saca el traslado que tenga" onClick={() => onAjustes({ traslado: destino ? null : { mapa: 1, x: 50, y: 50 } })}>
             {destino ? "Sacar traslado" : "Sacando"}
           </button>
+        </>
+      )}
+
+      {ajustes.herramienta === "npc" && (
+        <CampoNumero id="mapa_npc" etiqueta="NPC n°" valor={ajustes.npc} min={0} ancho={80} onCambio={(v) => onAjustes({ npc: v ?? 0 })} />
+      )}
+
+      {ajustes.herramienta === "npc" && <span className="hint">0 saca el NPC de la celda.</span>}
+
+      {ajustes.herramienta === "objeto" && (
+        <>
+          <CampoNumero
+            id="mapa_obj"
+            etiqueta="Objeto n°"
+            valor={objeto?.objeto ?? 0}
+            min={0}
+            ancho={80}
+            onCambio={(v) => onAjustes({ objeto: !v ? null : { objeto: v, cantidad: objeto?.cantidad ?? 1 } })}
+          />
+          <CampoNumero
+            id="mapa_obj_cant"
+            etiqueta="Cantidad"
+            valor={objeto?.cantidad ?? 1}
+            min={1}
+            ancho={80}
+            onCambio={(v) => objeto && v && onAjustes({ objeto: { ...objeto, cantidad: v } })}
+          />
+          <span className="hint">Sin número saca el objeto de la celda.</span>
         </>
       )}
 

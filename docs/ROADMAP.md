@@ -294,7 +294,7 @@ Equivale, sola, a todas las fases anteriores juntas. Conviene partirla en dos en
 
 **Entrega B — editor ✅.** Pincel (1×1 a 7×7), rectángulo, balde, goma, bloquear y desbloquear, cuentagotas; capa activa, paleta con los gráficos del mapa, deshacer/rehacer y exportación a los tres archivos del juego.
 
-**Mapas desde cero ✅ (27/10/2026).** «+ Mapa nuevo» abre uno vacío de 100×100 sin pasar por un archivo, y se sumaron las herramientas de **trigger** (se pinta con el tamaño del pincel, eligiendo de la lista del `eTrigger` del servidor: bajo techo, casa, posición inválida, zona segura, antipiquete, zona de pelea) y de **traslado** (de a una celda, con mapa y coordenadas de destino). La cabecera de un mapa nuevo queda en cero y eso está bien: `CargarMapa` del servidor lee versión, descripción, CRC y palabra mágica, y no valida ninguno.
+**Mapas desde cero ✅ (27/10/2026).** «+ Mapa nuevo» abre uno vacío de 100×100 sin pasar por un archivo, y se sumaron las herramientas de **trigger** (se pinta con el tamaño del pincel, eligiendo de la lista del `eTrigger` del servidor: bajo techo, casa, posición inválida, zona segura, antipiquete, zona de pelea) y de **traslado**, **NPC** y **objeto** (de a una celda: un traslado, una criatura o una pila puntual no se pintan por área). Los datos del `.dat` —nombre, zona, terreno, restricción, música y las seis banderas— se editan en el panel del mapa; no entran en deshacer porque son un formulario, como la ficha de un objeto. La cabecera de un mapa nuevo queda en cero y eso está bien: `CargarMapa` del servidor lee versión, descripción, CRC y palabra mágica, y no valida ninguno.
 
 Lo que salió distinto de lo previsto, y por qué:
 
@@ -302,7 +302,7 @@ Lo que salió distinto de lo previsto, y por qué:
 - **Las herramientas son cuentas, no botones.** `herramientas.ts` calcula los cambios sin tocar el mapa; el que escribe es siempre el historial. Por eso se prueban sin lienzo ni mouse.
 - **Todavía no hay `data/mapas/<numero>.json`.** La salida del editor son los `.map`/`.inf`/`.dat`, que es lo que el juego lee y lo que se pidió: crear mapas desde el navegador listos para cualquier versión de AO. El guardado propio del proyecto queda pendiente, con su cadencia aparte.
 
-Pendiente de la entrega B: colocar NPCs y objetos desde el lienzo (hoy se ven pero no se editan), editar los datos del `.dat` (nombre, zona, música, banderas), y el `CatalogoDeTiles` que evite depender de la tabla de GRH importada.
+Pendiente de la entrega B: el `CatalogoDeTiles` que evite depender de la tabla de GRH importada, y guardar el mapa en el proyecto (`data/mapas/<numero>.json`) para no perder lo hecho al recargar.
 
 Lo que hace a Mapas distinto de todo lo anterior:
 

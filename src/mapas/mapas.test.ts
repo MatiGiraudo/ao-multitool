@@ -56,11 +56,13 @@ describe("FormatoMapaClasico", () => {
     // Lo que pasa al crear un mapa nuevo en el editor: nunca vino de un archivo, así que la
     // cabecera queda en cero. El servidor la lee y la descarta, así que lo que importa es que
     // el resto vuelva entero.
-    const nuevo = Mapa.vacio(120, { nombre: "Mapa nuevo" });
+    const nuevo = Mapa.vacio(120, { nombre: "Mapa nuevo", zona: "CIUDAD", terreno: "NIEVE", restringir: "NEWBIE", seCombate: false, musicaMp3: 7 });
     for (let y = 1; y <= ALTO; y++) for (let x = 1; x <= ANCHO; x++) nuevo.ponerGrafico(x, y, 1, 1000);
     nuevo.ponerTrigger(4, 4, 4);
     nuevo.ponerTraslado(4, 5, { mapa: 9, x: 60, y: 61 });
     nuevo.bloquear(4, 6, true);
+    nuevo.ponerNpc(4, 7, 25);
+    nuevo.ponerObjeto(4, 8, { objeto: 12, cantidad: 100 });
 
     const archivos = formato.escribir(nuevo, 4);
     const { mapa } = formato.leer(120, archivos.map.buffer as ArrayBuffer, archivos.inf.buffer as ArrayBuffer, archivos.dat);
@@ -71,6 +73,10 @@ describe("FormatoMapaClasico", () => {
     expect(mapa.trigger(4, 4)).toBe(4);
     expect(mapa.traslado(4, 5)).toEqual({ mapa: 9, x: 60, y: 61 });
     expect(mapa.bloqueada(4, 6)).toBe(true);
+    expect(mapa.npc(4, 7)).toBe(25);
+    expect(mapa.objeto(4, 8)).toEqual({ objeto: 12, cantidad: 100 });
+    // Y los datos del .dat, que son los que se editan en el panel del mapa.
+    expect(mapa.info).toMatchObject({ zona: "CIUDAD", terreno: "NIEVE", restringir: "NEWBIE", seCombate: false, musicaMp3: 7 });
   });
 
   it.each([4, 2] as AnchoDeGrafico[])("ida y vuelta completa con gráficos de %i bytes", (ancho) => {

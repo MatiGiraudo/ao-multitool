@@ -1,4 +1,4 @@
-import { ANCHO, Mapa, type Traslado } from "./Mapa";
+import { ANCHO, Mapa, type ObjetoEnElSuelo, type Traslado } from "./Mapa";
 
 /*
  * Deshacer y rehacer, guardando diferencias.
@@ -13,7 +13,9 @@ export type Cambio =
   | { tipo: "grafico"; indice: number; capa: number; antes: number; despues: number }
   | { tipo: "bloqueo"; indice: number; antes: boolean; despues: boolean }
   | { tipo: "trigger"; indice: number; antes: number; despues: number }
-  | { tipo: "traslado"; indice: number; antes: Traslado | null; despues: Traslado | null };
+  | { tipo: "traslado"; indice: number; antes: Traslado | null; despues: Traslado | null }
+  | { tipo: "npc"; indice: number; antes: number; despues: number }
+  | { tipo: "objeto"; indice: number; antes: ObjetoEnElSuelo | null; despues: ObjetoEnElSuelo | null };
 
 /** Todo lo que cambió de una sola acción del usuario: una pincelada, un rectángulo, un balde. */
 export interface Trazo {
@@ -97,6 +99,10 @@ function escribir(mapa: Mapa, cambio: Cambio, lado: "antes" | "despues"): void {
       return mapa.ponerTrigger(x, y, cambio[lado]);
     case "traslado":
       return mapa.ponerTraslado(x, y, cambio[lado]);
+    case "npc":
+      return mapa.ponerNpc(x, y, cambio[lado]);
+    case "objeto":
+      return mapa.ponerObjeto(x, y, cambio[lado]);
   }
 }
 
