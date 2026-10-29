@@ -3,7 +3,7 @@ import { baseDeArchivo } from "@/compartido/dominio/nombreDeArchivo";
 import { HojaDeSprites } from "@/graficos/dominio/HojaDeSprites";
 import type { HojaRepositorio } from "@/graficos/dominio/HojaRepositorio";
 import { MemoriaAlmacenDeImagenes, MemoriaHojaRepositorio } from "@/graficos/infraestructura/memoria";
-import { ExportarGraficosIni, ExportarHojasPropias, GrhDeRecorte, ImportarTablaDeGrh } from "./aplicacion/casosDeUso";
+import { ExportarGraficosIni, ExportarHojasPropias, GrhDelProyecto, ImportarTablaDeGrh } from "./aplicacion/casosDeUso";
 import { TablaDeGrh, type Grh } from "./dominio/TablaDeGrh";
 import { EscritorGraficosIni } from "./infraestructura/EscritorGraficosIni";
 import { LectorGraficosIni } from "./infraestructura/LectorGraficosIni";
@@ -44,7 +44,7 @@ describe("números de GRH propios", () => {
     const repo = new MemoriaTablaDeGrh();
     await repo.guardar(TablaDeGrh.desde([estatico(505, "12", 32, 64)]));
 
-    const r = await new GrhDeRecorte(repo, await conHojas("12.png")).ejecutar({ hojaId: "12", x: 32, y: 64, ancho: 32, alto: 32 });
+    const r = await new GrhDelProyecto(repo, await conHojas("12.png")).deRecorte({ hojaId: "12", x: 32, y: 64, ancho: 32, alto: 32 });
 
     expect(r).toEqual({ numero: 505, creado: false, archivo: "12", asignado: false });
   });
@@ -54,13 +54,13 @@ describe("números de GRH propios", () => {
     await repo.guardar(TablaDeGrh.desde([estatico(505, "12", 32, 64)]));
     const hojas = await conHojas("12.png", "77.png");
 
-    const r = await new GrhDeRecorte(repo, hojas).ejecutar({ hojaId: "77", x: 0, y: 0, ancho: 32, alto: 32 });
+    const r = await new GrhDelProyecto(repo, hojas).deRecorte({ hojaId: "77", x: 0, y: 0, ancho: 32, alto: 32 });
 
     expect(r).toEqual({ numero: 506, creado: true, archivo: "77", asignado: false });
     const tabla = await repo.leer();
     expect(tabla?.obtener(506)).toMatchObject({ archivo: "77", x: 0, y: 0, ancho: 32, alto: 32 });
     // Y preguntar de nuevo por el mismo recorte devuelve el que acaba de crear.
-    expect(await new GrhDeRecorte(repo, hojas).ejecutar({ hojaId: "77", x: 0, y: 0, ancho: 32, alto: 32 })).toMatchObject({
+    expect(await new GrhDelProyecto(repo, hojas).deRecorte({ hojaId: "77", x: 0, y: 0, ancho: 32, alto: 32 })).toMatchObject({
       numero: 506,
       creado: false,
     });
@@ -71,11 +71,11 @@ describe("números de GRH propios", () => {
     // leen la misma tabla se llevan el mismo número y el segundo guardado borra al primero.
     const repo = new MemoriaTablaDeGrh();
     await repo.guardar(TablaDeGrh.desde([estatico(10, "1", 0, 0)]));
-    const caso = new GrhDeRecorte(repo, await conHojas("1.png", "2.png"));
+    const caso = new GrhDelProyecto(repo, await conHojas("1.png", "2.png"));
 
     const [a, b] = await Promise.all([
-      caso.ejecutar({ hojaId: "2", x: 0, y: 0, ancho: 32, alto: 32 }),
-      caso.ejecutar({ hojaId: "2", x: 32, y: 0, ancho: 32, alto: 32 }),
+      caso.deRecorte({ hojaId: "2", x: 0, y: 0, ancho: 32, alto: 32 }),
+      caso.deRecorte({ hojaId: "2", x: 32, y: 0, ancho: 32, alto: 32 }),
     ]);
 
     expect([a.numero, b.numero].sort((x, y) => x - y)).toEqual([11, 12]);
@@ -87,14 +87,14 @@ describe("números de GRH propios", () => {
   it("sirve aunque nunca se haya importado un Graficos.ini", async () => {
     const repo = new MemoriaTablaDeGrh();
 
-    const r = await new GrhDeRecorte(repo, await conHojas("3.png")).ejecutar({ hojaId: "3", x: 64, y: 0, ancho: 32, alto: 48 });
+    const r = await new GrhDelProyecto(repo, await conHojas("3.png")).deRecorte({ hojaId: "3", x: 64, y: 0, ancho: 32, alto: 48 });
 
     expect(r).toEqual({ numero: 1, creado: true, archivo: "3", asignado: false });
   });
 
   it("queda marcado como propio, y la marca sobrevive al ida y vuelta del archivo", async () => {
     const repo = new MemoriaTablaDeGrh();
-    await new GrhDeRecorte(repo, await conHojas("77.png")).ejecutar({ hojaId: "77", x: 0, y: 0, ancho: 32, alto: 32 });
+    await new GrhDelProyecto(repo, await conHojas("77.png")).deRecorte({ hojaId: "77", x: 0, y: 0, ancho: 32, alto: 32 });
 
     const tabla = (await repo.leer())!;
     expect(tabla.obtener(1)?.propio).toBe(true);
@@ -119,7 +119,7 @@ describe("el número de archivo de una hoja", () => {
     await repo.guardar(TablaDeGrh.desde([estatico(1, "12", 0, 0)]));
     const hojas = await conHojas("12.png", "pasto.png");
 
-    const r = await new GrhDeRecorte(repo, hojas).ejecutar({ hojaId: "pasto", x: 32, y: 0, ancho: 32, alto: 32 });
+    const r = await new GrhDelProyecto(repo, hojas).deRecorte({ hojaId: "pasto", x: 32, y: 0, ancho: 32, alto: 32 });
 
     expect(r).toEqual({ numero: 2, creado: true, archivo: "13", asignado: true });
     expect((await hojas.obtener("pasto"))?.numeroDeArchivo).toBe(13);
@@ -133,10 +133,10 @@ describe("el número de archivo de una hoja", () => {
   it("el número se lo queda: elegir otro tile de la misma hoja no le da uno nuevo", async () => {
     const repo = new MemoriaTablaDeGrh();
     const hojas = await conHojas("pasto.png");
-    const caso = new GrhDeRecorte(repo, hojas);
+    const caso = new GrhDelProyecto(repo, hojas);
 
-    const primero = await caso.ejecutar({ hojaId: "pasto", x: 0, y: 0, ancho: 32, alto: 32 });
-    const segundo = await caso.ejecutar({ hojaId: "pasto", x: 32, y: 0, ancho: 32, alto: 32 });
+    const primero = await caso.deRecorte({ hojaId: "pasto", x: 0, y: 0, ancho: 32, alto: 32 });
+    const segundo = await caso.deRecorte({ hojaId: "pasto", x: 32, y: 0, ancho: 32, alto: 32 });
 
     expect(primero).toEqual({ numero: 1, creado: true, archivo: "1", asignado: true });
     expect(segundo).toEqual({ numero: 2, creado: true, archivo: "1", asignado: false });
@@ -149,7 +149,7 @@ describe("el número de archivo de una hoja", () => {
     await repo.guardar(TablaDeGrh.desde([estatico(7, "pasto", 0, 0)]));
     const hojas = await conHojas("pasto.png");
 
-    const r = await new GrhDeRecorte(repo, hojas).ejecutar({ hojaId: "pasto", x: 0, y: 0, ancho: 32, alto: 32 });
+    const r = await new GrhDelProyecto(repo, hojas).deRecorte({ hojaId: "pasto", x: 0, y: 0, ancho: 32, alto: 32 });
 
     expect(r).toEqual({ numero: 7, creado: false, archivo: "1", asignado: true });
     expect((await repo.leer())?.obtener(7)).toMatchObject({ archivo: "1", x: 0, y: 0 });
@@ -161,7 +161,7 @@ describe("el número de archivo de una hoja", () => {
     const repo = new MemoriaTablaDeGrh();
     await repo.guardar(TablaDeGrh.desde([estatico(1, "9000", 0, 0)]));
 
-    const r = await new GrhDeRecorte(repo, await conHojas("pasto.png")).ejecutar({ hojaId: "pasto", x: 0, y: 0, ancho: 32, alto: 32 });
+    const r = await new GrhDelProyecto(repo, await conHojas("pasto.png")).deRecorte({ hojaId: "pasto", x: 0, y: 0, ancho: 32, alto: 32 });
 
     expect(r.archivo).toBe("9001");
   });
@@ -169,15 +169,15 @@ describe("el número de archivo de una hoja", () => {
   it("una hoja que ya se llama por número no recibe otro", async () => {
     const hojas = await conHojas("12.png");
 
-    const r = await new GrhDeRecorte(new MemoriaTablaDeGrh(), hojas).ejecutar({ hojaId: "12", x: 0, y: 0, ancho: 32, alto: 32 });
+    const r = await new GrhDelProyecto(new MemoriaTablaDeGrh(), hojas).deRecorte({ hojaId: "12", x: 0, y: 0, ancho: 32, alto: 32 });
 
     expect(r).toMatchObject({ archivo: "12", asignado: false });
     expect((await hojas.obtener("12"))?.numeroDeArchivo).toBeNull();
   });
 
   it("si la hoja ya no está, lo dice en vez de inventar un gráfico", async () => {
-    const caso = new GrhDeRecorte(new MemoriaTablaDeGrh(), new MemoriaHojaRepositorio());
-    await expect(caso.ejecutar({ hojaId: "fantasma", x: 0, y: 0, ancho: 32, alto: 32 })).rejects.toThrow(/hoja/i);
+    const caso = new GrhDelProyecto(new MemoriaTablaDeGrh(), new MemoriaHojaRepositorio());
+    await expect(caso.deRecorte({ hojaId: "fantasma", x: 0, y: 0, ancho: 32, alto: 32 })).rejects.toThrow(/hoja/i);
   });
 });
 
@@ -219,7 +219,7 @@ describe("reimportar el Graficos.ini", () => {
     await importar.ejecutar(INI);
 
     // El usuario pinta un mapa con un tile de una hoja propia: el editor le inventa el grh 3.
-    const propio = await new GrhDeRecorte(repo, await conHojas("77.png")).ejecutar({ hojaId: "77", x: 0, y: 0, ancho: 32, alto: 32 });
+    const propio = await new GrhDelProyecto(repo, await conHojas("77.png")).deRecorte({ hojaId: "77", x: 0, y: 0, ancho: 32, alto: 32 });
     expect(propio).toMatchObject({ numero: 3, creado: true });
 
     // Y más tarde vuelve a importar el Graficos.ini, que no sabe nada de ese gráfico.
@@ -236,7 +236,7 @@ describe("reimportar el Graficos.ini", () => {
     const repo = new MemoriaTablaDeGrh();
     const importar = importador(repo);
     await importar.ejecutar(INI);
-    await new GrhDeRecorte(repo, await conHojas("77.png")).ejecutar({ hojaId: "77", x: 0, y: 0, ancho: 32, alto: 32 });
+    await new GrhDelProyecto(repo, await conHojas("77.png")).deRecorte({ hojaId: "77", x: 0, y: 0, ancho: 32, alto: 32 });
 
     // El cliente nuevo llega más alto y define el 3 como otra cosa. Pisarlo cambiaría, sin avisar,
     // lo que muestran las celdas ya pintadas con el 3.

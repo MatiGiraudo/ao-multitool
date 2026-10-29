@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Direccion } from "@/compartido/dominio/Direccion";
 
 /** El salto de línea de los archivos del clásico, que son todos de Windows. */
 const SALTO = String.fromCharCode(13, 10);
@@ -56,7 +57,10 @@ const OBJ_DAT = [
   "",
 ].join("\r\n");
 
-function leerYEscribir(cambiar: (o: Objeto) => Objeto = (o) => o) {
+/** «El editor no pudo resolver ningún gráfico»: cada línea de GRH vuelve como vino. */
+const SIN_GRH = new Map<number, number>();
+
+function leerYEscribir(cambiar: (o: Objeto) => Objeto = (o) => o, grh: Map<number, number> = SIN_GRH) {
   const { objetos: clasicos, encabezado } = new LectorObjDat().leer(OBJ_DAT);
   const originales = { [ENCABEZADO]: encabezado, ...Object.fromEntries(clasicos.map((o) => [o.numero, o.crudo])) };
   const objetos = clasicos.map((c) =>
@@ -77,7 +81,7 @@ function leerYEscribir(cambiar: (o: Objeto) => Objeto = (o) => o) {
       }),
     ),
   );
-  return new EscritorObjDat().escribir(objetos, originales);
+  return new EscritorObjDat().escribir(objetos, originales, grh);
 }
 
 describe("EscritorObjDat", () => {
@@ -112,7 +116,7 @@ describe("EscritorObjDat", () => {
 
   it("un objeto nuevo sale con lo que el editor sabe y nada más", () => {
     const nuevo = Objeto.crear("nuevo", 7).renombrado("Espada nueva").conTipo("arma").conAtributo("minHit", 3);
-    const texto = new EscritorObjDat().escribir([nuevo], {});
+    const texto = new EscritorObjDat().escribir([nuevo], {}, SIN_GRH);
     expect(texto).toContain("[OBJ7]");
     expect(texto).toContain("Name=Espada nueva");
     expect(texto).toContain("ObjType=2");
@@ -301,17 +305,20 @@ const PERSONAJES_INI = [
   "",
 ].join(SALTO);
 
+/** Lo mismo para los archivos con un gráfico por dirección. */
+const SIN_DIRECCIONES = new Map<number, Partial<Record<Direccion, number>>>();
+
 describe("EscritorFxsIni y EscritorAparienciasIni", () => {
   it("el Fxs.ini vuelve igual, y el corrimiento editado es lo único que cambia", () => {
     const { efectos, encabezado } = new LectorFxsIni().leer(FXS_INI);
     const originales = { [ENCABEZADO]: encabezado, ...Object.fromEntries(efectos.map((e) => [e.numero, e.crudo])) };
     const efecto = Efecto.crear("e1", 1).conOffset(efectos[0]!.offsetX, efectos[0]!.offsetY);
 
-    expect(new EscritorFxsIni().escribir([efecto], originales)).toBe(FXS_INI + SALTO);
+    expect(new EscritorFxsIni().escribir([efecto], originales, SIN_GRH)).toBe(FXS_INI + SALTO);
 
-    const movido = new EscritorFxsIni().escribir([efecto.conOffset(0, 20)], originales);
+    const movido = new EscritorFxsIni().escribir([efecto.conOffset(0, 20)], originales, SIN_GRH);
     expect(movido).toContain("OffsetY=20");
-    // La animación es un número de GRH que el editor no sabe recalcular: vuelve como vino.
+    // Sin un número resuelto, la animación vuelve como vino.
     expect(movido).toContain("Animacion=3");
     expect(movido).toContain("Loops=2");
   });
@@ -321,10 +328,10 @@ describe("EscritorFxsIni y EscritorAparienciasIni", () => {
     const originales = { [ENCABEZADO]: encabezado, ...Object.fromEntries(apariencias.map((a) => [a.numero, a.crudo])) };
     const cuerpo = Cuerpo.crear("c1", 1).conOffsetCabeza(apariencias[0]!.offsetCabezaX, apariencias[0]!.offsetCabezaY);
 
-    const escritor = new EscritorAparienciasIni("BODY", "NumBodies");
-    expect(escritor.escribir([cuerpo], originales)).toBe(PERSONAJES_INI + SALTO);
+    const escritor = new EscritorAparienciasIni("BODY", "Walk", "NumBodies");
+    expect(escritor.escribir([cuerpo], originales, SIN_DIRECCIONES)).toBe(PERSONAJES_INI + SALTO);
 
-    const movido = escritor.escribir([cuerpo.conOffsetCabeza(1, -10)], originales);
+    const movido = escritor.escribir([cuerpo.conOffsetCabeza(1, -10)], originales, SIN_DIRECCIONES);
     expect(movido).toContain("HeadOffsetY=-10");
     expect(movido).toContain("Walk1=4582	 ' arriba");
   });

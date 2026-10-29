@@ -11,7 +11,7 @@ Editor de mundo para el remake de Argentum Online. Hoy incluye:
 - **Exportar todo**: cuatro cosas que casi nunca se quieren juntas —los catálogos JSON del remake, las animaciones, el mundo del juego y los archivos del AO clásico—, elegibles por separado y guardadas en `data/exportado/` de una vez.
 - **Diagnóstico**: qué quedó roto o a medio terminar en todo el mundo, incluidos los cruces que ningún módulo ve solo.
 - **Importar del AO original**: en siete pasos, la tabla de GRH del `Graficos.ini`, los cuerpos, las cabezas, los FX, el `OBJ.dat`, el `Hechizos.dat` y el `NPCs.dat`, creando las animaciones que hagan falta y vinculando los gráficos.
-- **Devolvérselos al AO original**: el `OBJ.dat`, el `NPCs.dat` y el `Hechizos.dat` del servidor, y el `Fxs.ini`, el `Personajes.ini` y el `Cabezas.ini` del cliente. Se reescribe sólo lo que el editor maneja; el resto de cada entrada vuelve tal como vino, con sus comentarios y su espaciado.
+- **Devolvérselos al AO original**: el `OBJ.dat`, el `NPCs.dat` y el `Hechizos.dat` del servidor, y el `Fxs.ini`, el `Personajes.ini` y el `Cabezas.ini` del cliente. Se reescribe sólo lo que el editor maneja —los gráficos incluidos, traducidos de vuelta a números de GRH— y el resto de cada entrada vuelve tal como vino, con sus comentarios y su espaciado.
 - **FX**: efectos visuales, con su animación, el corrimiento en píxeles respecto de donde se lanzan y cuántas veces se repiten, con exportación `ao-fx`.
 
 Es la continuación del indexador web. Los JSON que exporta tienen exactamente el mismo formato, así que lo que ya armaste sigue sirviendo para Unity.

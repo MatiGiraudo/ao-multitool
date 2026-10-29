@@ -20,9 +20,11 @@ import type { FabricaDeCatalogo } from "@/proyecto/aplicacion/ImportarProyectoLe
 import { baseDeArchivo } from "@/compartido/dominio/nombreDeArchivo";
 import { esElArchivo, numeroDeArchivoDe, proximoNumeroDeArchivo } from "../dominio/nombres";
 import { ErrorDeDominio } from "@/compartido/dominio/ErrorDeDominio";
-import { TablaDeGrh } from "../dominio/TablaDeGrh";
+import { firmaDeGrafico, TablaDeGrh, type Grh, type RectDeGrh } from "../dominio/TablaDeGrh";
 import { ENCABEZADO, SIN_ORIGINALES, type FamiliaClasica, type OriginalesRepositorio } from "../dominio/OriginalesRepositorio";
 import type { TablaDeGrhRepositorio } from "../dominio/TablaDeGrhRepositorio";
+import { DIRECCION_DE_AO } from "../dominio/direcciones";
+import type { GrhDeReferencias, ModoDeGrh } from "./GrhDeReferencias";
 import type { PuenteDeGrh, VinculosDeGrh } from "./PuenteDeGrh";
 import type {
   AparienciaClasica,
@@ -63,19 +65,17 @@ export interface ResultadoDeTablaDeGrh {
 }
 
 /**
- * Lee el `Graficos.ini` y guarda la tabla de GRH.
+ * De un gráfico de una hoja del proyecto al número de GRH con el que se dibuja.
  *
- * Es el primer paso de cualquier importación del clásico: sin esta tabla, los `GrhIndex` de los
- * demás archivos no se pueden traducir a hojas y animaciones.
- */
-/**
- * De un recorte de una hoja del proyecto al número de GRH con el que se dibuja.
+ * Es el camino de vuelta, el que el clásico necesita: allá todo gráfico es un número, y acá es
+ * «tal hoja, tal recorte» o «tal hoja, tal animación». Si ese dibujo ya tiene número se reusa, y
+ * si no se le da el primero libre y la tabla queda guardada.
  *
- * Es lo que deja pintar un mapa con gráficos que nunca estuvieron en un `Graficos.ini`: si el
- * recorte ya tiene número se reusa, y si no se le da el primer número libre y la tabla queda
- * guardada. Así el mapa sigue hablando en números de GRH, que es lo único que el juego entiende.
+ * Lo usan los dos lados que hablan en números de GRH: el editor de mapas, que guarda uno por
+ * celda, y la exportación de los archivos del AO original, donde un FX, un cuerpo o el icono de
+ * un objeto tienen que volver como el número que son allá.
  */
-export class GrhDeRecorte {
+export class GrhDelProyecto {
   private cola: Promise<unknown> = Promise.resolve();
 
   constructor(
@@ -83,56 +83,112 @@ export class GrhDeRecorte {
     private readonly hojas: HojaRepositorio,
   ) {}
 
+  /** El GRH de un recorte suelto: el tile que se acaba de elegir para el pincel. */
+  async deRecorte(recorte: RecorteDeHoja): Promise<GrhDelRecorte> {
+    const [resuelto] = await this.deVarios([{ hojaId: recorte.hojaId, rects: [recorte] }]);
+    if (!resuelto) throw new ErrorDeDominio("Esa hoja ya no está en el proyecto.");
+    return resuelto;
+  }
+
   /**
-   * De a uno por vez.
+   * Los GRH de varios gráficos de una, en el mismo orden en que se pidieron.
    *
-   * Leer, elegir el número y guardar no puede solaparse: dos recortes elegidos seguidos leerían
-   * los dos la misma tabla, se llevarían el mismo número, y el segundo guardado dejaría afuera al
-   * primero. Las celdas ya pintadas con ese número pasarían a mostrar otro gráfico.
+   * Un `null` es un gráfico que no se pudo resolver porque su hoja ya no está en el proyecto;
+   * quien pregunta decide qué hacer con eso (devolverle al clásico la línea que tenía, por
+   * ejemplo), que es mejor que cortar la exportación entera.
+   *
+   * De a muchos y no de a uno porque devolverle sus archivos a un cliente entero pregunta por
+   * miles de gráficos: uno por uno sería leer y guardar la tabla miles de veces.
    */
-  ejecutar(recorte: RecorteDeHoja): Promise<GrhDelRecorte> {
+  deVarios(pedidos: readonly GraficoDelProyecto[]): Promise<(GrhDelRecorte | null)[]> {
     const siguiente = this.cola.then(
-      () => this.resolver(recorte),
-      () => this.resolver(recorte),
+      () => this.resolver(pedidos),
+      () => this.resolver(pedidos),
     );
     this.cola = siguiente.catch(() => undefined);
     return siguiente;
   }
 
-  private async resolver(recorte: RecorteDeHoja): Promise<GrhDelRecorte> {
-    const hoja = await this.hojas.obtener(recorte.hojaId);
-    if (!hoja) throw new ErrorDeDominio("Esa hoja ya no está en el proyecto.");
-    const { archivo, asignado, tabla } = await this.archivoDe(hoja);
-    const { x, y, ancho, alto } = recorte;
+  /**
+   * De a una tanda por vez.
+   *
+   * Leer, elegir los números y guardar no puede solaparse: dos tandas leerían las dos la misma
+   * tabla, se llevarían los mismos números, y el segundo guardado dejaría afuera al primero. Las
+   * celdas ya pintadas con esos números pasarían a mostrar otro gráfico.
+   */
+  private async resolver(pedidos: readonly GraficoDelProyecto[]): Promise<(GrhDelRecorte | null)[]> {
+    let hojas = await this.hojas.listar();
+    let tabla = (await this.tablas.leer()) ?? TablaDeGrh.vacia();
+    let cambiada = false;
 
-    const existente = tabla.buscarRecorte(archivo, x, y, ancho, alto);
-    if (existente) {
-      // El renombrado hay que guardarlo igual: el GRH es el de antes, pero ahora nombra al archivo nuevo.
-      if (asignado) await this.tablas.guardar(tabla);
-      return { numero: existente.numero, creado: false, archivo, asignado };
+    // 1. Con qué nombre va cada hoja al `Graficos.ini`, dándole uno a la que no tenía.
+    const archivoPorHoja = new Map<string, { archivo: string; asignado: boolean }>();
+    for (const { hojaId } of pedidos) {
+      if (archivoPorHoja.has(hojaId)) continue;
+      const hoja = hojas.find((h) => h.id === hojaId);
+      if (!hoja) continue;
+      const propio = numeroDeArchivoDe(hoja);
+      if (propio !== null) {
+        archivoPorHoja.set(hojaId, { archivo: String(propio), asignado: false });
+        continue;
+      }
+      const numero = proximoNumeroDeArchivo(hojas, tabla.archivos());
+      const renombrada = hoja.conNumeroDeArchivo(numero);
+      await this.hojas.guardar(renombrada);
+      hojas = hojas.map((h) => (h.id === hoja.id ? renombrada : h));
+      // Lo que ya se pintó con esta hoja sigue en su lugar: los GRH son los mismos, con otro nombre.
+      tabla = tabla.renombrandoArchivo(baseDeArchivo(hoja.nombreArchivo), String(numero));
+      cambiada = true;
+      archivoPorHoja.set(hojaId, { archivo: String(numero), asignado: true });
     }
 
-    const numero = tabla.proximoNumero();
-    // `propio` es lo que lo salva de la próxima importación del Graficos.ini.
-    await this.tablas.guardar(tabla.con({ numero, archivo, x, y, ancho, alto, cuadros: [], msDelCiclo: 0, propio: true }));
-    return { numero, creado: true, archivo, asignado };
-  }
+    // 2. El cruce «este dibujo ya es el GRH tal», armado una sola vez para toda la tanda.
+    const indice = tabla.indicePorFirma();
+    let proximo = tabla.proximoNumero();
 
-  /**
-   * Con qué nombre va esta hoja al `Graficos.ini`, asignándole uno si no tenía.
-   *
-   * Pasa adentro de la cola por lo mismo que el número de GRH: elegir el número libre y guardarlo
-   * no puede solaparse con otro que esté haciendo lo mismo.
-   */
-  private async archivoDe(hoja: HojaDeSprites): Promise<{ archivo: string; asignado: boolean; tabla: TablaDeGrh }> {
-    const tabla = (await this.tablas.leer()) ?? TablaDeGrh.vacia();
-    const propio = numeroDeArchivoDe(hoja);
-    if (propio !== null) return { archivo: String(propio), asignado: false, tabla };
+    const sumar = (grh: Grh, firma: string): number => {
+      tabla = tabla.con(grh);
+      cambiada = true;
+      indice.set(firma, grh);
+      return grh.numero;
+    };
 
-    const numero = proximoNumeroDeArchivo(await this.hojas.listar(), tabla.archivos());
-    await this.hojas.guardar(hoja.conNumeroDeArchivo(numero));
-    // Lo que ya se pintó con esta hoja sigue en su lugar: los GRH son los mismos, con otro nombre.
-    return { archivo: String(numero), asignado: true, tabla: tabla.renombrandoArchivo(baseDeArchivo(hoja.nombreArchivo), String(numero)) };
+    /* Los cuadros de un GRH animado son otros GRH, así que cada recorte necesita el suyo. */
+    const deUnRecorte = (archivo: string, rect: RectDeGrh): number => {
+      const firma = firmaDeGrafico(archivo, [rect]);
+      const existente = indice.get(firma);
+      if (existente) return existente.numero;
+      return sumar({ numero: proximo++, archivo, ...rect, cuadros: [], msDelCiclo: 0, propio: true }, firma);
+    };
+
+    /*
+     * Un gráfico que no estaba en la tabla se lleva el primer número libre. `propio` es lo que lo
+     * salva de la próxima importación del `Graficos.ini`.
+     *
+     * Los cuadros del animado van primero y él después, como en los `Graficos.ini` del juego: un
+     * GRH que nombra números más altos que el suyo se lee raro.
+     */
+    const crear = (archivo: string, rects: readonly RectDeGrh[], msDelCiclo: number): number => {
+      if (rects.length === 1) return deUnRecorte(archivo, rects[0]!);
+      const cuadros = rects.map((r) => deUnRecorte(archivo, r));
+      const grh: Grh = { numero: proximo++, archivo, x: 0, y: 0, ancho: 0, alto: 0, cuadros, msDelCiclo, propio: true };
+      return sumar(grh, firmaDeGrafico(archivo, rects));
+    };
+
+    // 3. El número de cada gráfico pedido.
+    const resueltos = pedidos.map((pedido) => {
+      const nombrada = archivoPorHoja.get(pedido.hojaId);
+      if (!nombrada || !pedido.rects.length) return null;
+      const { archivo, asignado } = nombrada;
+      const existente = indice.get(firmaDeGrafico(archivo, pedido.rects));
+      if (existente) return { numero: existente.numero, creado: false, archivo, asignado };
+      return { numero: crear(archivo, pedido.rects, pedido.msDelCiclo ?? 0), creado: true, archivo, asignado };
+    });
+
+    // 4. Una sola escritura para toda la tanda. El renombrado también cuenta: el GRH es el de
+    // antes, pero ahora nombra al archivo nuevo.
+    if (cambiada) await this.tablas.guardar(tabla);
+    return resueltos;
   }
 }
 
@@ -143,6 +199,15 @@ export interface RecorteDeHoja {
   y: number;
   ancho: number;
   alto: number;
+}
+
+/** Un gráfico del proyecto del que hace falta saber su número de GRH. */
+export interface GraficoDelProyecto {
+  hojaId: string;
+  /** Los recortes que lo forman, en orden. Uno solo es un gráfico estático; varios, uno animado. */
+  rects: readonly RectDeGrh[];
+  /** Cuánto dura el ciclo entero, en ms. Sólo lo usa el animado. */
+  msDelCiclo?: number;
 }
 
 export interface GrhDelRecorte {
@@ -219,12 +284,18 @@ export class ExportarObjetosClasicos {
     private readonly listar: () => Promise<Objeto[]>,
     private readonly originales: OriginalesRepositorio,
     private readonly escritor: EscritorDeObjetosClasicos,
+    private readonly grh: GrhDeReferencias,
   ) {}
 
   async ejecutar(): Promise<{ nombreArchivo: string; contenido: string; carpeta: string }[]> {
     const objetos = await this.listar();
     if (!objetos.length) return [];
-    return [{ nombreArchivo: "OBJ.dat", contenido: this.escritor.escribir(objetos, await this.originales.leer("obj")), carpeta: "Dat" }];
+    /* El `GrhIndex` es el icono de inventario, que allá puede ser un gráfico animado: una antorcha
+     * importada vuelve con el mismo número que traía. */
+    const numeros = await this.grh.resolver(objetos.map((o) => ({ referencia: o.graficos.icono, modo: "icono" as const })));
+    const grhPorObjeto = porNumeroDeEntrada(objetos, numeros);
+    const contenido = this.escritor.escribir(objetos, await this.originales.leer("obj"), grhPorObjeto);
+    return [{ nombreArchivo: "OBJ.dat", contenido, carpeta: "Dat" }];
   }
 }
 
@@ -258,22 +329,32 @@ export class ExportarHechizosClasicos {
   }
 }
 
-/** El `Fxs.ini` de vuelta: los corrimientos editados, el resto como vino. */
+/** El `Fxs.ini` de vuelta, con el gráfico y los corrimientos editados. */
 export class ExportarEfectosClasicos {
   constructor(
     private readonly listar: () => Promise<Efecto[]>,
     private readonly originales: OriginalesRepositorio,
     private readonly escritor: EscritorDeEfectosClasicos,
+    private readonly grh: GrhDeReferencias,
   ) {}
 
   async ejecutar(): Promise<{ nombreArchivo: string; contenido: string; carpeta: string }[]> {
     const efectos = await this.listar();
     if (!efectos.length) return [];
-    return [{ nombreArchivo: "Fxs.ini", contenido: this.escritor.escribir(efectos, await this.originales.leer("fxs")), carpeta: "Init" }];
+    /* Un FX se dibuja entero: el `Animacion` del clásico es un GRH animado. */
+    const numeros = await this.grh.resolver(efectos.map((e) => ({ referencia: e.animacion, modo: "animacion" as const })));
+    const contenido = this.escritor.escribir(efectos, await this.originales.leer("fxs"), porNumeroDeEntrada(efectos, numeros));
+    return [{ nombreArchivo: "Fxs.ini", contenido, carpeta: "Init" }];
   }
 }
 
-/** El `Personajes.ini` o el `Cabezas.ini` de vuelta, con los corrimientos de cabeza editados. */
+/**
+ * El `Personajes.ini` o el `Cabezas.ini` de vuelta, con los gráficos y los corrimientos editados.
+ *
+ * El `modo` es la diferencia entre los dos archivos: un cuerpo camina, así que cada dirección es
+ * una animación entera, y una cabeza es una cara quieta, así que cada dirección es el cuadro al
+ * que apunta su referencia. Es la misma distinción que hacen las dos fichas del editor.
+ */
 export class ExportarAparienciasClasicas {
   constructor(
     private readonly listar: () => Promise<Apariencia[]>,
@@ -281,16 +362,53 @@ export class ExportarAparienciasClasicas {
     private readonly nombreArchivo: string,
     private readonly originales: OriginalesRepositorio,
     private readonly escritor: EscritorDeAparienciasClasicas,
+    private readonly grh: GrhDeReferencias,
+    private readonly modo: ModoDeGrh,
   ) {}
 
   async ejecutar(): Promise<{ nombreArchivo: string; contenido: string; carpeta: string }[]> {
     const apariencias = await this.listar();
     if (!apariencias.length) return [];
-    const contenido = this.escritor.escribir(apariencias, await this.originales.leer(this.familia));
+
+    const pedidos = apariencias.flatMap((a) => DIRECCION_DE_AO.map((d) => ({ referencia: a.direcciones[d], modo: this.modo })));
+    const numeros = await this.grh.resolver(pedidos);
+
+    const grhPorApariencia = new Map<number, Partial<Record<Direccion, number>>>();
+    apariencias.forEach((apariencia, i) => {
+      const porDireccion: Partial<Record<Direccion, number>> = {};
+      DIRECCION_DE_AO.forEach((direccion, j) => {
+        const numero = numeros[i * DIRECCION_DE_AO.length + j];
+        if (numero !== null && numero !== undefined) porDireccion[direccion] = numero;
+      });
+      grhPorApariencia.set(apariencia.numero, porDireccion);
+    });
+
+    const contenido = this.escritor.escribir(apariencias, await this.originales.leer(this.familia), grhPorApariencia);
     return [{ nombreArchivo: this.nombreArchivo, contenido, carpeta: "Init" }];
   }
 }
 
+/**
+ * Los números que se pudieron resolver, por número de entrada del archivo.
+ *
+ * Lo que no se resolvió queda afuera a propósito: el escritor entiende «no está» como «dejá la
+ * línea que ya tenía», que es lo que corresponde cuando el editor no sabe qué poner.
+ */
+function porNumeroDeEntrada(entradas: readonly { numero: number }[], numeros: readonly (number | null)[]): Map<number, number> {
+  const m = new Map<number, number>();
+  entradas.forEach((entrada, i) => {
+    const numero = numeros[i];
+    if (numero !== null && numero !== undefined) m.set(entrada.numero, numero);
+  });
+  return m;
+}
+
+/**
+ * Lee el `Graficos.ini` y guarda la tabla de GRH.
+ *
+ * Es el primer paso de cualquier importación del clásico: sin esta tabla, los `GrhIndex` de los
+ * demás archivos no se pueden traducir a hojas y animaciones.
+ */
 export class ImportarTablaDeGrh {
   constructor(
     private readonly lector: LectorDeGraficosClasicos,

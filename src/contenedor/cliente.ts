@@ -95,9 +95,10 @@ import {
   ExportarNpcsClasicos,
   ExportarObjetosClasicos,
   ExportarHojasPropias,
-  GrhDeRecorte,
+  GrhDelProyecto,
   ImportarTablaDeGrh,
 } from "@/importacion/aplicacion/casosDeUso";
+import { GrhDeReferencias } from "@/importacion/aplicacion/GrhDeReferencias";
 import { PuenteDeGrh } from "@/importacion/aplicacion/PuenteDeGrh";
 import {
   AbrirMapaClasico,
@@ -203,6 +204,12 @@ function crear() {
   const mapasGuardados = enCarpeta ? new CarpetaMapaRepositorio(carpetaDelProyecto) : new HttpMapaRepositorio();
   /* Uno solo: lo usan el botón de «Importar» y la exportación del mundo entero. */
   const exportarGraficosIni = new ExportarGraficosIni(tablaDeGrh, new EscritorGraficosIni());
+  /* También uno solo, y por una razón más fuerte: reparte números de GRH, y para no repetir
+   * ninguno hace falta que el editor de mapas y la exportación del clásico pasen por la misma
+   * cola. */
+  const grhDelProyecto = new GrhDelProyecto(tablaDeGrh, hojas);
+  /* El camino de vuelta: de las animaciones del proyecto a los números de GRH del clásico. */
+  const grhDeReferencias = new GrhDeReferencias(hojas, grhDelProyecto);
   const leerTodosLosMapas = new LeerTodosLosMapas(mapasGuardados);
 
   return {
@@ -314,7 +321,7 @@ function crear() {
       hechizos: new ImportarHechizosClasicos(new LectorHechizosDat(), new ImportarHechizos(hechizos, formatoHechizos, ids), originales),
       npcs: new ImportarNpcsClasicos(new LectorNpcsDat(), new ImportarNpcs(npcs, formatoNpcs, ids), originales),
       /** Para los gráficos propios: el número con el que se dibuja un recorte, y la tabla de vuelta. */
-      grhDeRecorte: new GrhDeRecorte(tablaDeGrh, hojas),
+      grhDeRecorte: grhDelProyecto,
       exportarGraficos: exportarGraficosIni,
     },
     proyecto: {
@@ -337,17 +344,21 @@ function crear() {
       ],
       [
         // Los archivos del AO original, con todo lo que el editor no entiende de vuelta en su lugar.
-        () => new ExportarObjetosClasicos(() => new ListarObjetos(objetos).ejecutar(), originales, new EscritorObjDat()).ejecutar(),
+        () =>
+          new ExportarObjetosClasicos(() => new ListarObjetos(objetos).ejecutar(), originales, new EscritorObjDat(), grhDeReferencias).ejecutar(),
         () => new ExportarNpcsClasicos(() => new ListarNpcs(npcs).ejecutar(), originales, new EscritorNpcsDat()).ejecutar(),
         () => new ExportarHechizosClasicos(() => new ListarHechizos(hechizos).ejecutar(), originales, new EscritorHechizosDat()).ejecutar(),
-        () => new ExportarEfectosClasicos(() => new ListarEfectos(efectos).ejecutar(), originales, new EscritorFxsIni()).ejecutar(),
+        () =>
+          new ExportarEfectosClasicos(() => new ListarEfectos(efectos).ejecutar(), originales, new EscritorFxsIni(), grhDeReferencias).ejecutar(),
         () =>
           new ExportarAparienciasClasicas(
             () => new ListarApariencias(cuerpos).ejecutar(),
             "cuerpos",
             "Personajes.ini",
             originales,
-            new EscritorAparienciasIni("BODY", "NumBodies"),
+            new EscritorAparienciasIni("BODY", "Walk", "NumBodies"),
+            grhDeReferencias,
+            "animacion",
           ).ejecutar(),
         () =>
           new ExportarAparienciasClasicas(
@@ -355,7 +366,9 @@ function crear() {
             "cabezas",
             "Cabezas.ini",
             originales,
-            new EscritorAparienciasIni("HEAD", "NumHeads"),
+            new EscritorAparienciasIni("HEAD", "Head", "NumHeads"),
+            grhDeReferencias,
+            "frame",
           ).ejecutar(),
       ]),
       guardarExportacion: new GuardarExportacion(enCarpeta ? new CarpetaAlmacenDeExportacion(carpetaDelProyecto) : new HttpAlmacenDeExportacion()),

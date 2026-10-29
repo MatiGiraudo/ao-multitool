@@ -25,6 +25,14 @@ lo que se decidió dejar para después, así no se pierde.
 > hay que mantener al día, y una carpeta donde los mapas pueden aparecer de afuera —de un git pull,
 > de otra máquina— lo deja mintiendo sin que nadie se entere.
 >
+> El 29/10/2026 salió el del ida y vuelta a medias del cliente. De las dos salidas posibles se
+> tomó la que ya estaba andando del lado de los mapas: el gráfico se busca por sus recortes, y si
+> esos recortes todavía no son ningún GRH el proyecto le da el primer número libre y lo suma a la
+> tabla. Buscar y nada más —que era lo que esta lista proponía— dejaba afuera justo el caso que
+> importa, el del gráfico hecho acá: sin número no hay manera de nombrarlo en un archivo del
+> clásico. Quedó en esta lista lo único que de eso no se resolvió: que los tres del cliente
+> siguen sin estar medidos contra archivos de verdad.
+>
 > El 28/10/2026, al final, salió el de las hojas con nombre no numérico. De las dos salidas que
 > decía esta lista se tomó la segunda: el proyecto le da a la hoja un número de archivo propio la
 > primera vez que pintás con ella, igual que ya hacía con los números de GRH, y su imagen sale con
@@ -47,21 +55,21 @@ carrera que arregla `d925788`, pero entre pestañas en vez de entre clics.
 
 **Qué haría falta:** que el guardado mande la versión que leyó y el servidor rechace la escritura si
 cambió mientras tanto, o que la tabla se relea antes de repartir un número nuevo.
-## 2. El ida y vuelta del cliente está a medias
 
-**Dónde:** `src/importacion/infraestructura/`, al lado de `EscritorObjDat.ts`.
+## 2. Los tres archivos del cliente no están medidos contra archivos de verdad
 
-Los seis archivos vuelven, pero hay una diferencia grande entre los tres del servidor y los tres
-del cliente. En `OBJ.dat`, `NPCs.dat` y `Hechizos.dat` el editor reescribe todo lo que maneja, y
-está medido contra un servidor de verdad. En `Fxs.ini`, `Personajes.ini` y `Cabezas.ini` lo único
-que puede reescribir son los corrimientos: el resto de cada entrada son números de GRH, y el editor
-guarda «tal hoja, tal animación», no un número.
+**Dónde:** `src/importacion/clasicoReal.test.ts`.
 
-**Qué haría falta:** resolver el camino de vuelta, de una animación del proyecto a un número de
-GRH. `TablaDeGrh.buscarRecorte` ya encuentra el GRH de un recorte estático; faltaría el de una
-animación (buscar un GRH cuyos cuadros sean esos). Con eso resuelto se arreglan de una las tres
-cosas: el `GrhIndex` de los objetos, la `Animacion` de los FX y los `Walk1..4` de las apariencias.
+El `OBJ.dat`, el `NPCs.dat` y el `Hechizos.dat` tienen un test que, con `AO_DAT_DIR` apuntando a
+un servidor de verdad, importa el archivo entero y comprueba que vuelve a salir clave por clave.
+El `Fxs.ini`, el `Personajes.ini` y el `Cabezas.ini` no lo tienen: en el servidor que tenemos a
+mano no están, porque viven en el cliente, en `INIT/`.
 
-Los tres del cliente tampoco están medidos contra archivos reales: en el servidor que tenemos a
-mano no están (viven en el cliente, en `INIT/`). El test con `AO_DAT_DIR` cubre los tres del
-servidor; para los otros haría falta apuntar a una carpeta `INIT` de verdad.
+Es el único lado del ida y vuelta que anda sin red. Los tres se escriben con la misma pieza que
+los otros —`reescribirSeccion`, que es la que de verdad decide qué se toca y qué no—, así que lo
+que falta medir no es el escritor sino el archivo: cuántas formas raras de escribir una entrada
+tiene un `Personajes.ini` de 600 cuerpos que no estén en el de cuatro líneas de los tests.
+
+**Qué haría falta:** una carpeta `INIT` de verdad y una variable propia —`AO_INIT_DIR`— al lado
+de la que ya existe, con los mismos tres tests: todas las claves vuelven, el archivo sin editar
+sale igual línea por línea, y editar una cosa cambia esa línea y ninguna otra.

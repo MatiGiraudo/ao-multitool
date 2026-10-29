@@ -58,6 +58,10 @@ function claves(texto: string, prefijo = "obj"): Map<string, string> {
   return out;
 }
 
+/* Este test importa los objetos sin sus gráficos, así que no hay ningún GRH que resolver: lo que
+ * se mide acá es que las claves del archivo vuelvan intactas. */
+const SIN_GRH = new Map<number, number>();
+
 describe.skipIf(!CARPETA)("OBJ.dat de verdad", () => {
   const carpeta = CARPETA ?? "";
   const leerDat = (nombre: string) => (carpeta ? new TextDecoder("windows-1252").decode(readFileSync(join(carpeta, nombre))) : "");
@@ -71,7 +75,7 @@ describe.skipIf(!CARPETA)("OBJ.dat de verdad", () => {
     );
     const originales = { [ENCABEZADO]: encabezado, ...Object.fromEntries(clasicos.map((o) => [o.numero, o.crudo])) };
     const objetos = await repo.listar();
-    return { clasicos, objetos, originales, texto: new EscritorObjDat().escribir(objetos, originales) };
+    return { clasicos, objetos, originales, texto: new EscritorObjDat().escribir(objetos, originales, SIN_GRH) };
   }
 
   it("devuelve todas las claves, también las setenta que el editor no entiende", async () => {
@@ -155,6 +159,7 @@ describe.skipIf(!CARPETA)("OBJ.dat de verdad", () => {
     const despues = new EscritorObjDat().escribir(
       objetos.map((o) => (o.clave === primero.clave ? o.renombrado("Daga de pruebas") : o)),
       originales,
+      SIN_GRH,
     );
 
     const lineasAntes = antes.split("\r\n");

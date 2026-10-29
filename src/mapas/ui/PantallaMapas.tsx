@@ -279,7 +279,7 @@ export function PantallaMapas() {
    * archivos con un número y nada más, así que sin eso el gráfico no se resolvería en el juego.
    */
   const elegirTile = async (hoja: { id: string; nombreArchivo: string }, recorte: { x: number; y: number; ancho: number; alto: number }) => {
-    const r = await intentar(() => casos.clasico.grhDeRecorte.ejecutar({ hojaId: hoja.id, ...recorte }), "Buscando el gráfico…");
+    const r = await intentar(() => casos.clasico.grhDeRecorte.deRecorte({ hojaId: hoja.id, ...recorte }), "Buscando el gráfico…");
     if (!r) return;
     setAjustes((a) => ({ ...a, grh: r.numero, herramienta: a.herramienta === "cuentagotas" ? "pincel" : a.herramienta }));
     const deLaHoja = r.asignado ? ` La hoja ${hoja.nombreArchivo} se exporta como ${r.archivo}.png.` : "";

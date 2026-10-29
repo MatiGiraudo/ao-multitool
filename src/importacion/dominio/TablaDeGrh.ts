@@ -32,11 +32,27 @@ export interface Grh {
   propio?: boolean;
 }
 
+/** Un recorte de una hoja: el rectángulo pelado, sin la clase `Rect` del módulo Gráficos. */
+export interface RectDeGrh {
+  x: number;
+  y: number;
+  ancho: number;
+  alto: number;
+}
+
 /** Un GRH resuelto a lo que este editor entiende: recortes de una hoja. */
 export interface RecortesDeGrh {
   archivo: string;
-  rects: { x: number; y: number; ancho: number; alto: number }[];
+  rects: RectDeGrh[];
   msPorFrame: number;
+}
+
+/**
+ * Qué dibuja un gráfico, escrito como texto: de qué archivo sale y qué recortes lo forman, en
+ * orden. Dos gráficos con la misma firma son el mismo dibujo, estén o no en la tabla.
+ */
+export function firmaDeGrafico(archivo: string, rects: readonly RectDeGrh[]): string {
+  return [archivo, ...rects.map((r) => `${r.x},${r.y},${r.ancho},${r.alto}`)].join("|");
 }
 
 export class TablaDeGrh {
@@ -71,16 +87,46 @@ export class TablaDeGrh {
   }
 
   /**
-   * El GRH estático que ya apunta a ese recorte exacto, si existe.
+   * El GRH que ya dibuja exactamente esto, si existe.
    *
-   * Sirve para no inventar un número nuevo cada vez que se elige el mismo tile: dos celdas con el
-   * mismo pasto tienen que terminar con el mismo GRH, como en el juego.
+   * Un solo recorte busca un GRH estático; varios buscan uno animado cuyos cuadros sean ésos y en
+   * ese orden. Es lo que evita inventar un número nuevo cada vez: dos celdas con el mismo pasto
+   * terminan con el mismo GRH, y un FX que sigue apuntando al gráfico que importó vuelve al
+   * `Fxs.ini` con el número que traía.
+   *
+   * La velocidad no entra en la comparación: dos GRH con los mismos cuadros son el mismo dibujo
+   * aunque uno corra más rápido, y duplicar el número por eso sólo llenaría el `Graficos.ini`.
    */
-  buscarRecorte(archivo: string, x: number, y: number, ancho: number, alto: number): Grh | null {
-    for (const g of this.porNumero.values()) {
-      if (!g.cuadros.length && g.archivo === archivo && g.x === x && g.y === y && g.ancho === ancho && g.alto === alto) return g;
-    }
+  buscarGrafico(archivo: string, rects: readonly RectDeGrh[]): Grh | null {
+    if (!rects.length) return null;
+    const buscada = firmaDeGrafico(archivo, rects);
+    for (const g of this.datos()) if (this.firmaDe(g) === buscada) return g;
     return null;
+  }
+
+  /**
+   * El mismo cruce que `buscarGrafico`, armado de una sola vez para preguntar muchas veces.
+   *
+   * Resolver los cuadros de un GRH animado cuesta, y devolverle sus archivos al clásico pregunta
+   * por miles de gráficos contra una tabla que después de importar un cliente tiene decenas de
+   * miles: uno por uno es recorrerla entera cada vez.
+   *
+   * Si dos GRH dibujan lo mismo gana el de número más chico, que es el que el clásico escribió
+   * primero.
+   */
+  indicePorFirma(): Map<string, Grh> {
+    const m = new Map<string, Grh>();
+    for (const g of this.datos()) {
+      const firma = this.firmaDe(g);
+      if (firma && !m.has(firma)) m.set(firma, g);
+    }
+    return m;
+  }
+
+  /** Qué dibuja este GRH, escrito como texto comparable. null si no se puede resolver. */
+  private firmaDe(g: Grh): string | null {
+    const r = this.recortes(g.numero);
+    return r ? firmaDeGrafico(r.archivo, r.rects) : null;
   }
 
   /** Los que inventó el editor y no salen de ningún `Graficos.ini`. */

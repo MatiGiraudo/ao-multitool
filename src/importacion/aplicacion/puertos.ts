@@ -21,13 +21,25 @@ export interface EscritorDeGraficosClasicos {
 }
 
 /**
+ * Los números de GRH que un escritor del clásico no puede deducir solo, por número de entrada.
+ *
+ * Allá un gráfico es un número y acá es «tal hoja, tal animación»; traducirlo pide la tabla de
+ * GRH y las hojas, que las tiene el caso de uso y no el escritor. Lo que no está en el mapa es lo
+ * que no se pudo resolver, y su línea vuelve como vino.
+ */
+export type GrhPorNumero = ReadonlyMap<number, number>;
+
+/** Lo mismo, para los archivos donde cada entrada tiene un gráfico por dirección. */
+export type GrhPorDireccionYNumero = ReadonlyMap<number, Partial<Record<Direccion, number>>>;
+
+/**
  * Puerto: sabe devolver el `OBJ.dat`.
  *
  * Recibe los originales porque el editor entiende una quinta parte de las claves del archivo: lo
  * que no maneja se devuelve tal como vino, en vez de perderse.
  */
 export interface EscritorDeObjetosClasicos {
-  escribir(objetos: readonly Objeto[], originales: OriginalesDeFamilia): string;
+  escribir(objetos: readonly Objeto[], originales: OriginalesDeFamilia, grhPorObjeto: GrhPorNumero): string;
 }
 
 /**
@@ -69,14 +81,18 @@ export interface LectorDeHechizosClasicos {
   leer(texto: string): HechizosClasicos;
 }
 
-/** Puerto: sabe devolver el `Fxs.ini`. Los GRH vuelven como vinieron; los corrimientos, editados. */
+/** Puerto: sabe devolver el `Fxs.ini`, con el gráfico y los corrimientos editados. */
 export interface EscritorDeEfectosClasicos {
-  escribir(efectos: readonly Efecto[], originales: OriginalesDeFamilia): string;
+  escribir(efectos: readonly Efecto[], originales: OriginalesDeFamilia, grhPorEfecto: GrhPorNumero): string;
 }
 
 /** Puerto: sabe devolver el `Personajes.ini` o el `Cabezas.ini`. */
 export interface EscritorDeAparienciasClasicas {
-  escribir(apariencias: readonly Apariencia[], originales: OriginalesDeFamilia): string;
+  escribir(
+    apariencias: readonly Apariencia[],
+    originales: OriginalesDeFamilia,
+    grhPorApariencia: GrhPorDireccionYNumero,
+  ): string;
 }
 
 /** Puerto: sabe devolver el `Hechizos.dat` sin perder lo que el editor no maneja. */

@@ -63,8 +63,13 @@ export class ExportarTodo {
     const hojas = await this.hojas.listar();
     const catalogo = this.fabricaDeCatalogo(hojas);
     const archivos: ArchivoExportado[] = que.catalogos ? await Promise.all(this.catalogos.map((exportar) => exportar(catalogo))) : [];
-    if (que.mundo) for (const exportar of this.mundo) archivos.push(...(await exportar()));
+    /* El clásico va primero aunque en la lista esté último, y no da lo mismo: devolverle sus
+     * archivos resuelve los gráficos del editor a números de GRH, y al que no tenía se lo
+     * inventa. Si el `Graficos.ini` saliera antes, saldría sin ésos y el cliente no encontraría
+     * el gráfico del FX o del cuerpo que acaba de recibir. El orden de salida no cambia: los
+     * archivos se ordenan por carpeta y nombre al final. */
     if (que.clasico) for (const exportar of this.clasico) archivos.push(...(await exportar()));
+    if (que.mundo) for (const exportar of this.mundo) archivos.push(...(await exportar()));
 
     // Un .anim.json por hoja, pero sólo de las que tienen animaciones: después de importar los
     // gráficos del clásico hay miles de hojas cargadas y la mayoría todavía no tiene ninguna.
