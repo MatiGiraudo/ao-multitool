@@ -1,8 +1,8 @@
 # Hoja de ruta
 
-Qué módulos tiene el editor, cuáles faltan, qué define cada uno y en qué orden conviene construirlos. Cada módulo nuevo sigue el molde explicado en [ARQUITECTURA.md](ARQUITECTURA.md): carpetas `dominio/`, `aplicacion/`, `infraestructura/` y `ui/`; datos en `data/<modulo>/`; y un formato JSON de intercambio para Unity.
+Qué módulos tiene el editor, cuáles faltan, qué define cada uno y en qué orden conviene construirlos. Cada módulo nuevo sigue el molde explicado en [ARQUITECTURA.md](ARQUITECTURA.md): carpetas `dominio/`, `aplicacion/`, `infraestructura/` y `ui/`; datos en `data/<modulo>/`; y un formato JSON de intercambio, para que lo editado acá se pueda leer desde otro programa.
 
-> **Sobre los formatos originales de AO.** Las referencias a archivos como `Cuerpos.ind` o los `.map` describen cómo los usa el cliente clásico, para orientar el diseño. Antes de escribir un importador, verificá los tamaños y el orden exacto de los campos contra el código de la versión de ao-libre que uses (por ejemplo, las rutinas que cargan esos archivos en el cliente VB6), porque cambian entre versiones (`Integer` de 16 bits contra `Long` de 32). Mirar el código para entender un formato está bien; para tu proyecto privado, escribí tu propio código en lugar de copiar el de ao-libre (AGPL).
+> **Sobre los formatos originales de AO.** Las referencias a archivos como `Cuerpos.ind` o los `.map` describen cómo los usa el cliente clásico, para orientar el diseño. Antes de escribir un importador, verificá los tamaños y el orden exacto de los campos contra el código de la versión que uses (por ejemplo, las rutinas que cargan esos archivos en el cliente VB6), porque cambian entre versiones (`Integer` de 16 bits contra `Long` de 32). Mirar código ajeno para entender un formato está bien; escribí el tuyo en lugar de copiarlo, que cada proyecto viene con su licencia.
 
 ---
 
@@ -80,7 +80,7 @@ El orden de la tabla respeta esas dependencias: nunca vas a construir un módulo
 
 **Qué define**
 - `numero`, una animación (referencia a Gráficos), un offset X/Y respecto del objetivo, y **cuántas veces se repite** (1 = una sola vez; −1 = en bucle mientras dure el efecto).
-- Opcional: capa (debajo o encima del personaje) y modo de mezcla (normal o aditivo para brillos), por si Unity lo usa.
+- Opcional: capa (debajo o encima del personaje) y modo de mezcla (normal o aditivo para brillos), por si del otro lado se usan.
 
 **En AO clásico:** `Fxs.ind`. Por cada FX, el gráfico de la animación más su offset.
 
@@ -174,14 +174,13 @@ Cada **tile** tiene:
 
 **Rendimiento:** 100×100 tiles con 4 capas se dibujan bien en canvas si se redibuja solo la zona visible y se cachean las capas que no cambian. Si hace falta más, se puede pasar a WebGL más adelante sin tocar el dominio.
 
-**Listo cuando:** se puede abrir un mapa, pintarlo, poner bloqueos, traslados, NPCs y objetos, guardarlo, y exportar `ao-mapa` para Unity. Importar los mapas originales de ao-libre (`.map` + `.inf` + `.dat`) es un hito aparte, solo para el proyecto público.
+**Listo cuando:** se puede abrir un mapa, pintarlo, poner bloqueos, traslados, NPCs y objetos, guardarlo, y exportar `ao-mapa`. Importar los mapas originales (`.map` + `.inf` + `.dat`) es un hito aparte.
 
 ---
 
 ## Transversal (en paralelo a los módulos)
 
-- **Importadores de AO clásico**, solo para el proyecto público: `Graficos.ind` → hojas y animaciones; `Cuerpos.ind`, `Cabezas.ind`, `Cascos.ind`, `Fxs.ind`; `Obj.dat`, `Hechizos.dat`, `NPCs.dat`; y los mapas. Cada uno va como un adaptador más en la infraestructura de su módulo (por ejemplo `objetos/infraestructura/LectorObjDat.ts`), usando el mismo puerto que el importador JSON.
-- **Importador en Unity**: scripts de editor que leen la carpeta `data/` (o los JSON exportados) y generan Sprites, AnimationClips y ScriptableObjects. Conviene empezarlo apenas estén Cuerpos y Cabezas, para validar temprano que el formato sirve.
+- **Importadores de AO clásico**: `Graficos.ind` → hojas y animaciones; `Cuerpos.ind`, `Cabezas.ind`, `Cascos.ind`, `Fxs.ind`; `Obj.dat`, `Hechizos.dat`, `NPCs.dat`; y los mapas. Cada uno va como un adaptador más en la infraestructura de su módulo (por ejemplo `objetos/infraestructura/LectorObjDat.ts`), usando el mismo puerto que el importador JSON.
 - **Validación global**: una pantalla de "Problemas" que junte vínculos rotos, IDs repetidos y referencias faltantes de todos los módulos.
 - **Mover piezas a `compartido/`**: `Direccion`, `ReferenciaGrafica`, `RanuraGrafica`, `SelectorDeAnimacion` y la vista previa compuesta, cuando el segundo módulo las necesite (no antes).
 - **Tests**: cada módulo arranca con tests de dominio, como los de `graficos.test.ts` y `objetos.test.ts`.

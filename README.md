@@ -1,24 +1,20 @@
 # AO World Editor
 
-Editor de mundo para el remake de Argentum Online. Hoy incluye:
+Un editor para el contenido de Argentum Online: los gráficos, los objetos, los personajes, los
+hechizos y los mapas, todos en la misma herramienta y con una pantalla para cada cosa.
 
-- **Animaciones**: hojas de sprites, frames marcados por grilla o recuadro libre, movimiento en grupo, redimensionado de imágenes, vista previa y exportación `ao-anim`.
-- **Objetos**: ítems del juego con sus atributos por tipo, icono, gráfico en el suelo y animaciones de equipado por dirección, con exportación `ao-objs`.
-- **Apariencias**: los cuerpos y las cabezas de los personajes, con su gráfico en cada dirección y dónde se apoya la cabeza sobre el cuerpo, con exportación `ao-bodies` y `ao-heads`.
-- **Hechizos**: qué hace cada hechizo, cuánto cuesta, sus palabras mágicas y con qué FX se ve, con exportación `ao-spells`.
-- **NPCs**: criaturas y gente del mundo, con su apariencia, su combate, los hechizos que lanzan y lo que sueltan o venden, con exportación `ao-npcs`.
-- **Mapas**: el mundo donde pasa todo. Se pinta el piso y las tres capas de arriba con los gráficos del proyecto o del clásico, se marcan bloqueos, traslados, NPCs y objetos, y sale como el `.map`, el `.inf` y el `.dat` que lee el servidor.
-- **Exportar todo**: cuatro cosas que casi nunca se quieren juntas —los catálogos JSON del remake, las animaciones, el mundo del juego y los archivos del AO clásico—, elegibles por separado y guardadas en `data/exportado/` de una vez.
-- **Diagnóstico**: qué quedó roto o a medio terminar en todo el mundo, incluidos los cruces que ningún módulo ve solo.
-- **Importar del AO original**: en siete pasos, la tabla de GRH del `Graficos.ini`, los cuerpos, las cabezas, los FX, el `OBJ.dat`, el `Hechizos.dat` y el `NPCs.dat`, creando las animaciones que hagan falta y vinculando los gráficos.
-- **Devolvérselos al AO original**: el `OBJ.dat`, el `NPCs.dat` y el `Hechizos.dat` del servidor, y el `Fxs.ini`, el `Personajes.ini` y el `Cabezas.ini` del cliente. Se reescribe sólo lo que el editor maneja —los gráficos incluidos, traducidos de vuelta a números de GRH— y el resto de cada entrada vuelve tal como vino, con sus comentarios y su espaciado.
-- **FX**: efectos visuales, con su animación, el corrimiento en píxeles respecto de donde se lanzan y cuántas veces se repiten, con exportación `ao-fx`.
+Lee los archivos del AO original —el `Graficos.ini`, el `OBJ.dat`, el `Personajes.ini` y los
+demás— y los vuelve a escribir cuando terminás, tocando sólo lo que editaste. También puede
+exportar todo como JSON, por si querés leer el mundo desde otro programa.
 
-Es la continuación del indexador web. Los JSON que exporta tienen exactamente el mismo formato, así que lo que ya armaste sigue sirviendo para Unity.
+Corre en el navegador, pero no es un servicio: se levanta en tu máquina y guarda en una carpeta
+tuya. No hay cuenta que crear ni nada que subir a ningún lado.
 
 ## Requisitos
 
 - Node.js 20 o más nuevo (probado con Node 22).
+- Para que sirva de algo: los archivos de un servidor y de un cliente de AO. El editor no trae
+  ninguno.
 
 ## Cómo correrlo
 
@@ -27,29 +23,134 @@ npm install
 npm run dev
 ```
 
-Abrí http://localhost:3000. La app redirige a **Animaciones**.
+Abrí http://localhost:3000. La app arranca en **Animaciones**.
 
-| Comando | Para qué sirve |
-|---|---|
-| `npm run dev` | Modo desarrollo, con recarga automática al editar el código |
-| `npm run build` y `npm start` | Versión optimizada |
-| `npm test` | Tests del dominio y de los casos de uso |
-| `npm run typecheck` | Chequeo de tipos de TypeScript |
+## Cómo se usa
 
-Hay además tres grupos de pruebas que miden el ida y vuelta contra archivos de verdad, y que se
-saltean solos si no les decís dónde están. Son los que dicen si lo que el editor devuelve le sirve
-al juego, así que si tenés un servidor y un cliente a mano vale la pena correrlos: los `.dat` del
-servidor, los `.ini` del cliente y los mapas de un mundo (`Mundos/Alkon`, no `Mundos`).
+Las diez pestañas de arriba son las diez cosas que se pueden editar. Se pueden usar en cualquier
+orden, pero si estás empezando con un juego que ya existe, el camino corto es éste: **Importar**
+para traerlo, las pestañas del medio para cambiar lo que quieras, y **Exportar** para devolverlo.
 
-```bash
-AO_DAT_DIR=".../ao-server/Dat" AO_INIT_DIR=".../ao-cliente/INIT" AO_MAPAS_DIR=".../Mundos/Alkon" npm test
-```
+Todo se guarda solo, unos 400 ms después de cada cambio. No hay botón de guardar y no hace falta:
+si cerrás la pestaña con algo a medio escribir, el navegador te avisa.
 
-Si abrís la app desde otra dirección que no sea `localhost` (por ejemplo desde WSL, Docker o una VM, con una IP como `172.19.0.1`), ya está permitido para las redes privadas habituales. Si usás un nombre o una IP distinta, agregala con `AO_DEV_ORIGINS=mi-pc.local npm run dev`.
+### 1. Traer lo que ya existe — pestaña *Importar*
+
+Son siete pasos y el primero manda: el **`Graficos.ini`** arma la tabla de GRH, que dice, para
+cada número de gráfico del juego, de qué imagen sale y qué recorte es. Sin esa tabla los demás
+archivos no se pueden leer, porque todos apuntan a los gráficos por número.
+
+Con la tabla puesta entran el **`Personajes.ini`** (los cuerpos, con sus cuatro direcciones y el
+corrimiento donde se apoya la cabeza), el **`Cabezas.ini`**, el **`Fxs.ini`** y el **`OBJ.dat`**,
+que trae cada objeto con su nombre, tipo, valor, banderas y atributos, y le engancha el icono
+creando en cada hoja las animaciones que hagan falta (las llama `grh505` y así). El
+**`Hechizos.dat`** y el **`NPCs.dat`** no necesitan el paso 1: apuntan al FX y a los cuerpos por
+número, igual que el editor.
+
+Dos cosas que conviene saber:
+
+- **Los archivos van en ANSI**, como los guarda Windows. Se leen bien, con acentos y todo.
+- **Las imágenes son aparte.** El `Graficos.ini` dice «el gráfico 505 es tal recorte de la imagen
+  12», pero la imagen no está en el `.ini`. Cargá las que te interesen en **Animaciones**, con el
+  mismo nombre que en el juego (`12.png`), y volvé a importar: lo que faltaba se vincula entonces,
+  sin duplicar nada. No hace falta cargarlas todas; el editor te dice cuáles le faltan.
+
+### 2. Gráficos — pestaña *Animaciones*
+
+Una **hoja** es una imagen con sus animaciones adentro. Cargás la imagen, marcás los frames y les
+ponés nombre; eso es todo lo que el resto del editor necesita para poder apuntarle.
+
+Los frames se marcan de dos maneras: con la **grilla**, cuando los sprites están alineados (ponés
+el ancho, el alto y la separación, y hacés clic en las celdas), o con el **recuadro libre**, para
+las hojas que no están alineadas. Se pueden mover varios frames juntos, invertir el orden, armar
+ida y vuelta, y mirar cómo queda el ciclo con la vista previa al lado.
+
+También podés redimensionar la imagen —los frames se escalan con ella— y sacarle el fondo negro,
+que en el AO clásico es el color que no se dibuja.
+
+### 3. El contenido del juego — *Apariencias*, *NPCs*, *Objetos*, *FX*, *Hechizos*
+
+Las cinco funcionan igual: una lista a la izquierda, la ficha de lo que elegiste al lado, y las
+ranuras donde se engancha un gráfico.
+
+- **Apariencias** son los cuerpos y las cabezas. Un cuerpo tiene la animación de caminar hacia los
+  cuatro lados y el corrimiento donde se le apoya la cabeza; una cabeza, la cara hacia cada lado,
+  que es un cuadro fijo y no una animación. Si las cuatro caras están en la misma animación,
+  elegila en las cuatro y movelas al cuadro que corresponda con ◀ ▶.
+- **NPCs**: qué apariencia tienen, cómo pelean, qué hechizos lanzan, y qué sueltan o venden.
+- **Objetos**: el tipo manda. Un arma pide daño mínimo y máximo, una armadura defensa, una poción
+  qué sube y cuánto dura. Cada objeto tiene su icono de inventario, su gráfico en el suelo y, si
+  se equipa, su animación por dirección.
+- **FX**: qué animación se dibuja, cuánto se corre en píxeles respecto de donde se lanza, y
+  cuántas veces se repite (0 es en bucle). El corrimiento es lo que de verdad cuesta acertar, así
+  que la pantalla lo deja previsualizar encima de un personaje.
+- **Hechizos**: qué hacen, cuánto cuestan, las palabras mágicas y con qué FX se ven.
+
+Donde haga falta un gráfico vas a ver una **ranura**: tocás, elegís hoja y animación, y listo. Las
+que muestran ◀ ▶ son las que apuntan a un cuadro suelto en vez de a la animación entera.
+
+### 4. Mapas
+
+Se abre un mapa de la carpeta `Mundos` del juego, o se arranca uno nuevo. Los archivos se leen en
+tu máquina y no se sube nada.
+
+Un mapa son 100×100 celdas y cuatro capas: la 1 es el piso y las otras tres van encima. Se cambia
+de capa con las teclas **1** a **4**, y se puede apagar la vista de cada una para ver qué hay
+abajo.
+
+Las herramientas, con su atajo:
+
+| Atajo | Herramienta | Atajo | Herramienta |
+|---|---|---|---|
+| **B** | Pincel | **X** | Bloquear |
+| **R** | Rectángulo | **D** | Desbloquear |
+| **F** | Balde | **T** | Trigger |
+| **E** | Goma | **P** | Traslado |
+| **I** | Cuentagotas | **N** | NPC |
+| | | **O** | Objeto |
+
+Pintás con el botón izquierdo. Para moverte por el mapa, arrastrá con **shift** o con el botón del
+medio; el zoom es con la rueda. **Ctrl+Z** y **Ctrl+Y** deshacen y rehacen.
+
+El gráfico del pincel se elige de dos maneras: por número, si lo sabés, o con **«Elegir de una
+hoja del proyecto»**, que muestra tus hojas con su grilla y te deja hacer clic en el recorte que
+quieras. Si ese recorte todavía no tenía número de gráfico, el editor le da el primero libre, así
+que podés pintar con dibujos que nunca estuvieron en el juego. El cuentagotas (**I**) toma el
+gráfico de una celda que ya está pintada.
+
+Mientras falte alguna imagen, esas celdas se ven como colores planos: alcanza para reconocer la
+forma del mapa y seguir trabajando.
+
+### 5. Revisar — pestaña *Diagnóstico*
+
+Junta en una sola lista todo lo que quedó roto o a medio terminar: vínculos gráficos que no
+resuelven, nombres de animación repetidos, hojas sin imagen, y los cruces que ninguna pantalla ve
+sola —un pergamino que apunta a un hechizo que no existe, un NPC sin cuerpo—. Conviene pasar por
+acá antes de exportar: lo que está roto se exporta igual y del otro lado aparece como un gráfico
+que no carga.
+
+### 6. Devolverlo — pestaña *Exportar*
+
+Son cuatro cosas distintas y casi nunca se quieren las cuatro, así que se eligen por separado:
+
+- **Los archivos del AO original.** El `OBJ.dat`, el `NPCs.dat` y el `Hechizos.dat` del servidor, y
+  el `Fxs.ini`, el `Personajes.ini` y el `Cabezas.ini` del cliente. Se reescribe solamente lo que
+  el editor maneja, gráficos incluidos; el resto de cada entrada vuelve tal como vino, con sus
+  comentarios y su espaciado. Un archivo importado y exportado sin tocar nada sale idéntico al que
+  entró.
+- **El mundo.** Los mapas como los `.map`, `.inf` y `.dat` que lee el servidor, el `Graficos.ini`
+  con los gráficos que hayas agregado, y las imágenes de las hojas que armaste acá.
+- **Los catálogos JSON.** Todo el mundo en archivos de texto (`objetos.json`, `npcs.json`,
+  `cuerpos.json`, `cabezas.json`, `hechizos.json`, `fx.json`), por si querés leerlo desde otro
+  programa.
+- **Las animaciones.** Un `.anim.json` por cada hoja que tenga alguna.
+
+Todo sale en `data/exportado/`, con los archivos del juego ya repartidos en `Dat/`, `Init/`,
+`Mundos/` y `Graficos/`, que es donde los busca.
 
 ## Dónde quedan tus datos
 
-Todo lo que hacés se guarda solo, unos 400 ms después de cada cambio, en la carpeta `data/`:
+En la carpeta `data/`:
 
 ```
 data/
@@ -73,25 +174,32 @@ data/
 ├── importacion/
 │   └── grh.json             ← la tabla de GRH del AO original, para traducir sus gráficos
 └── exportado/
-    └── *                    ← lo que escribe «Exportar todo», listo para el juego
+    └── *                    ← lo que escribe «Exportar»
 ```
 
-Esa carpeta está pensada para versionarla con **git**: cada cambio aparece claro en el historial y nada se pierde. Si querés guardar los datos en otro lugar, definí la variable `AO_DATA_DIR`, por ejemplo `AO_DATA_DIR=/ruta/a/mis-datos npm run dev`.
+Esa carpeta está pensada para versionarla con **git**: cada cambio aparece claro en el historial y
+nada se pierde. Si querés guardar los datos en otro lugar, definí `AO_DATA_DIR`, por ejemplo
+`AO_DATA_DIR=/ruta/a/mis-datos npm run dev`.
 
-Dos cosas quedan afuera de git, y están en el `.gitignore`: las **imágenes** de las hojas y la carpeta `exportado/`. Las imágenes son las del cliente que importaste —después de un cliente entero son miles de archivos y cientos de megas—, y lo que el editor te deja escrito de cada hoja (la grilla y las animaciones) está en el `.json` de al lado, que sí se versiona. Si las querés igual en el repositorio, borrá esa línea del `.gitignore`.
+Dos cosas quedan afuera de git, y están en el `.gitignore`: las **imágenes** de las hojas y la
+carpeta `exportado/`. Las imágenes son las del cliente que importaste —después de un cliente
+entero son miles de archivos y cientos de megas—, y lo que el editor te deja escrito de cada hoja
+(la grilla y las animaciones) está en el `.json` de al lado, que sí se versiona. Si las querés
+igual en el repositorio, borrá esa línea del `.gitignore`.
 
-La carpeta trae dos hojas de ejemplo y tres objetos. Podés borrarlos desde la app («Quitar hoja» y «Borrar») o borrar esos archivos a mano.
+La carpeta trae dos hojas de ejemplo y tres objetos. Podés borrarlos desde la app («Quitar hoja» y
+«Borrar») o borrar esos archivos a mano.
 
-### Publicarlo en un servidor, sin que los datos salgan de tu máquina
+## Publicarlo en un servidor, sin que los datos salgan de tu máquina
 
 Lo de arriba es el modo por defecto: el disco lo toca el servidor. Está pensado para correrlo en
 tu máquina, y **no tiene usuarios ni contraseñas**: cualquiera que llegue a esa dirección escribe
 en tu `data/`. Mientras sea `localhost` no hay problema; si lo vas a dejar levantado donde lo
 alcance alguien más, usá el modo de abajo.
 
-El segundo modo está pensado justamente para eso: desplegar el editor en un servidor público
-(Vercel, por ejemplo) y que **cada uno trabaje con su propia carpeta**. No se sube ningún archivo
-a ningún lado: el navegador abre un selector de carpetas y lee y escribe ahí directamente.
+El segundo modo está pensado justamente para eso: dejar el editor en un servidor público (Vercel,
+por ejemplo) y que **cada uno trabaje con su propia carpeta**. No se sube ningún archivo a ningún
+lado: el navegador abre un selector de carpetas y lee y escribe ahí directamente.
 
 Se enciende con una variable al compilar:
 
@@ -111,39 +219,46 @@ Un par de cosas que conviene saber:
 - **Necesita Chromium** (Chrome, Edge, Brave, Opera). La API que abre carpetas,
   `showDirectoryPicker`, todavía no está en Firefox ni en Safari; ahí la app lo dice y no te deja
   entrar, en vez de fallar raro.
-- **El permiso se pide una vez por sesión.** El navegador recuerda cuál era tu carpeta, pero no
-  te deja volver a entrar sin un clic tuyo. Es un botón, no hay que volver a buscarla.
+- **El permiso se pide una vez por sesión.** El navegador recuerda cuál era tu carpeta, pero no te
+  deja volver a entrar sin un clic tuyo. Es un botón, no hay que volver a buscarla.
 - **El formato es el mismo** que el del modo servidor, así que podés abrir con el modo carpeta la
   misma `data/` que usás en tu máquina, y al revés.
 
-## Traer los archivos del AO original
+## Para desarrollar
 
-En la pestaña **Importar** hay siete pasos, y el primero manda. El `Graficos.ini` arma la tabla de GRH: ahí está, para cada número de gráfico del juego, de qué imagen sale y qué recorte es. Con esa tabla se leen después el `Personajes.ini` y el `Cabezas.ini` (los cuerpos y las cabezas, con sus cuatro direcciones y el corrimiento de la cabeza), el `Fxs.ini` y el `OBJ.dat`, que trae todos los objetos con su nombre, tipo, valor, banderas y atributos, y les vincula el icono creando en cada hoja las animaciones que hagan falta (las llama `grh505` y así). El `Hechizos.dat` y el `NPCs.dat` no necesitan el paso 1: apuntan al FX y a los cuerpos por número, igual que acá.
+| Comando | Para qué sirve |
+|---|---|
+| `npm run dev` | Modo desarrollo, con recarga automática al editar el código |
+| `npm run build` y `npm start` | Versión optimizada |
+| `npm test` | Tests del dominio y de los casos de uso |
+| `npm run typecheck` | Chequeo de tipos de TypeScript |
 
-Los archivos van en ANSI, como los guarda Windows: se leen bien, con acentos y todo. Cargá las imágenes que te interesen (con el mismo nombre que en el juego, por ejemplo `12.png`) y volvé a importar el `OBJ.dat`: lo que faltaba se vincula entonces, sin duplicar nada.
+Hay además tres grupos de pruebas que miden el ida y vuelta contra archivos de verdad, y que se
+saltean solos si no les decís dónde están. Son los que dicen si lo que el editor devuelve le sirve
+al juego, así que si tenés un servidor y un cliente a mano vale la pena correrlos: los `.dat` del
+servidor, los `.ini` del cliente y los mapas de un mundo (`Mundos/Alkon`, no `Mundos`).
 
-## Traer lo que hiciste en el indexador web
+```bash
+AO_DAT_DIR=".../ao-server/Dat" AO_INIT_DIR=".../ao-cliente/INIT" AO_MAPAS_DIR=".../Mundos/Alkon" npm test
+```
 
-En el indexador web usá **Guardar proyecto** para bajar `proyecto-ao.json`. Acá, tocá **Importar proyecto del indexador web…** arriba a la derecha. Se importan las hojas con sus imágenes, las animaciones y los objetos con sus vínculos.
+Si abrís la app desde otra dirección que no sea `localhost` (por ejemplo desde WSL, Docker o una
+VM, con una IP como `172.19.0.1`), ya está permitido para las redes privadas habituales. Si usás
+un nombre o una IP distinta, agregala con `AO_DEV_ORIGINS=mi-pc.local npm run dev`.
 
-Si ya existe una hoja con el mismo nombre de archivo, se actualiza en lugar de duplicarse. Los objetos con el mismo ID se reemplazan.
+El código está organizado con screaming architecture, arquitectura hexagonal, DDD y SOLID, y está
+explicado paso a paso, con ejemplos de este mismo código, en
+**[docs/ARQUITECTURA.md](docs/ARQUITECTURA.md)**.
 
-## Arquitectura
-
-El código está organizado con screaming architecture, arquitectura hexagonal / clean architecture, DDD y SOLID. Está explicado paso a paso, con ejemplos de este mismo código, en **[docs/ARQUITECTURA.md](docs/ARQUITECTURA.md)**. Ahí también está la receta para agregar el próximo módulo (NPCs, Mapas…).
-
-## Qué falta
-
-El plan fase por fase, con lo hecho marcado, está en **[docs/ROADMAP.md](docs/ROADMAP.md)**. Las siete fases que tenía están cerradas: lo que sigue son las decisiones abiertas del final de ese documento.
-
-Hay además una hoja de ruta anterior, escrita antes de empezar, con las dependencias entre módulos y qué define cada uno: **[docs/HOJA_DE_RUTA.md](docs/HOJA_DE_RUTA.md)**. Lo que propone para cuerpos, cabezas, FX y hechizos quedó resuelto de otra manera; conviene leerla sabiendo eso.
-
-Lo que ya se puede reproducir y todavía no está arreglado vive en **[docs/PENDIENTES.md](docs/PENDIENTES.md)**. Hoy queda uno, y conviene saberlo: con el editor abierto en dos pestañas a la vez, las dos pueden repartir el mismo número de GRH y la segunda pisa a la primera. Abrilo en una sola.
+Lo que ya se puede reproducir y todavía no está arreglado vive en
+**[docs/PENDIENTES.md](docs/PENDIENTES.md)**. Hoy queda uno, y conviene saberlo: con el editor
+abierto en dos pestañas a la vez, las dos pueden repartir el mismo número de gráfico y la segunda
+pisa a la primera. Abrilo en una sola.
 
 ## Licencia
 
-MIT, en **[LICENSE](LICENSE)**. Hacé lo que quieras con el código, incluso usarlo en algo tuyo;
-lo único que pide es que la nota de copyright viaje con él.
+MIT, en **[LICENSE](LICENSE)**. Hacé lo que quieras con el código, incluso usarlo en algo tuyo; lo
+único que pide es que la nota de copyright viaje con él.
 
 Los archivos del AO original que importes son otra cosa: son del juego, no de este editor, y acá
 no viene ninguno. El `.gitignore` deja afuera las imágenes de las hojas, así que no se te van a

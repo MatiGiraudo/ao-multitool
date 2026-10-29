@@ -258,7 +258,7 @@ export function EditorDeHojas({ renderUso }: { renderUso?: (hoja: HojaDeSprites,
 
       {!hoja ? (
         <div className="empty grande">
-          Todavía no hay hojas. Tocá <b>+ Agregar hoja…</b> para cargar tu primera imagen, o importá un proyecto del indexador web.
+          Todavía no hay hojas. Tocá <b>+ Agregar hoja…</b> para cargar tu primera imagen, o traé los gráficos del AO original desde <b>Importar</b>.
         </div>
       ) : (
         <main className="layout">
