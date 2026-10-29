@@ -50,7 +50,7 @@ export class PuenteDeGrh {
         grhSinResolver.add(grh);
         continue;
       }
-      const original = hojas.find((h) => esElArchivo(h.nombreArchivo, recortes.archivo));
+      const original = hojas.find((h) => esElArchivo(h, recortes.archivo));
       if (!original) {
         hojasFaltantes.add(recortes.archivo);
         continue;

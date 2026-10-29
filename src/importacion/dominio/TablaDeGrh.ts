@@ -109,6 +109,19 @@ export class TablaDeGrh {
     return { tabla: new TablaDeGrh(m), pisados };
   }
 
+  /**
+   * La misma tabla, con los GRH de un archivo nombrados por otro.
+   *
+   * Es lo que deja ponerle número a una hoja que no lo tenía sin romper lo ya pintado: los GRH
+   * siguen siendo los mismos —los mapas guardados los referencian por número— y lo único que
+   * cambia es con qué nombre se busca su imagen.
+   */
+  renombrandoArchivo(viejo: string, nuevo: string): TablaDeGrh {
+    const m = new Map<number, Grh>();
+    for (const [n, g] of this.porNumero) m.set(n, g.archivo === viejo ? { ...g, archivo: nuevo } : g);
+    return new TablaDeGrh(m);
+  }
+
   /** Otra tabla con ese GRH sumado (o reemplazado, si el número ya estaba). */
   con(grh: Grh): TablaDeGrh {
     asegurar(Number.isInteger(grh.numero) && grh.numero > 0, "El número de GRH tiene que ser un entero positivo.");

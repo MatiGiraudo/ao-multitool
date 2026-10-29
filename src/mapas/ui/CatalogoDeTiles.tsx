@@ -119,6 +119,7 @@ function GrillaDeLaHoja({ hoja, onElegir }: { hoja: HojaDeSprites; onElegir: (re
       </div>
       <p className="hint">
         {hoja.nombreArchivo} · celdas de {hoja.grilla.anchoCelda}×{hoja.grilla.altoCelda}. Se cambian en «Animaciones».
+        {hoja.numeroDeArchivo !== null && ` Se exporta como ${hoja.numeroDeArchivo}.png.`}
       </p>
     </>
   );

@@ -6,6 +6,14 @@ import type { Tamanio } from "./Tamanio";
 export interface DatosHoja {
   id: string;
   nombreArchivo: string;
+  /**
+   * El `FileNum` con el que esta hoja aparece en el `Graficos.ini`, o null si no tiene ninguno.
+   *
+   * Las hojas que vienen del clásico no lo necesitan: allá los archivos se llaman por número, así
+   * que `12.png` ya dice cuál es. Esto es para las otras —`pasto.png`—, que sin un número propio
+   * salían exportadas como `Grh32927=1-pasto-0-0-32-32` y volvían a leerse apuntando al archivo 0.
+   */
+  numeroDeArchivo: number | null;
   /** null mientras la hoja no tenga imagen (por ejemplo, si importaste un .anim.json sin su PNG). */
   tamanio: Tamanio | null;
   /** El tamaño con el que se cargó la imagen, para poder volver a él después de redimensionar. */
@@ -31,6 +39,7 @@ export class HojaDeSprites {
     return new HojaDeSprites({
       id,
       nombreArchivo: validarNombreArchivo(nombreArchivo),
+      numeroDeArchivo: null,
       tamanio: null,
       tamanioOriginal: null,
       versionImagen: 0,
@@ -55,6 +64,9 @@ export class HojaDeSprites {
   }
   get nombreArchivo() {
     return this.d.nombreArchivo;
+  }
+  get numeroDeArchivo() {
+    return this.d.numeroDeArchivo;
   }
   get tamanio() {
     return this.d.tamanio;
@@ -93,6 +105,18 @@ export class HojaDeSprites {
   // ---------- imagen ----------
   renombrada(nombreArchivo: string): HojaDeSprites {
     return this.con({ nombreArchivo: validarNombreArchivo(nombreArchivo) });
+  }
+
+  /**
+   * El número de archivo que le da el proyecto, para poder nombrarla en el `Graficos.ini`.
+   *
+   * Se asigna una sola vez y no se cambia: los GRH ya escritos lo nombran, y los mapas guardados
+   * los usan. Cambiarlo sería dejar esas celdas apuntando a un archivo que no existe.
+   */
+  conNumeroDeArchivo(numero: number): HojaDeSprites {
+    asegurar(Number.isInteger(numero) && numero > 0, "El número de archivo tiene que ser un entero positivo.");
+    asegurar(this.d.numeroDeArchivo === null, "Esta hoja ya tiene número de archivo.");
+    return this.con({ numeroDeArchivo: numero });
   }
 
   /** Imagen nueva (la primera o un reemplazo): ese tamaño pasa a ser el original. */

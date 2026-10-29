@@ -24,24 +24,17 @@ lo que se decidió dejar para después, así no se pierde.
 > El segundo se resolvió leyendo la cabecera de cada archivo, no con un índice aparte: un índice
 > hay que mantener al día, y una carpeta donde los mapas pueden aparecer de afuera —de un git pull,
 > de otra máquina— lo deja mintiendo sin que nadie se entere.
+>
+> El 28/10/2026, al final, salió el de las hojas con nombre no numérico. De las dos salidas que
+> decía esta lista se tomó la segunda: el proyecto le da a la hoja un número de archivo propio la
+> primera vez que pintás con ella, igual que ya hacía con los números de GRH, y su imagen sale con
+> ese nombre al lado del `Graficos.ini`. Avisar en el catálogo hubiera dejado el problema en manos
+> del usuario: el editor no tiene por qué pedirle que renombre sus hojas para que el juego las
+> entienda.
 
 ---
 
-## 1. Una hoja con nombre no numérico rompe el `Graficos.ini` exportado
-
-**Dónde:** `src/importacion/infraestructura/EscritorGraficosIni.ts`, y el camino que la lleva ahí
-es el catálogo de tiles (`src/mapas/ui/CatalogoDeTiles.tsx`).
-
-El catálogo deja elegir cualquier hoja del proyecto. Si la hoja se llama `pasto.png`, el GRH queda
-con `archivo: "pasto"` y el exportador escribe `Grh32927=1-pasto-0-0-32-32`. Al volver a leer ese
-archivo, `LectorGraficosIni` parsea ese campo con `parseInt`, le da `NaN` y lo deja en `"0"`: el GRH
-apunta al archivo 0 y el tile no se resuelve ni acá ni en el juego, que busca `<FileNum>` por
-número. Nadie avisa nada al elegir el tile.
-
-**Qué haría falta:** decidir qué queremos de los nombres de hoja. Lo mínimo es avisar en el catálogo
-cuando el nombre no es numérico; lo correcto, que el proyecto le asigne un `FileNum` propio a cada
-hoja (como hace con los números de GRH) y que exportar las imágenes las copie con ese nombre.
-## 2. Los nombres de las hojas se enciman en el catálogo de tiles
+## 1. Los nombres de las hojas se enciman en el catálogo de tiles
 
 **Dónde:** `src/mapas/ui/CatalogoDeTiles.tsx`, la lista de hojas.
 
@@ -50,7 +43,7 @@ Con nombres de archivo adentro, los botones se superponen y no se lee cuál es c
 
 **Qué haría falta:** una clase propia para esa lista, con columnas anchas y el nombre recortado con
 ellipsis, o miniaturas en vez de nombres.
-## 3. La caché de la tabla de GRH sólo se entera de sus propias escrituras
+## 2. La caché de la tabla de GRH sólo se entera de sus propias escrituras
 
 **Dónde:** `src/importacion/infraestructura/navegador/HttpTablaDeGrh.ts`.
 
@@ -61,7 +54,7 @@ carrera que arregla `d925788`, pero entre pestañas en vez de entre clics.
 
 **Qué haría falta:** que el guardado mande la versión que leyó y el servidor rechace la escritura si
 cambió mientras tanto, o que la tabla se relea antes de repartir un número nuevo.
-## 4. El ida y vuelta del cliente está a medias
+## 3. El ida y vuelta del cliente está a medias
 
 **Dónde:** `src/importacion/infraestructura/`, al lado de `EscritorObjDat.ts`.
 

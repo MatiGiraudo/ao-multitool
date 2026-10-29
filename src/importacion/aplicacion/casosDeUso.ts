@@ -1,6 +1,7 @@
 import type { ReferenciaPorNombre } from "@/compartido/aplicacion/ReferenciaPorNombre";
 import type { CatalogoGrafico } from "@/compartido/dominio/CatalogoGrafico";
 import type { Direccion } from "@/compartido/dominio/Direccion";
+import type { AlmacenDeImagenes } from "@/graficos/aplicacion/puertos";
 import type { HojaDeSprites } from "@/graficos/dominio/HojaDeSprites";
 import type { HojaRepositorio } from "@/graficos/dominio/HojaRepositorio";
 import type { ImportarApariencias, ResultadoDeImportacionDeApariencias } from "@/apariencias/aplicacion/casosDeUso";
@@ -16,7 +17,8 @@ import type { Hechizo } from "@/hechizos/dominio/Hechizo";
 import type { Npc } from "@/npcs/dominio/Npc";
 import type { Objeto } from "@/objetos/dominio/Objeto";
 import type { FabricaDeCatalogo } from "@/proyecto/aplicacion/ImportarProyectoLegado";
-import { esElArchivo } from "../dominio/nombres";
+import { baseDeArchivo } from "@/compartido/dominio/nombreDeArchivo";
+import { esElArchivo, numeroDeArchivoDe, proximoNumeroDeArchivo } from "../dominio/nombres";
 import { ErrorDeDominio } from "@/compartido/dominio/ErrorDeDominio";
 import { TablaDeGrh } from "../dominio/TablaDeGrh";
 import { ENCABEZADO, SIN_ORIGINALES, type FamiliaClasica, type OriginalesRepositorio } from "../dominio/OriginalesRepositorio";
@@ -76,7 +78,10 @@ export interface ResultadoDeTablaDeGrh {
 export class GrhDeRecorte {
   private cola: Promise<unknown> = Promise.resolve();
 
-  constructor(private readonly tablas: TablaDeGrhRepositorio) {}
+  constructor(
+    private readonly tablas: TablaDeGrhRepositorio,
+    private readonly hojas: HojaRepositorio,
+  ) {}
 
   /**
    * De a uno por vez.
@@ -85,7 +90,7 @@ export class GrhDeRecorte {
    * los dos la misma tabla, se llevarían el mismo número, y el segundo guardado dejaría afuera al
    * primero. Las celdas ya pintadas con ese número pasarían a mostrar otro gráfico.
    */
-  ejecutar(recorte: { archivo: string; x: number; y: number; ancho: number; alto: number }): Promise<{ numero: number; creado: boolean }> {
+  ejecutar(recorte: RecorteDeHoja): Promise<GrhDelRecorte> {
     const siguiente = this.cola.then(
       () => this.resolver(recorte),
       () => this.resolver(recorte),
@@ -94,15 +99,60 @@ export class GrhDeRecorte {
     return siguiente;
   }
 
-  private async resolver(recorte: { archivo: string; x: number; y: number; ancho: number; alto: number }): Promise<{ numero: number; creado: boolean }> {
-    const tabla = (await this.tablas.leer()) ?? TablaDeGrh.vacia();
-    const existente = tabla.buscarRecorte(recorte.archivo, recorte.x, recorte.y, recorte.ancho, recorte.alto);
-    if (existente) return { numero: existente.numero, creado: false };
+  private async resolver(recorte: RecorteDeHoja): Promise<GrhDelRecorte> {
+    const hoja = await this.hojas.obtener(recorte.hojaId);
+    if (!hoja) throw new ErrorDeDominio("Esa hoja ya no está en el proyecto.");
+    const { archivo, asignado, tabla } = await this.archivoDe(hoja);
+    const { x, y, ancho, alto } = recorte;
+
+    const existente = tabla.buscarRecorte(archivo, x, y, ancho, alto);
+    if (existente) {
+      // El renombrado hay que guardarlo igual: el GRH es el de antes, pero ahora nombra al archivo nuevo.
+      if (asignado) await this.tablas.guardar(tabla);
+      return { numero: existente.numero, creado: false, archivo, asignado };
+    }
+
     const numero = tabla.proximoNumero();
     // `propio` es lo que lo salva de la próxima importación del Graficos.ini.
-    await this.tablas.guardar(tabla.con({ numero, ...recorte, cuadros: [], msDelCiclo: 0, propio: true }));
-    return { numero, creado: true };
+    await this.tablas.guardar(tabla.con({ numero, archivo, x, y, ancho, alto, cuadros: [], msDelCiclo: 0, propio: true }));
+    return { numero, creado: true, archivo, asignado };
   }
+
+  /**
+   * Con qué nombre va esta hoja al `Graficos.ini`, asignándole uno si no tenía.
+   *
+   * Pasa adentro de la cola por lo mismo que el número de GRH: elegir el número libre y guardarlo
+   * no puede solaparse con otro que esté haciendo lo mismo.
+   */
+  private async archivoDe(hoja: HojaDeSprites): Promise<{ archivo: string; asignado: boolean; tabla: TablaDeGrh }> {
+    const tabla = (await this.tablas.leer()) ?? TablaDeGrh.vacia();
+    const propio = numeroDeArchivoDe(hoja);
+    if (propio !== null) return { archivo: String(propio), asignado: false, tabla };
+
+    const numero = proximoNumeroDeArchivo(await this.hojas.listar(), tabla.archivos());
+    await this.hojas.guardar(hoja.conNumeroDeArchivo(numero));
+    // Lo que ya se pintó con esta hoja sigue en su lugar: los GRH son los mismos, con otro nombre.
+    return { archivo: String(numero), asignado: true, tabla: tabla.renombrandoArchivo(baseDeArchivo(hoja.nombreArchivo), String(numero)) };
+  }
+}
+
+/** Un recorte de una hoja del proyecto: la hoja y el rectángulo que se eligió de ella. */
+export interface RecorteDeHoja {
+  hojaId: string;
+  x: number;
+  y: number;
+  ancho: number;
+  alto: number;
+}
+
+export interface GrhDelRecorte {
+  numero: number;
+  /** true si el GRH es nuevo; false si ese recorte ya tenía número. */
+  creado: boolean;
+  /** El `FileNum` con el que quedó nombrada la hoja: así se va a llamar su imagen en el juego. */
+  archivo: string;
+  /** true si el proyecto le acaba de dar ese número a la hoja, que antes no tenía ninguno. */
+  asignado: boolean;
 }
 
 /** La tabla de vuelta como `Graficos.ini`, con los gráficos propios incluidos. */
@@ -127,6 +177,34 @@ export class ExportarGraficosIni {
   async archivoSiHay(): Promise<{ nombreArchivo: string; contenido: string }[]> {
     const tabla = await this.tablas.leer();
     return tabla?.cantidad ? [{ nombreArchivo: "Graficos.ini", contenido: this.escritor.escribir(tabla) }] : [];
+  }
+}
+
+/**
+ * Las imágenes de las hojas que el juego no tiene, nombradas como el `Graficos.ini` las nombra.
+ *
+ * Una hoja que vino del cliente ya está allá: se llama por su número y nadie la movió de lugar.
+ * Una armada acá no existe en ninguna carpeta del juego, así que el GRH que la usa apunta a un
+ * archivo que no está. Son justo las que tienen número propio, y salen como `<FileNum>.png`.
+ *
+ * En PNG y no en BMP a propósito: es lo que el editor guarda, los clientes de hoy lo leen, y el
+ * BMP del original no tiene transparencia.
+ */
+export class ExportarHojasPropias {
+  constructor(
+    private readonly hojas: HojaRepositorio,
+    private readonly imagenes: AlmacenDeImagenes,
+  ) {}
+
+  async ejecutar(): Promise<{ nombreArchivo: string; contenido: Uint8Array; carpeta: string }[]> {
+    const archivos: { nombreArchivo: string; contenido: Uint8Array; carpeta: string }[] = [];
+    for (const hoja of await this.hojas.listar()) {
+      if (hoja.numeroDeArchivo === null) continue;
+      const png = await this.imagenes.leer(hoja.id, "actual");
+      if (!png) continue;
+      archivos.push({ nombreArchivo: `${hoja.numeroDeArchivo}.png`, contenido: new Uint8Array(await png.arrayBuffer()), carpeta: "Graficos" });
+    }
+    return archivos;
   }
 }
 
@@ -243,7 +321,7 @@ export class ImportarTablaDeGrh {
 
   private revisar(tabla: TablaDeGrh, hojas: readonly HojaDeSprites[], pisados: number[] = []): ResultadoDeTablaDeGrh {
     const archivos = tabla.archivos();
-    const cargados = archivos.filter((a) => hojas.some((h) => esElArchivo(h.nombreArchivo, a)));
+    const cargados = archivos.filter((a) => hojas.some((h) => esElArchivo(h, a)));
     return {
       grhs: tabla.cantidad,
       archivos,

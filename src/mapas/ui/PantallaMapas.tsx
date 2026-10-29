@@ -10,7 +10,6 @@ import { AJUSTES_POR_DEFECTO, type Ajustes, type Herramienta } from "../dominio/
 import { Mapa, type InfoDeMapa } from "../dominio/Mapa";
 import type { ResumenDeMapa } from "../dominio/MapaRepositorio";
 import type { AnchoDeGrafico } from "../infraestructura/FormatoMapaClasico";
-import { baseDeArchivo } from "@/compartido/dominio/nombreDeArchivo";
 import { CatalogoDeTiles } from "./CatalogoDeTiles";
 import { DatosDelMapa } from "./DatosDelMapa";
 import { ATAJOS, BarraDeEdicion, PaletaDeGraficos } from "./HerramientasDeMapa";
@@ -275,15 +274,16 @@ export function PantallaMapas() {
    * El mapa guarda números de GRH —es lo único que el juego entiende—, así que el recorte se
    * traduce a uno: si ya tenía número se reusa, y si no, el editor le da el primero libre y lo
    * suma a la tabla. Esos gráficos nuevos salen por «Exportar Graficos.ini», en Importar.
+   *
+   * Si la hoja no se llamaba por número, en el camino se lo gana: el `Graficos.ini` nombra los
+   * archivos con un número y nada más, así que sin eso el gráfico no se resolvería en el juego.
    */
-  const elegirTile = async (hoja: { nombreArchivo: string }, recorte: { x: number; y: number; ancho: number; alto: number }) => {
-    const r = await intentar(
-      () => casos.clasico.grhDeRecorte.ejecutar({ archivo: baseDeArchivo(hoja.nombreArchivo), ...recorte }),
-      "Buscando el gráfico…",
-    );
+  const elegirTile = async (hoja: { id: string; nombreArchivo: string }, recorte: { x: number; y: number; ancho: number; alto: number }) => {
+    const r = await intentar(() => casos.clasico.grhDeRecorte.ejecutar({ hojaId: hoja.id, ...recorte }), "Buscando el gráfico…");
     if (!r) return;
     setAjustes((a) => ({ ...a, grh: r.numero, herramienta: a.herramienta === "cuentagotas" ? "pincel" : a.herramienta }));
-    avisar(r.creado ? `Gráfico nuevo: grh ${r.numero}.` : `Ese recorte ya era el grh ${r.numero}.`);
+    const deLaHoja = r.asignado ? ` La hoja ${hoja.nombreArchivo} se exporta como ${r.archivo}.png.` : "";
+    avisar((r.creado ? `Gráfico nuevo: grh ${r.numero}.` : `Ese recorte ya era el grh ${r.numero}.`) + deLaHoja);
   };
 
   /**

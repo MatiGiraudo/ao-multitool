@@ -33,6 +33,8 @@ export interface TamanioDto {
 export interface HojaDto {
   id: string;
   nombreArchivo: string;
+  /** El `FileNum` que le dio el proyecto. Falta en las hojas que nunca se usaron para pintar. */
+  numeroDeArchivo?: number;
   tamanio: TamanioDto | null;
   tamanioOriginal: TamanioDto | null;
   versionImagen: number;
@@ -49,6 +51,7 @@ export const HojaMapper = {
     return {
       id: h.id,
       nombreArchivo: h.nombreArchivo,
+      ...(h.numeroDeArchivo !== null ? { numeroDeArchivo: h.numeroDeArchivo } : {}),
       tamanio: t(h.tamanio),
       tamanioOriginal: t(h.tamanioOriginal),
       versionImagen: h.versionImagen,
@@ -74,6 +77,7 @@ export const HojaMapper = {
     return HojaDeSprites.reconstituir({
       id: String(d.id),
       nombreArchivo: d.nombreArchivo,
+      numeroDeArchivo: Number.isInteger(d.numeroDeArchivo) && Number(d.numeroDeArchivo) > 0 ? Number(d.numeroDeArchivo) : null,
       tamanio: t(d.tamanio),
       tamanioOriginal: t(d.tamanioOriginal),
       versionImagen: Number(d.versionImagen) || 0,

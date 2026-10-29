@@ -94,6 +94,7 @@ import {
   ExportarHechizosClasicos,
   ExportarNpcsClasicos,
   ExportarObjetosClasicos,
+  ExportarHojasPropias,
   GrhDeRecorte,
   ImportarTablaDeGrh,
 } from "@/importacion/aplicacion/casosDeUso";
@@ -313,7 +314,7 @@ function crear() {
       hechizos: new ImportarHechizosClasicos(new LectorHechizosDat(), new ImportarHechizos(hechizos, formatoHechizos, ids), originales),
       npcs: new ImportarNpcsClasicos(new LectorNpcsDat(), new ImportarNpcs(npcs, formatoNpcs, ids), originales),
       /** Para los gráficos propios: el número con el que se dibuja un recorte, y la tabla de vuelta. */
-      grhDeRecorte: new GrhDeRecorte(tablaDeGrh),
+      grhDeRecorte: new GrhDeRecorte(tablaDeGrh, hojas),
       exportarGraficos: exportarGraficosIni,
     },
     proyecto: {
@@ -331,6 +332,8 @@ function crear() {
         // El mundo: los tres archivos de cada mapa, y la tabla de GRH que les da sentido.
         () => new ExportarMapasAlJuego(leerTodosLosMapas).ejecutar(),
         () => exportarGraficosIni.archivoSiHay(),
+        // Y las imágenes de las hojas propias, que el cliente no tiene de ningún lado.
+        () => new ExportarHojasPropias(hojas, imagenes).ejecutar(),
       ],
       [
         // Los archivos del AO original, con todo lo que el editor no entiende de vuelta en su lugar.

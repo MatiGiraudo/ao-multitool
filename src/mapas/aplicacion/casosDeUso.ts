@@ -168,7 +168,7 @@ export class ResolverGraficosDelMapa {
         sinResolver.push(grh);
         continue;
       }
-      const hoja = hojas.find((h) => esElArchivo(h.nombreArchivo, recortes.archivo));
+      const hoja = hojas.find((h) => esElArchivo(h, recortes.archivo));
       if (!hoja) {
         faltantes.add(recortes.archivo);
         continue;

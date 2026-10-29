@@ -130,7 +130,9 @@ export function PantallaExportacion() {
                 <ListaDeArchivos archivos={mundo} limite={30} />
                 <p className="hint">
                   Los <code>.map</code>, <code>.inf</code> y <code>.dat</code> van en <code>Mundos/</code>, que es donde los busca el servidor del
-                  clásico. El <code>Graficos.ini</code> va suelto porque su lugar es <code>INIT/</code>.
+                  clásico. El <code>Graficos.ini</code> va suelto porque su lugar es <code>INIT/</code>, y en <code>Graficos/</code> salen
+                  las imágenes de las hojas que armaste acá, con el número que les dio el proyecto: las que vinieron del cliente ya están
+                  allá.
                 </p>
               </>
             ) : (
