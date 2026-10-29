@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { conNegroTransparente, type ImagenDibujable } from "./negroTransparente";
 
 /**
  * Carga una imagen y la devuelve lista para dibujar en canvas (o null mientras carga / si falla).
@@ -8,11 +9,16 @@ import { useEffect, useState } from "react";
  * que dibuja necesita distinguir «todavía no llegó» de «es esta», o pinta la hoja vieja como si
  * fuera la nueva. Las que ya están se devuelven en el primer render (`listas`), así cambiar entre
  * hojas vistas no parpadea.
+ *
+ * Lo que sale de acá no es siempre la imagen que entró: a las hojas opacas se les vuelve
+ * transparente el negro, que en el clásico es el color que no se dibuja. El archivo no se toca;
+ * está explicado en `negroTransparente.ts`. Por eso el tipo es `ImagenDibujable` y no
+ * `HTMLImageElement`: puede venir un canvas. Para `drawImage` son lo mismo.
  */
-const pedidos = new Map<string, Promise<HTMLImageElement>>();
-const listas = new Map<string, HTMLImageElement>();
-export function useImagen(url: string | null): HTMLImageElement | null {
-  const [img, setImg] = useState<HTMLImageElement | null>(() => (url ? (listas.get(url) ?? null) : null));
+const pedidos = new Map<string, Promise<ImagenDibujable>>();
+const listas = new Map<string, ImagenDibujable>();
+export function useImagen(url: string | null): ImagenDibujable | null {
+  const [img, setImg] = useState<ImagenDibujable | null>(() => (url ? (listas.get(url) ?? null) : null));
   useEffect(() => {
     let vivo = true;
     const ya = url ? (listas.get(url) ?? null) : null;
@@ -20,9 +26,9 @@ export function useImagen(url: string | null): HTMLImageElement | null {
     if (!url || ya) return;
     let p = pedidos.get(url);
     if (!p) {
-      p = new Promise((ok, mal) => {
+      p = new Promise<ImagenDibujable>((ok, mal) => {
         const i = new Image();
-        i.onload = () => ok(i);
+        i.onload = () => ok(conNegroTransparente(i));
         i.onerror = mal;
         i.src = url;
       });

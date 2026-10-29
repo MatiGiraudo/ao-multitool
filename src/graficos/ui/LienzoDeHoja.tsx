@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Cargando } from "@/compartido/ui/componentes";
+import type { ImagenDibujable } from "@/compartido/ui/negroTransparente";
 import { colorCss } from "@/compartido/ui/utilidades";
 import type { Animacion } from "../dominio/Animacion";
 import { Frame } from "../dominio/Frame";
@@ -12,7 +13,7 @@ export type ModoDeLienzo = "grilla" | "recuadro" | "mover";
 
 interface Props {
   hoja: HojaDeSprites;
-  img: HTMLImageElement | null;
+  img: ImagenDibujable | null;
   animacion: Animacion | undefined;
   seleccion: ReadonlySet<number>;
   modo: ModoDeLienzo;

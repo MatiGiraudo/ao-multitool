@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useCadaFrame, useImagen, usePrefiereMenosMovimiento } from "@/compartido/ui/utilidades";
+import type { ImagenDibujable } from "@/compartido/ui/negroTransparente";
 import { posicionEnCaja } from "@/graficos/dominio/Ancla";
 import { dibujarFrameAjustado } from "@/graficos/ui/DibujoDeFrame";
 import { useGraficos } from "@/graficos/ui/ProveedorDeGraficos";
@@ -92,11 +93,11 @@ function Equipado({ objeto, bases, resolver }: { objeto: Objeto; bases: Objeto[]
       const c = canvas.current;
       if (!c) return;
       const x = c.getContext("2d")!;
-      const candidatas: [GraficoResuelto | null, HTMLImageElement | null][] = [
+      const candidatas: [GraficoResuelto | null, ImagenDibujable | null][] = [
         [capaBase, imgBase],
         [capaObjeto, imgObjeto],
       ];
-      const capas = candidatas.filter((p): p is [GraficoResuelto, HTMLImageElement] => !!p[0] && !!p[1] && p[0].animacion.cantidadDeFrames > 0);
+      const capas = candidatas.filter((p): p is [GraficoResuelto, ImagenDibujable] => !!p[0] && !!p[1] && p[0].animacion.cantidadDeFrames > 0);
       if (!capas.length) {
         if (c.width !== 96) c.width = c.height = 96;
         x.clearRect(0, 0, c.width, c.height);

@@ -1,12 +1,13 @@
 "use client";
 import { BotonConfirmar } from "@/compartido/ui/componentes";
+import type { ImagenDibujable } from "@/compartido/ui/negroTransparente";
 import type { Animacion } from "../dominio/Animacion";
 import type { Frame } from "../dominio/Frame";
 import { DibujoDeFrame } from "./DibujoDeFrame";
 
 interface Props {
   animacion: Animacion | undefined;
-  img: HTMLImageElement | null;
+  img: ImagenDibujable | null;
   seleccion: ReadonlySet<number>;
   frameActual: number;
   vacioTexto: string;

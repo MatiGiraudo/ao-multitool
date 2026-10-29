@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ReferenciaGrafica } from "@/compartido/dominio/ReferenciaGrafica";
+import type { ImagenDibujable } from "@/compartido/ui/negroTransparente";
 import { colorCss, useCadaFrame, useImagen, usePrefiereMenosMovimiento } from "@/compartido/ui/utilidades";
 import { posicionEnCaja } from "@/graficos/dominio/Ancla";
 import { useGraficos } from "@/graficos/ui/ProveedorDeGraficos";
@@ -51,7 +52,7 @@ export function VistaPreviaDeEfecto({ efecto }: { efecto: Efecto }) {
       x.clearRect(0, 0, L, L);
       x.imageSmoothingEnabled = false;
 
-      const capa = (g: typeof capaFx, img: HTMLImageElement | null, dx: number, dy: number) => {
+      const capa = (g: typeof capaFx, img: ImagenDibujable | null, dx: number, dy: number) => {
         if (!g || !img || !g.animacion.cantidadDeFrames) return;
         const f = g.animacion.frame(g.animacion.indiceEnTiempo(reloj.current))!;
         const w = f.rect.ancho * escala,

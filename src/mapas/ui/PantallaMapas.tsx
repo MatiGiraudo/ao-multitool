@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAplicacion } from "@/compartido/ui/Aplicacion";
+import { conNegroTransparente } from "@/compartido/ui/negroTransparente";
 import { BotonArchivos, BotonConfirmar, CampoNumero, Cargando } from "@/compartido/ui/componentes";
 import type { EstadoGuardado } from "@/compartido/ui/useColeccionEditable";
 import { descargar } from "@/compartido/ui/utilidades";
@@ -720,6 +721,10 @@ async function leerAnsi(archivo: File): Promise<string> {
  *
  * `createImageBitmap` evita el parpadeo de decodificar imágenes grandes mientras se dibuja, y
  * `drawImage` las copia más rápido que a un `<img>`.
+ *
+ * El mapa no pasa por `useImagen`, así que el negro transparente hay que pedirlo acá también. Es
+ * donde más se nota: sin eso, cada árbol y cada techo del juego aparecen adentro de un recuadro
+ * negro, porque las hojas del clásico son opacas enteras y el recorte lo hace ese color.
  */
 async function cargarHojas(
   graficos: GraficosDelMapa,
@@ -735,7 +740,11 @@ async function cargarHojas(
       try {
         const respuesta = await fetch(url(hojaId, version), { cache: "force-cache" });
         if (!respuesta.ok) return;
-        out.set(hojaId, await createImageBitmap(await respuesta.blob()));
+        const bitmap = await createImageBitmap(await respuesta.blob());
+        const dibujable = conNegroTransparente(bitmap);
+        // Si quedó un canvas en su lugar, el bitmap ya no se usa y ocupa memoria de video.
+        if (dibujable !== bitmap) bitmap.close();
+        out.set(hojaId, dibujable);
       } catch {
         // Una hoja que no carga no puede voltear el mapa entero: esas celdas quedan en color plano.
       }
