@@ -323,6 +323,21 @@ describe("EscritorFxsIni y EscritorAparienciasIni", () => {
     expect(movido).toContain("Loops=2");
   });
 
+  it("el comentario pegado al valor sobrevive a que el valor cambie", () => {
+    /* Los índices del clásico anotan al lado de cada número para qué lado mira. Esa nota es de la
+     * línea, no del gráfico, así que cambiar el GRH no se la lleva puesta. */
+    const NOTA = "\t ' arriba";
+    const originales = { 1: ["[BODY1]", `Walk1=4582${NOTA}`, "HeadOffsetX=0", ""].join(SALTO) };
+    const cuerpo = Cuerpo.crear("c1", 1);
+    const escritor = new EscritorAparienciasIni("BODY", "Walk", "NumBodies");
+
+    const igual = escritor.escribir([cuerpo], originales, new Map([[1, { norte: 4582 }]]));
+    expect(igual).toContain(`Walk1=4582${NOTA}`);
+
+    const cambiado = escritor.escribir([cuerpo], originales, new Map([[1, { norte: 999 }]]));
+    expect(cambiado).toContain(`Walk1=999${NOTA}`);
+  });
+
   it("el Personajes.ini vuelve igual, con sus comentarios y sus GRH", () => {
     const { apariencias, encabezado } = new LectorAparienciasIni("body", "Walk", "Personajes.ini").leer(PERSONAJES_INI);
     const originales = { [ENCABEZADO]: encabezado, ...Object.fromEntries(apariencias.map((a) => [a.numero, a.crudo])) };

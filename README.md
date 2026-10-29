@@ -36,6 +36,15 @@ Abrí http://localhost:3000. La app redirige a **Animaciones**.
 | `npm test` | Tests del dominio y de los casos de uso |
 | `npm run typecheck` | Chequeo de tipos de TypeScript |
 
+Hay además tres grupos de pruebas que miden el ida y vuelta contra archivos de verdad, y que se
+saltean solos si no les decís dónde están. Son los que dicen si lo que el editor devuelve le sirve
+al juego, así que si tenés un servidor y un cliente a mano vale la pena correrlos: los `.dat` del
+servidor, los `.ini` del cliente y los mapas de un mundo (`Mundos/Alkon`, no `Mundos`).
+
+```bash
+AO_DAT_DIR=".../ao-server/Dat" AO_INIT_DIR=".../ao-cliente/INIT" AO_MAPAS_DIR=".../Mundos/Alkon" npm test
+```
+
 Si abrís la app desde otra dirección que no sea `localhost` (por ejemplo desde WSL, Docker o una VM, con una IP como `172.19.0.1`), ya está permitido para las redes privadas habituales. Si usás un nombre o una IP distinta, agregala con `AO_DEV_ORIGINS=mi-pc.local npm run dev`.
 
 ## Dónde quedan tus datos
@@ -129,7 +138,7 @@ El plan fase por fase, con lo hecho marcado, está en **[docs/ROADMAP.md](docs/R
 
 Hay además una hoja de ruta anterior, escrita antes de empezar, con las dependencias entre módulos y qué define cada uno: **[docs/HOJA_DE_RUTA.md](docs/HOJA_DE_RUTA.md)**. Lo que propone para cuerpos, cabezas, FX y hechizos quedó resuelto de otra manera; conviene leerla sabiendo eso.
 
-Lo que ya se puede reproducir y todavía no está arreglado vive en **[docs/PENDIENTES.md](docs/PENDIENTES.md)**. De ésos conviene saber uno: con el editor abierto en dos pestañas a la vez, las dos pueden repartir el mismo número de GRH y la segunda pisa a la primera. Abrilo en una sola.
+Lo que ya se puede reproducir y todavía no está arreglado vive en **[docs/PENDIENTES.md](docs/PENDIENTES.md)**. Hoy queda uno, y conviene saberlo: con el editor abierto en dos pestañas a la vez, las dos pueden repartir el mismo número de GRH y la segunda pisa a la primera. Abrilo en una sola.
 
 ## Licencia
 

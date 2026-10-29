@@ -64,10 +64,16 @@ export class GrhDeReferencias {
       ref.tipo === "vinculada" ? hoja?.animacion(ref.animacionId) : hoja?.animacionLlamada(ref.nombreAnimacion);
     if (!hoja || !animacion || !animacion.cantidadDeFrames) return null;
 
-    const rects = entera(pedido.modo, ref.frame, animacion)
-      ? animacion.frames.map(aRect)
-      : [aRect(animacion.frame(Math.min(ref.frame, animacion.cantidadDeFrames - 1))!)];
-    return { hojaId: hoja.id, rects, msDelCiclo: animacion.duracionDelCiclo() };
+    if (!entera(pedido.modo, ref.frame, animacion)) {
+      const frame = animacion.frame(Math.min(ref.frame, animacion.cantidadDeFrames - 1))!;
+      return { hojaId: hoja.id, rects: [aRect(frame)], msDelCiclo: animacion.duracionDelCiclo() };
+    }
+    return {
+      hojaId: hoja.id,
+      rects: animacion.frames.map(aRect),
+      msDelCiclo: animacion.duracionDelCiclo(),
+      preferido: grhDelNombre(animacion.nombre),
+    };
   }
 }
 
@@ -96,6 +102,21 @@ function entera(modo: ModoDeGrh, frame: number, animacion: Animacion): boolean {
   if (modo === "animacion") return true;
   if (modo === "frame") return false;
   return frame === 0 && animacion.cantidadDeFrames > 1;
+}
+
+/**
+ * De qué GRH salió esta animación, según cómo la llamó el importador (`grh505`).
+ *
+ * Es lo único que distingue dos GRH que dibujan exactamente lo mismo, y los hay: el
+ * `Graficos.ini` de un cliente define la animación del dragón marrón dos veces, con números
+ * distintos. Quien lo recibe lo verifica contra la tabla antes de usarlo, así que una animación
+ * renombrada o editada no miente: simplemente deja de desempatar.
+ *
+ * Sólo para la animación entera. Un cuadro suelto no salió de ese GRH sino de uno de sus cuadros.
+ */
+function grhDelNombre(nombre: string): number | undefined {
+  const m = /^grh(\d+)$/.exec(nombre);
+  return m ? Number(m[1]) : undefined;
 }
 
 function aRect(f: { rect: { x: number; y: number; ancho: number; alto: number } }): RectDeGrh {

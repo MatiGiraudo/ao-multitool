@@ -5,7 +5,7 @@ import type { CatalogoGrafico } from "@/compartido/dominio/CatalogoGrafico";
 import { ImportarObjetos } from "@/objetos/aplicacion/casosDeUso";
 import { FormatoAoObjs } from "@/objetos/infraestructura/FormatoAoObjs";
 import { MemoriaObjetoRepositorio } from "@/objetos/infraestructura/memoria";
-import { ENCABEZADO } from "./dominio/OriginalesRepositorio";
+import { ENCABEZADO, type OriginalesDeFamilia, type OriginalesRepositorio } from "./dominio/OriginalesRepositorio";
 import { ImportarHechizos } from "@/hechizos/aplicacion/casosDeUso";
 import { FormatoAoSpells } from "@/hechizos/infraestructura/FormatoAoSpells";
 import { MemoriaHechizoRepositorio } from "@/hechizos/infraestructura/memoria";
@@ -19,19 +19,51 @@ import { LectorHechizosDat } from "./infraestructura/LectorHechizosDat";
 import { LectorNpcsDat } from "./infraestructura/LectorNpcsDat";
 import { ArchivoIni } from "./infraestructura/LectorIni";
 import { LectorObjDat } from "./infraestructura/LectorObjDat";
+import { ESPECIE_CABEZA } from "@/apariencias/dominio/Cabeza";
+import { ESPECIE_CUERPO } from "@/apariencias/dominio/Cuerpo";
+import { ImportarApariencias } from "@/apariencias/aplicacion/casosDeUso";
+import { FormatoAoBodies } from "@/apariencias/infraestructura/FormatoAoBodies";
+import { FormatoAoHeads } from "@/apariencias/infraestructura/FormatoAoHeads";
+import { MemoriaCabezaRepositorio, MemoriaCuerpoRepositorio } from "@/apariencias/infraestructura/memoria";
+import { ImportarEfectos } from "@/fx/aplicacion/casosDeUso";
+import type { Efecto } from "@/fx/dominio/Efecto";
+import { FormatoAoFx } from "@/fx/infraestructura/FormatoAoFx";
+import { MemoriaEfectoRepositorio } from "@/fx/infraestructura/memoria";
+import { HojaDeSprites } from "@/graficos/dominio/HojaDeSprites";
+import { CatalogoGraficoDesdeHojas } from "@/graficos/infraestructura/CatalogoGraficoDesdeHojas";
+import { MemoriaHojaRepositorio } from "@/graficos/infraestructura/memoria";
+import {
+  ExportarAparienciasClasicas,
+  ExportarEfectosClasicos,
+  GrhDelProyecto,
+  ImportarCabezasClasicas,
+  ImportarCuerposClasicos,
+  ImportarEfectosClasicos,
+} from "./aplicacion/casosDeUso";
+import { GrhDeReferencias } from "./aplicacion/GrhDeReferencias";
+import { PuenteDeGrh } from "./aplicacion/PuenteDeGrh";
+import { TablaDeGrh } from "./dominio/TablaDeGrh";
+import { EscritorAparienciasIni } from "./infraestructura/EscritorAparienciasIni";
+import { EscritorFxsIni } from "./infraestructura/EscritorFxsIni";
+import { LectorAparienciasIni } from "./infraestructura/LectorAparienciasIni";
+import { LectorFxsIni } from "./infraestructura/LectorFxsIni";
+import { LectorGraficosIni } from "./infraestructura/LectorGraficosIni";
+import { MemoriaTablaDeGrh } from "./infraestructura/memoria";
 
 /**
- * La prueba que de verdad dice si el ida y vuelta con el AO clásico sirve: tomar el `OBJ.dat` de
- * un servidor, importarlo, exportarlo y comparar. De las 90 claves que tiene el archivo el editor
- * entiende unas veinte, así que lo que se mide acá es que las otras setenta vuelvan intactas.
+ * La prueba que de verdad dice si el ida y vuelta con el AO clásico sirve: tomar los archivos de
+ * un servidor y de un cliente, importarlos, exportarlos y comparar. De las 90 claves que tiene un
+ * `OBJ.dat` el editor entiende unas veinte, así que lo que se mide es que las otras setenta
+ * vuelvan intactas.
  *
  * Se compara clave por clave y no línea por línea a propósito: `Valor= 200` y `Valor=200` son el
  * mismo objeto, y el editor escribe sin el espacio de más.
  *
- * No se puede correr siempre porque esos archivos no son del proyecto. Apuntá `AO_DAT_DIR` a la
- * carpeta `Dat` de un servidor y el test se enciende solo:
+ * Son dos grupos y dos carpetas, porque los archivos del clásico viven en dos lados: los tres del
+ * servidor en su `Dat/` y los tres del cliente en su `INIT/`. No se pueden correr siempre porque
+ * no son del proyecto; apuntá las variables y los tests se encienden solos, cada grupo con la suya:
  *
- *     AO_DAT_DIR="C:/.../ao-server/Dat" npm test
+ *     AO_DAT_DIR="C:/.../ao-server/Dat" AO_INIT_DIR="C:/.../ao-cliente/INIT" npm test
  */
 const CARPETA = process.env.AO_DAT_DIR;
 
@@ -170,4 +202,194 @@ describe.skipIf(!CARPETA)("OBJ.dat de verdad", () => {
     expect(distintas).toHaveLength(1);
     expect(distintas[0]![1]).toContain("Daga de pruebas");
   }, 60_000);
+});
+
+/**
+ * Los tres archivos del cliente, que son los que viven en `INIT/` y no en `Dat/`.
+ *
+ * Acá se mide algo más que en los del servidor. En el `OBJ.dat` el editor no toca los gráficos de
+ * esta prueba; en estos tres los gráficos SON el archivo —el `Animacion` de un FX, los `Walk1..4`
+ * de un cuerpo y los `Head1..4` de una cabeza son todos números de GRH— así que lo que se mide es
+ * el camino de ida y el de vuelta juntos: del número a la animación del proyecto, y de la
+ * animación de vuelta al número.
+ *
+ * Necesita el `Graficos.ini` del mismo cliente, que es el que dice qué recorte es cada número.
+ * Apuntá `AO_INIT_DIR` a la carpeta `INIT` de un cliente y el test se enciende solo:
+ *
+ *     AO_INIT_DIR="C:/.../ao-cliente/INIT" npm test
+ */
+const INIT = process.env.AO_INIT_DIR;
+
+describe.skipIf(!INIT)("los .ini del cliente de verdad", () => {
+  const carpeta = INIT ?? "";
+  const leerIni = (nombre: string) => (carpeta ? new TextDecoder("windows-1252").decode(readFileSync(join(carpeta, nombre))) : "");
+
+  function originalesEnMemoria(): OriginalesRepositorio {
+    const todo = new Map<string, OriginalesDeFamilia>();
+    return { leer: async (f) => todo.get(f) ?? {}, guardar: async (f, e) => void todo.set(f, e) };
+  }
+
+  /**
+   * Un proyecto con el cliente entero importado: la tabla de GRH del `Graficos.ini` y una hoja por
+   * cada imagen que esa tabla menciona.
+   *
+   * Las hojas van sin imagen a propósito. El puente sólo necesita que exista una hoja con ese
+   * nombre de archivo para crear la animación, y las miles de imágenes del cliente no hacen falta
+   * para medir si los números vuelven.
+   */
+  async function proyectoDelCliente() {
+    const tabla = TablaDeGrh.desde(new LectorGraficosIni().leer(leerIni("Graficos.ini")));
+    const tablas = new MemoriaTablaDeGrh();
+    await tablas.guardar(tabla);
+
+    const hojas = new MemoriaHojaRepositorio();
+    for (const archivo of tabla.archivos()) await hojas.guardar(HojaDeSprites.crear(archivo, archivo + ".png", archivo + "-1"));
+
+    const fabricaDeCatalogo = (hs: readonly HojaDeSprites[]) => new CatalogoGraficoDesdeHojas(hs);
+    const puente = new PuenteDeGrh(hojas, idsDePrueba());
+    const grh = new GrhDeReferencias(hojas, new GrhDelProyecto(tablas, hojas));
+    return { tabla, tablas, hojas, puente, grh, fabricaDeCatalogo, originales: originalesEnMemoria() };
+  }
+
+  /** Las claves que no volvieron iguales, con lo que decía el archivo y lo que salió. */
+  function diferencias(original: string, devuelto: string, prefijo: string) {
+    const antes = claves(original, prefijo);
+    const despues = claves(devuelto, prefijo);
+    const distintas = [...antes].filter(([clave, valor]) => despues.get(clave) !== valor).map(([c, v]) => [c, v, despues.get(c)] as const);
+    return { claves: antes.size, distintas };
+  }
+
+  function contar(distintas: readonly (readonly [string, string, string | undefined])[]) {
+    return distintas.length ? ": " + distintas.slice(0, 6).map(([c, v, o]) => c + ": " + v + " -> " + o).join(" | ") : "";
+  }
+
+  async function importarEfectos(p: Awaited<ReturnType<typeof proyectoDelCliente>>, texto: string) {
+    const repo = new MemoriaEfectoRepositorio();
+    const importado = await new ImportarEfectosClasicos(
+      new LectorFxsIni(),
+      p.tablas,
+      p.puente,
+      p.hojas,
+      new ImportarEfectos(repo, new FormatoAoFx(), idsDePrueba()),
+      p.fabricaDeCatalogo,
+      p.originales,
+    ).ejecutar(texto);
+    return { repo, importado };
+  }
+
+  const exportarEfectos = (p: Awaited<ReturnType<typeof proyectoDelCliente>>, efectos: () => Promise<Efecto[]>) =>
+    new ExportarEfectosClasicos(efectos, p.originales, new EscritorFxsIni(), p.grh).ejecutar();
+
+  it("el fxs.ini vuelve con el gráfico de cada efecto", async () => {
+    const p = await proyectoDelCliente();
+    const original = leerIni("fxs.ini");
+    const { repo, importado } = await importarEfectos(p, original);
+
+    const [archivo] = await exportarEfectos(p, () => repo.listar());
+    const { claves: cuantas, distintas } = diferencias(original, String(archivo!.contenido), "fx");
+
+    console.log(
+      "  " + importado.efectos.agregados + " FX · " + cuantas + " claves · " + p.tabla.cantidad + " GRH en la tabla · distintas " +
+        distintas.length + contar(distintas),
+    );
+    expect(distintas).toEqual([]);
+  }, 180_000);
+
+  it("el Personajes.ini vuelve con los cuatro Walk de cada cuerpo", async () => {
+    const p = await proyectoDelCliente();
+    const original = leerIni("Personajes.ini");
+    const repo = new MemoriaCuerpoRepositorio();
+
+    await new ImportarCuerposClasicos(
+      new LectorAparienciasIni("body", "Walk", "Personajes.ini"),
+      p.tablas,
+      p.puente,
+      p.hojas,
+      new ImportarApariencias(repo, new FormatoAoBodies(), idsDePrueba(), ESPECIE_CUERPO),
+      p.fabricaDeCatalogo,
+      p.originales,
+    ).ejecutar(original);
+
+    const [archivo] = await new ExportarAparienciasClasicas(
+      () => repo.listar(),
+      "cuerpos",
+      "Personajes.ini",
+      p.originales,
+      new EscritorAparienciasIni("BODY", "Walk", "NumBodies"),
+      p.grh,
+      "animacion",
+    ).ejecutar();
+
+    const { claves: cuantas, distintas } = diferencias(original, String(archivo!.contenido), "body");
+    console.log("  " + cuantas + " claves de cuerpos · distintas " + distintas.length + contar(distintas));
+    expect(distintas).toEqual([]);
+  }, 180_000);
+
+  it("el Cabezas.ini vuelve con las cuatro caras de cada cabeza", async () => {
+    const p = await proyectoDelCliente();
+    const original = leerIni("Cabezas.ini");
+    const repo = new MemoriaCabezaRepositorio();
+
+    await new ImportarCabezasClasicas(
+      new LectorAparienciasIni("head", "Head", "Cabezas.ini"),
+      p.tablas,
+      p.puente,
+      p.hojas,
+      new ImportarApariencias(repo, new FormatoAoHeads(), idsDePrueba(), ESPECIE_CABEZA),
+      p.fabricaDeCatalogo,
+      p.originales,
+    ).ejecutar(original);
+
+    const [archivo] = await new ExportarAparienciasClasicas(
+      () => repo.listar(),
+      "cabezas",
+      "Cabezas.ini",
+      p.originales,
+      new EscritorAparienciasIni("HEAD", "Head", "NumHeads"),
+      p.grh,
+      "frame",
+    ).ejecutar();
+
+    const { claves: cuantas, distintas } = diferencias(original, String(archivo!.contenido), "head");
+    console.log("  " + cuantas + " claves de cabezas · distintas " + distintas.length + contar(distintas));
+    expect(distintas).toEqual([]);
+  }, 180_000);
+
+  it("sin editar nada, el fxs.ini sale igual línea por línea", async () => {
+    const p = await proyectoDelCliente();
+    const original = leerIni("fxs.ini");
+    const { repo } = await importarEfectos(p, original);
+    const [archivo] = await exportarEfectos(p, () => repo.listar());
+
+    /* Lo esperado es el archivo normalizado, igual que con el OBJ.dat: las secciones en orden y
+     * sin repetidas, que es con lo que se quedan tanto el lector como el cliente. */
+    const ini = ArchivoIni.parsear(original);
+    const esperado = [...ini.encabezado("fx"), ...ini.numeradas("fx").flatMap(({ seccion }) => ini.lineasDe(seccion))].join("\r\n");
+
+    const lineasEsperadas = esperado.split("\r\n");
+    const lineasObtenidas = String(archivo!.contenido).split("\r\n");
+    const distintas = lineasEsperadas.map((l, i) => [i, l, lineasObtenidas[i]] as const).filter(([, a, b]) => a !== b);
+
+    console.log("  " + lineasEsperadas.length + " líneas esperadas · distintas " + distintas.length);
+    expect(distintas).toEqual([]);
+  }, 180_000);
+
+  it("editar el corrimiento de un FX cambia esa línea y ninguna otra", async () => {
+    const p = await proyectoDelCliente();
+    const { repo } = await importarEfectos(p, leerIni("fxs.ini"));
+
+    const efectos = await repo.listar();
+    const [antes] = await exportarEfectos(p, async () => efectos);
+    const primero = [...efectos].sort((a, b) => a.numero - b.numero)[0]!;
+    const movido = efectos.map((e) => (e.clave === primero.clave ? e.conOffset(primero.offsetX, primero.offsetY - 7) : e));
+    const [despues] = await exportarEfectos(p, async () => movido);
+
+    const lineasAntes = String(antes!.contenido).split("\r\n");
+    const lineasDespues = String(despues!.contenido).split("\r\n");
+    const distintas = lineasAntes.map((l, i) => [l, lineasDespues[i]] as const).filter(([a, b]) => a !== b);
+
+    expect(lineasAntes).toHaveLength(lineasDespues.length);
+    expect(distintas).toHaveLength(1);
+    expect(distintas[0]![1]).toContain("OffsetY=" + (primero.offsetY - 7));
+  }, 180_000);
 });

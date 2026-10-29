@@ -11,19 +11,30 @@
  */
 
 /**
- * Saca el comentario que algunos archivos dejan pegado al valor: `Walk1=4582	 ' arriba` vale 4582.
+ * Parte el valor del comentario que algunos archivos dejan pegado: en `Walk1=4582	 ' arriba` el
+ * valor es 4582 y el comentario es todo lo que sigue, con su espaciado.
  *
  * Sólo corta cuando lo que queda antes es un número, y eso es a propósito. Los comentarios al
  * final de línea aparecen en los índices (cuerpos, cabezas, armas), que son siempre numéricos;
  * en cambio un nombre o una descripción pueden tener comillas simples de verdad (`la espada
- * 'Matadragones'`) y cortar ahí los rompería. Como `numero` ya perdona la basura del final, el
- * único que necesitaba esto es `texto` — por ejemplo el `FileNum` del Graficos.ini.
+ * 'Matadragones'`) y cortar ahí los rompería.
+ *
+ * El comentario sale con los espacios y tabs que lo separaban del valor, porque lo usa también el
+ * escritor: devolver `Walk1=4583` donde el archivo decía `Walk1=4582	 ' arriba` sería cambiar dos
+ * cosas, el gráfico y la nota que dice para qué lado mira.
  */
-function sinComentarioAlFinal(valor: string): string {
+export function partirComentario(valor: string): { valor: string; comentario: string } {
   const corte = valor.search(/\s['´;]/);
-  if (corte < 0) return valor;
-  const antes = valor.slice(0, corte).trim();
-  return /^[+-]?\d+([.,]\d+)?$/.test(antes) ? antes : valor;
+  if (corte < 0) return { valor, comentario: "" };
+  const crudo = valor.slice(0, corte);
+  const antes = crudo.trim();
+  if (!/^[+-]?\d+([.,]\d+)?$/.test(antes)) return { valor, comentario: "" };
+  return { valor: antes, comentario: valor.slice(crudo.trimEnd().length) };
+}
+
+/** Sólo el valor. Como `numero` ya perdona la basura del final, el único que lo necesitaba es `texto`. */
+function sinComentarioAlFinal(valor: string): string {
+  return partirComentario(valor).valor;
 }
 
 export class ArchivoIni {

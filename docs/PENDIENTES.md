@@ -25,6 +25,14 @@ lo que se decidió dejar para después, así no se pierde.
 > hay que mantener al día, y una carpeta donde los mapas pueden aparecer de afuera —de un git pull,
 > de otra máquina— lo deja mintiendo sin que nadie se entere.
 >
+> El 29/10/2026, más tarde, salió también el que ese mismo arreglo había dejado acá: los tres del
+> cliente ya están medidos contra un `INIT/` de verdad, con `AO_INIT_DIR` al lado de la
+> `AO_DAT_DIR` que ya existía. De paso aparecieron las dos cosas que sólo se ven con archivos de
+> verdad: el comentario que los índices dejan pegado al valor —`Walk1=4582 ' arriba`— se perdía
+> al reescribir la línea, y un `Graficos.ini` puede definir el mismo dibujo dos veces, con lo que
+> el editor, que los ve iguales, devolvía el número más chico y cambiaba cuatro líneas del
+> `Personajes.ini` sin que nadie se lo pidiera.
+>
 > El 29/10/2026 salió el del ida y vuelta a medias del cliente. De las dos salidas posibles se
 > tomó la que ya estaba andando del lado de los mapas: el gráfico se busca por sus recortes, y si
 > esos recortes todavía no son ningún GRH el proyecto le da el primer número libre y lo suma a la
@@ -55,21 +63,3 @@ carrera que arregla `d925788`, pero entre pestañas en vez de entre clics.
 
 **Qué haría falta:** que el guardado mande la versión que leyó y el servidor rechace la escritura si
 cambió mientras tanto, o que la tabla se relea antes de repartir un número nuevo.
-
-## 2. Los tres archivos del cliente no están medidos contra archivos de verdad
-
-**Dónde:** `src/importacion/clasicoReal.test.ts`.
-
-El `OBJ.dat`, el `NPCs.dat` y el `Hechizos.dat` tienen un test que, con `AO_DAT_DIR` apuntando a
-un servidor de verdad, importa el archivo entero y comprueba que vuelve a salir clave por clave.
-El `Fxs.ini`, el `Personajes.ini` y el `Cabezas.ini` no lo tienen: en el servidor que tenemos a
-mano no están, porque viven en el cliente, en `INIT/`.
-
-Es el único lado del ida y vuelta que anda sin red. Los tres se escriben con la misma pieza que
-los otros —`reescribirSeccion`, que es la que de verdad decide qué se toca y qué no—, así que lo
-que falta medir no es el escritor sino el archivo: cuántas formas raras de escribir una entrada
-tiene un `Personajes.ini` de 600 cuerpos que no estén en el de cuatro líneas de los tests.
-
-**Qué haría falta:** una carpeta `INIT` de verdad y una variable propia —`AO_INIT_DIR`— al lado
-de la que ya existe, con los mismos tres tests: todas las claves vuelven, el archivo sin editar
-sale igual línea por línea, y editar una cosa cambia esa línea y ninguna otra.

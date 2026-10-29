@@ -173,6 +173,40 @@ describe("GrhDeReferencias", () => {
     const { grh } = await proyecto([hojaCon("12.png", "algo", 1)], [estatico(505, "12", 0, 0)]);
     expect(await grh.resolver([{ referencia: Referencia.pendiente("12.png", "algo", 0), modo: "animacion" }])).toEqual([505]);
   });
+
+  /*
+   * Un `Graficos.ini` puede definir el mismo dibujo dos veces: el del cliente que tenemos a mano
+   * tiene la animación del dragón marrón con dos juegos de números. Los dos son el mismo dibujo y
+   * el editor los ve iguales, así que sin desempate elegiría siempre el más chico, y un archivo
+   * exportado sin tocar nada cambiaría de número sin motivo.
+   */
+  describe("dos GRH que dibujan lo mismo", () => {
+    /** Los cuadros 1 y 2, el GRH 700 que los junta, y el 900 que junta otros dos cuadros iguales. */
+    const DUPLICADOS: Grh[] = [
+      estatico(1, "12", 0, 0),
+      estatico(2, "12", 32, 0),
+      animado(700, [1, 2]),
+      estatico(801, "12", 0, 0),
+      estatico(802, "12", 32, 0),
+      animado(900, [801, 802]),
+    ];
+
+    it("vuelve el GRH del que salió la animación, no el de número más chico", async () => {
+      const { grh } = await proyecto([hojaCon("12.png", "grh900", 2)], DUPLICADOS);
+      expect(await grh.resolver([{ referencia: Referencia.vinculada("12", "a1", 0), modo: "animacion" }])).toEqual([900]);
+    });
+
+    it("una animación con otro nombre no desempata, y gana el más chico", async () => {
+      const { grh } = await proyecto([hojaCon("12.png", "dragon", 2)], DUPLICADOS);
+      expect(await grh.resolver([{ referencia: Referencia.vinculada("12", "a1", 0), modo: "animacion" }])).toEqual([700]);
+    });
+
+    it("el nombre no alcanza si ese GRH ya dibuja otra cosa", async () => {
+      // Se llama grh900 pero sus cuadros son otros: el nombre quedó viejo y no manda.
+      const { grh } = await proyecto([hojaCon("12.png", "grh900", 2)], [...DUPLICADOS, animado(900, [2, 1])]);
+      expect(await grh.resolver([{ referencia: Referencia.vinculada("12", "a1", 0), modo: "animacion" }])).toEqual([700]);
+    });
+  });
 });
 
 describe("los archivos del cliente con los gráficos adentro", () => {

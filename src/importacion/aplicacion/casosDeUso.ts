@@ -175,12 +175,23 @@ export class GrhDelProyecto {
       return sumar(grh, firmaDeGrafico(archivo, rects));
     };
 
+    /** Qué dibuja hoy ese número, para poder comparar contra lo que se está pidiendo. */
+    const firmaDe = (numero: number): string | null => {
+      const r = tabla.recortes(numero);
+      return r ? firmaDeGrafico(r.archivo, r.rects) : null;
+    };
+
     // 3. El número de cada gráfico pedido.
     const resueltos = pedidos.map((pedido) => {
       const nombrada = archivoPorHoja.get(pedido.hojaId);
       if (!nombrada || !pedido.rects.length) return null;
       const { archivo, asignado } = nombrada;
-      const existente = indice.get(firmaDeGrafico(archivo, pedido.rects));
+      const firma = firmaDeGrafico(archivo, pedido.rects);
+      // El desempate: si venía de un GRH y ése sigue dibujando esto, vuelve ése.
+      if (pedido.preferido && firmaDe(pedido.preferido) === firma) {
+        return { numero: pedido.preferido, creado: false, archivo, asignado };
+      }
+      const existente = indice.get(firma);
       if (existente) return { numero: existente.numero, creado: false, archivo, asignado };
       return { numero: crear(archivo, pedido.rects, pedido.msDelCiclo ?? 0), creado: true, archivo, asignado };
     });
@@ -208,6 +219,16 @@ export interface GraficoDelProyecto {
   rects: readonly RectDeGrh[];
   /** Cuánto dura el ciclo entero, en ms. Sólo lo usa el animado. */
   msDelCiclo?: number;
+  /**
+   * De qué número de GRH salió este gráfico, si se sabe.
+   *
+   * Es un desempate, no una orden: se usa sólo si ese GRH sigue dibujando exactamente esto. Hace
+   * falta porque un `Graficos.ini` puede definir el mismo dibujo dos veces —el de este cliente
+   * tiene la animación del dragón marrón con dos juegos de números—, y el editor, que los ve
+   * iguales, elegiría siempre el más chico. Un archivo exportado sin tocar nada no tiene por qué
+   * cambiar de número.
+   */
+  preferido?: number;
 }
 
 export interface GrhDelRecorte {
