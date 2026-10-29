@@ -44,7 +44,7 @@ export function CatalogoDeTiles({ onElegir }: { onElegir: (hoja: HojaDeSprites, 
       <div className="row">
         <input type="search" placeholder="Filtrar hojas…" value={filtro} onChange={(e) => setFiltro(e.target.value)} style={{ flex: "1 1 120px" }} />
       </div>
-      <div className="mapa-paleta">
+      <div className="mapa-hojas">
         {coinciden.slice(0, TOPE).map((h) => (
           <button key={h.id} className={h.id === hojaId ? "on" : ""} onClick={() => setHojaId(h.id)} title={h.nombreArchivo}>
             <span className="pn">{h.nombreArchivo}</span>

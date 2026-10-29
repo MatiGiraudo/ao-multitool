@@ -1097,3 +1097,33 @@ canvas.suelo {
   height: 32px;
   image-rendering: pixelated;
 }
+/* La lista de hojas del catálogo de tiles. No es la paleta: acá lo que hay adentro de cada botón
+   es un nombre de archivo, y con columnas de 40 px los botones se encimaban. */
+.mapa-hojas {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(116px, 1fr));
+  gap: 4px;
+  max-height: 24vh;
+  overflow-y: auto;
+}
+.mapa-hojas button {
+  padding: 3px 6px;
+  border-color: transparent;
+  background: none;
+  text-align: left;
+  /* Sin esto la celda de la grilla se estira con el nombre más largo en vez de recortarlo. */
+  min-width: 0;
+}
+.mapa-hojas button.on {
+  border-color: var(--sel);
+  background: var(--acento-suave);
+}
+.mapa-hojas .pn {
+  display: block;
+  font-family: var(--f-mono);
+  font-size: 12px;
+  /* El nombre entero queda en el `title`: el que no entra se corta y no empuja a los de al lado. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

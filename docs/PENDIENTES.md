@@ -30,20 +30,13 @@ lo que se decidió dejar para después, así no se pierde.
 > primera vez que pintás con ella, igual que ya hacía con los números de GRH, y su imagen sale con
 > ese nombre al lado del `Graficos.ini`. Avisar en el catálogo hubiera dejado el problema en manos
 > del usuario: el editor no tiene por qué pedirle que renombre sus hojas para que el juego las
-> entienda.
+> entienda. De la misma tanda salió el de los nombres encimados en esa lista: ahora tiene clase
+> propia —columnas anchas y el nombre recortado con ellipsis—, en vez de la grilla de 40 px que es
+> para miniaturas. El nombre entero sigue estando en el `title`.
 
 ---
 
-## 1. Los nombres de las hojas se enciman en el catálogo de tiles
-
-**Dónde:** `src/mapas/ui/CatalogoDeTiles.tsx`, la lista de hojas.
-
-Reusa la clase `.mapa-paleta`, cuya grilla son columnas de 40 px pensadas para miniaturas de 32×32.
-Con nombres de archivo adentro, los botones se superponen y no se lee cuál es cuál.
-
-**Qué haría falta:** una clase propia para esa lista, con columnas anchas y el nombre recortado con
-ellipsis, o miniaturas en vez de nombres.
-## 2. La caché de la tabla de GRH sólo se entera de sus propias escrituras
+## 1. La caché de la tabla de GRH sólo se entera de sus propias escrituras
 
 **Dónde:** `src/importacion/infraestructura/navegador/HttpTablaDeGrh.ts`.
 
@@ -54,7 +47,7 @@ carrera que arregla `d925788`, pero entre pestañas en vez de entre clics.
 
 **Qué haría falta:** que el guardado mande la versión que leyó y el servidor rechace la escritura si
 cambió mientras tanto, o que la tabla se relea antes de repartir un número nuevo.
-## 3. El ida y vuelta del cliente está a medias
+## 2. El ida y vuelta del cliente está a medias
 
 **Dónde:** `src/importacion/infraestructura/`, al lado de `EscritorObjDat.ts`.
 
