@@ -1,9 +1,9 @@
 import "server-only";
 import path from "node:path";
 import { promises as fs } from "node:fs";
-import { asegurarCarpeta, carpetaDeDatos, escribirAtomico, leerSiExiste } from "@/compartido/infraestructura/carpetaDeDatos";
+import { asegurarCarpeta, carpetaDeDatos, escribirAtomico, leerCabecera, leerSiExiste } from "@/compartido/infraestructura/carpetaDeDatos";
 import type { MapaGuardado, MapaRepositorio, ResumenDeMapa } from "../../dominio/MapaRepositorio";
-import { MapaMapper, type MapaDto } from "../MapaDto";
+import { BYTES_DE_CABECERA, MapaMapper, resumenDeCabecera, type MapaDto } from "../MapaDto";
 
 /**
  * Un mapa = un archivo `data/mapas/<numero>.json`.
@@ -18,16 +18,28 @@ export class ArchivosMapaRepositorio implements MapaRepositorio {
     return path.join(this.carpeta, `${numeroSeguro(numero)}.json`);
   }
 
+  /**
+   * La lista lee sólo la cabecera de cada archivo.
+   *
+   * Un mundo entero son cientos de mapas de 83 KB, y la pantalla pide esto al montarse y después
+   * de cada guardado automático: leerlos enteros eran decenas de megas parseadas para devolver
+   * tres campos por mapa.
+   */
   async listar(): Promise<ResumenDeMapa[]> {
     await asegurarCarpeta(this.carpeta);
     const archivos = (await fs.readdir(this.carpeta)).filter((f) => /^\d+\.json$/.test(f));
-    const resumenes = await Promise.all(
-      archivos.map(async (f) => {
-        const crudo = await fs.readFile(path.join(this.carpeta, f), "utf8");
-        return MapaMapper.resumen(JSON.parse(crudo) as MapaDto);
-      }),
-    );
-    return resumenes.sort((a, b) => a.numero - b.numero);
+    const resumenes = await Promise.all(archivos.map((f) => this.resumenDe(path.join(this.carpeta, f))));
+    return resumenes.filter((r) => r !== null).sort((a, b) => a.numero - b.numero);
+  }
+
+  /** Lo que no empieza como un mapa nuestro se lee entero: vale más la lista completa que el ahorro. */
+  private async resumenDe(ruta: string): Promise<ResumenDeMapa | null> {
+    const cabecera = await leerCabecera(ruta, BYTES_DE_CABECERA);
+    if (cabecera === null) return null;
+    const resumen = resumenDeCabecera(cabecera);
+    if (resumen) return resumen;
+    const crudo = await leerSiExiste(ruta);
+    return crudo ? MapaMapper.resumen(JSON.parse(crudo.toString("utf8")) as MapaDto) : null;
   }
 
   async obtener(numero: number): Promise<MapaGuardado | null> {

@@ -69,8 +69,11 @@ export function PantallaMapas() {
   /* Si el último guardado falló hay que saberlo ya, sin esperar a que React vuelva a dibujar: lo
    * mira el guardia que corre justo antes de dejar el mapa abierto. */
   const falloElGuardado = useRef(false);
+  /* El `sello` que ya está escrito en el proyecto: con ese valor no hay nada que guardar. Es lo
+   * que distingue «cambió el mapa» de «se abrió uno». */
+  const selloASalvo = useRef(0);
   /** El guardado automático que todavía no salió. Se vacía antes de cambiar de mapa, no se tira. */
-  const pendiente = useRef<{ abierto: Abierto; timer: ReturnType<typeof setTimeout> } | null>(null);
+  const pendiente = useRef<{ abierto: Abierto; sello: number; timer: ReturnType<typeof setTimeout> } | null>(null);
   /** Gráficos que ya se pidieron para el pincel, resueltos o no, para no pedirlos en cada tecla. */
   const intentados = useRef(new Set<number>());
   const usadosAnteriores = useRef<number[]>([]);
@@ -130,7 +133,7 @@ export function PantallaMapas() {
    * creyendo que estaba todo a salvo.
    */
   const guardarEnProyecto = useCallback(
-    async (abierto: Abierto) => {
+    async (abierto: Abierto, sello: number) => {
       setEstadoGuardado("guardando");
       const ok = await intentar(async () => {
         await casos.mapas.guardar.ejecutar({ mapa: abierto.mapa, anchoDeGrafico: abierto.ancho, nombreArchivo: abierto.nombreArchivo });
@@ -139,6 +142,7 @@ export function PantallaMapas() {
       falloElGuardado.current = !ok;
       setEstadoGuardado(ok ? "guardado" : "error");
       if (!ok) return;
+      selloASalvo.current = sello;
       setEnProyecto(true);
       void refrescarGuardados();
     },
@@ -157,7 +161,7 @@ export function PantallaMapas() {
     if (!programado) return;
     clearTimeout(programado.timer);
     pendiente.current = null;
-    await guardarEnProyecto(programado.abierto);
+    await guardarEnProyecto(programado.abierto, programado.sello);
   }, [guardarEnProyecto]);
 
   /** Lo que hay que resolver antes de dejar el mapa abierto: lo pendiente se guarda, lo roto se pregunta. */
@@ -179,6 +183,10 @@ export function PantallaMapas() {
     setEstadoGuardado("guardado");
     setAbierto(nuevo);
     setSinGuardar(false);
+    /* El sello vuelve a cero: cuenta los cambios desde que este mapa está en pantalla. Lo que
+     * refresca los contadores y la paleta al abrir es que `abierto` cambió, no que el sello suba. */
+    setSello(0);
+    selloASalvo.current = 0;
   }, []);
 
   const abrirDelProyecto = useCallback(
@@ -196,7 +204,6 @@ export function PantallaMapas() {
       intentados.current.clear();
       empezarDeCero(resultado);
       setEnProyecto(true);
-      setSello((n) => n + 1);
       setRevision((n) => n + 1);
     },
     [casos, empezarDeCero, intentar, montar, puedoDejarElMapa],
@@ -219,7 +226,6 @@ export function PantallaMapas() {
       intentados.current.clear();
       empezarDeCero(resultado);
       setEnProyecto(false);
-      setSello((n) => n + 1);
       setRevision((n) => n + 1);
     },
     [casos, empezarDeCero, intentar, montar, puedoDejarElMapa],
@@ -249,7 +255,6 @@ export function PantallaMapas() {
     });
     setEnProyecto(false);
     setEditando(true);
-    setSello((n) => n + 1);
     setRevision((n) => n + 1);
     avisar(`Mapa ${numeroNuevo} vacío. Elegí un gráfico y empezá por el piso.`);
   };
@@ -294,7 +299,7 @@ export function PantallaMapas() {
     // preguntar. Pasa al reintentar un guardado que falló, que es justo cuando menos ayuda.
     const pisaOtro = !enProyecto && guardados.some((g) => g.numero === abierto.mapa.numero);
     if (pisaOtro && !confirm(`Ya hay un mapa ${abierto.mapa.numero} guardado en el proyecto. ¿Reemplazarlo por este?`)) return;
-    void guardarEnProyecto(abierto);
+    void guardarEnProyecto(abierto, sello);
   };
 
   const cambiarInfo = (cambios: Partial<InfoDeMapa>) => {
@@ -372,13 +377,15 @@ export function PantallaMapas() {
    * un mapa del juego que sólo estaba mirando ahora vive en `data/mapas`.
    */
   useEffect(() => {
-    if (!abierto || !enProyecto || !sello) return;
+    // Lo que ya está escrito no se vuelve a escribir: abrir un mapa del proyecto no lo guarda otra
+    // vez al segundo, y guardar a mano no deja atrás un guardado programado.
+    if (!abierto || !enProyecto || sello === selloASalvo.current) return;
     // Queda anotado en `pendiente` para que cambiar de mapa lo vacíe en vez de descartarlo.
     const timer = setTimeout(() => {
       pendiente.current = null;
-      void guardarEnProyecto(abierto);
+      void guardarEnProyecto(abierto, sello);
     }, 1000);
-    pendiente.current = { abierto, timer };
+    pendiente.current = { abierto, sello, timer };
     return () => clearTimeout(timer);
   }, [abierto, enProyecto, sello, guardarEnProyecto]);
 

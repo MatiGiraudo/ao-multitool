@@ -77,6 +77,12 @@ export class CarpetaDelProyecto {
     return archivo ? await archivo.text() : null;
   }
 
+  /** Los primeros bytes de un archivo: igual que `leerTexto`, pero sin traerse el resto. */
+  async leerCabecera(ruta: readonly string[], bytes: number): Promise<string | null> {
+    const archivo = await this.archivo(ruta);
+    return archivo ? await archivo.slice(0, bytes).text() : null;
+  }
+
   async leerBlob(ruta: readonly string[]): Promise<Blob | null> {
     return await this.archivo(ruta);
   }

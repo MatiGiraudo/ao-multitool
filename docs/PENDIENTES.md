@@ -18,6 +18,12 @@ lo que se decidió dejar para después, así no se pierde.
 > trabajo: el guardado que fallaba en silencio y el automático que se descartaba al cambiar de
 > mapa. Con ellos se fue un tercero que apareció al probarlos: reintentar un guardado preguntaba
 > si querías pisar el mapa guardado, que era el mismo que estabas editando.
+>
+> El 28/10/2026, más tarde, salieron de esta lista los dos del peso del editor de mapas: abrir uno
+> del proyecto lo volvía a guardar al segundo, y listar los guardados parseaba cada archivo entero.
+> El segundo se resolvió leyendo la cabecera de cada archivo, no con un índice aparte: un índice
+> hay que mantener al día, y una carpeta donde los mapas pueden aparecer de afuera —de un git pull,
+> de otra máquina— lo deja mintiendo sin que nadie se entere.
 
 ---
 
@@ -35,20 +41,7 @@ número. Nadie avisa nada al elegir el tile.
 **Qué haría falta:** decidir qué queremos de los nombres de hoja. Lo mínimo es avisar en el catálogo
 cuando el nombre no es numérico; lo correcto, que el proyecto le asigne un `FileNum` propio a cada
 hoja (como hace con los números de GRH) y que exportar las imágenes las copie con ese nombre.
-## 2. Listar los mapas guardados los parsea enteros
-
-**Dónde:** `src/mapas/infraestructura/servidor/ArchivosMapaRepositorio.ts`, en `listar()`.
-
-Lee y parsea cada JSON completo para devolver tres campos. Con los 317 mapas de Alkon guardados
-(~83 KB cada uno) son unos 26 MB leídos y parseados por cada `GET /api/mapas`, que la pantalla pide
-al montarse y después de cada guardado automático. El propio `ResumenDeMapa` dice que es «lo que
-alcanza para la lista, sin leer las 40.000 celdas de cada uno», así que hoy la implementación no
-cumple lo que promete el tipo.
-
-**Qué haría falta:** guardar el resumen aparte (un `data/mapas/indice.json`, escrito en el mismo
-guardado) o leer sólo la cabecera de cada archivo. La primera opción es la que ya usan las
-colecciones de un solo JSON.
-## 3. Los nombres de las hojas se enciman en el catálogo de tiles
+## 2. Los nombres de las hojas se enciman en el catálogo de tiles
 
 **Dónde:** `src/mapas/ui/CatalogoDeTiles.tsx`, la lista de hojas.
 
@@ -57,7 +50,7 @@ Con nombres de archivo adentro, los botones se superponen y no se lee cuál es c
 
 **Qué haría falta:** una clase propia para esa lista, con columnas anchas y el nombre recortado con
 ellipsis, o miniaturas en vez de nombres.
-## 4. La caché de la tabla de GRH sólo se entera de sus propias escrituras
+## 3. La caché de la tabla de GRH sólo se entera de sus propias escrituras
 
 **Dónde:** `src/importacion/infraestructura/navegador/HttpTablaDeGrh.ts`.
 
@@ -68,18 +61,7 @@ carrera que arregla `d925788`, pero entre pestañas en vez de entre clics.
 
 **Qué haría falta:** que el guardado mande la versión que leyó y el servidor rechace la escritura si
 cambió mientras tanto, o que la tabla se relea antes de repartir un número nuevo.
-## 5. Abrir un mapa del proyecto lo vuelve a guardar al segundo
-
-**Dónde:** `src/mapas/ui/PantallaMapas.tsx`, el mismo efecto del punto 3.
-
-`abrirDelProyecto` sube el `sello` y pone `enProyecto` en true, así que el guardado automático
-escribe el archivo un segundo después de abrirlo aunque nadie haya tocado nada: 83 KB y un PUT por
-cada apertura.
-
-**Qué haría falta:** que el efecto distinga «cambió el mapa» de «se abrió uno», por ejemplo
-guardando el sello con el que se abrió y comparando.
-
-## 6. El ida y vuelta del cliente está a medias
+## 4. El ida y vuelta del cliente está a medias
 
 **Dónde:** `src/importacion/infraestructura/`, al lado de `EscritorObjDat.ts`.
 

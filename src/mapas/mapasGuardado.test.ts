@@ -1,10 +1,14 @@
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { ExportarMapasAlJuego, LeerTodosLosMapas } from "./aplicacion/casosDeUso";
 import { ALTO, ANCHO, Mapa } from "./dominio/Mapa";
 import type { MapaGuardado } from "./dominio/MapaRepositorio";
 import { FormatoMapaClasico } from "./infraestructura/FormatoMapaClasico";
 import { MemoriaMapaRepositorio } from "./infraestructura/memoria";
-import { comprimir, descomprimir, MapaMapper } from "./infraestructura/MapaDto";
+import { BYTES_DE_CABECERA, comprimir, descomprimir, MapaMapper, resumenDeCabecera } from "./infraestructura/MapaDto";
+import { ArchivosMapaRepositorio } from "./infraestructura/servidor/ArchivosMapaRepositorio";
 
 /** Un mapa con una celda de cada cosa, igual que el del formato clásico. */
 function guardado(): MapaGuardado {
@@ -19,6 +23,13 @@ function guardado(): MapaGuardado {
   mapa.ponerNpc(5, 10, 25);
   mapa.ponerObjeto(5, 11, { objeto: 12, cantidad: 100 });
   return { mapa, anchoDeGrafico: 4, nombreArchivo: "Mapa120" };
+}
+
+/** Uno con el piso salpicado: no comprime, así que el archivo queda mucho más largo que su cabecera. */
+function guardadoGrande(numero: number, nombre: string): MapaGuardado {
+  const mapa = Mapa.vacio(numero, { nombre });
+  for (let y = 1; y <= ALTO; y++) for (let x = 1; x <= ANCHO; x++) mapa.ponerGrafico(x, y, 1, 1000 + ((x * 7 + y) % 11));
+  return { mapa, anchoDeGrafico: 4, nombreArchivo: "Mapa" + numero };
 }
 
 describe("comprimir por repetición", () => {
@@ -71,9 +82,66 @@ describe("MapaDto", () => {
     expect(MapaMapper.resumen(MapaMapper.aDto(guardado()))).toEqual({ numero: 120, nombre: "Pueblo nuevo", nombreArchivo: "Mapa120" });
   });
 
+  it("el resumen sale de la cabecera, sin las celdas", () => {
+    const json = JSON.stringify(MapaMapper.aDto(guardadoGrande(120, "Pueblo nuevo")));
+    // Si la cabecera que leemos alcanzara para todo el archivo, esto no probaría nada.
+    expect(json.length).toBeGreaterThan(BYTES_DE_CABECERA * 4);
+
+    expect(resumenDeCabecera(json.slice(0, BYTES_DE_CABECERA))).toEqual({ numero: 120, nombre: "Pueblo nuevo", nombreArchivo: "Mapa120" });
+  });
+
+  it("un archivo que no empieza como un mapa nuestro no se adivina", () => {
+    expect(resumenDeCabecera('{"formato":"otra-cosa","numero":1}')).toBeNull();
+  });
+
   it("una capa que nadie usó no ocupa casi nada", () => {
     const dto = MapaMapper.aDto(guardado());
     expect(dto.capas[2]).toEqual([0, 10_000]);
+  });
+});
+
+describe("ArchivosMapaRepositorio", () => {
+  /** Cada test con su carpeta, que se borra al terminar: son archivos de verdad en el disco. */
+  async function enUnaCarpeta(prueba: (repo: ArchivosMapaRepositorio, carpeta: string) => Promise<void>) {
+    const carpeta = await mkdtemp(join(tmpdir(), "ao-mapas-"));
+    try {
+      await prueba(new ArchivosMapaRepositorio(carpeta), carpeta);
+    } finally {
+      await rm(carpeta, { recursive: true, force: true });
+    }
+  }
+
+  it("guarda de a uno por número, lista y vuelve a leer", async () => {
+    await enUnaCarpeta(async (repo) => {
+      await repo.guardar(guardado());
+      await repo.guardar({ ...guardado(), mapa: guardado().mapa.conNumero(7), nombreArchivo: "Mapa7" });
+
+      expect(await repo.listar()).toEqual([
+        { numero: 7, nombre: "Pueblo nuevo", nombreArchivo: "Mapa7" },
+        { numero: 120, nombre: "Pueblo nuevo", nombreArchivo: "Mapa120" },
+      ]);
+      expect((await repo.obtener(120))?.mapa.info.nombre).toBe("Pueblo nuevo");
+
+      await repo.eliminar(7);
+      expect((await repo.listar()).map((r) => r.numero)).toEqual([120]);
+    });
+  });
+
+  it("lista mapas más largos que la cabecera que lee", async () => {
+    await enUnaCarpeta(async (repo) => {
+      await repo.guardar(guardadoGrande(3, "Bosque"));
+
+      expect(await repo.listar()).toEqual([{ numero: 3, nombre: "Bosque", nombreArchivo: "Mapa3" }]);
+    });
+  });
+
+  it("un mapa con las claves en otro orden igual aparece en la lista", async () => {
+    await enUnaCarpeta(async (repo, carpeta) => {
+      // Sin la cabecera donde la esperamos, el archivo se lee entero antes que dejarlo afuera.
+      await writeFile(join(carpeta, "5.json"), '{"capas":[],"numero":5,"nombreArchivo":"Mapa5","info":{"nombre":"Viejo"}}');
+
+      expect(await repo.listar()).toEqual([{ numero: 5, nombre: "Viejo", nombreArchivo: "Mapa5" }]);
+    });
   });
 });
 

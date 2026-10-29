@@ -132,6 +132,32 @@ export const MapaMapper = {
   },
 };
 
+/*
+ * El resumen sale de la cabecera del archivo, sin tocar las celdas.
+ *
+ * `aDto` escribe `numero`, `nombreArchivo` e `info` antes de `capas`, y ahí empiezan los 83 KB
+ * de un mapa de verdad. Cortar el texto justo antes de esa clave y cerrar la llave deja un JSON
+ * válido con exactamente lo que el resumen necesita, así listar un mundo entero lee unos cientos
+ * de bytes por mapa en vez de parsear 26 MB.
+ *
+ * El corte no se puede confundir con el nombre de un mapa: adentro de una cadena JSON las comillas
+ * van escapadas (`\"capas\"`), así que esa secuencia exacta sólo aparece como clave.
+ */
+
+/** Cuánto hay que leer de cada archivo para tener la cabecera entera, con lugar de sobra. */
+export const BYTES_DE_CABECERA = 4096;
+
+/** El resumen de un mapa a partir del principio de su archivo, o null si no empieza como esperamos. */
+export function resumenDeCabecera(prefijo: string): ResumenDeMapa | null {
+  const corte = prefijo.indexOf(',"capas":');
+  if (corte < 0) return null;
+  try {
+    return MapaMapper.resumen(JSON.parse(prefijo.slice(0, corte) + "}") as MapaDto);
+  } catch {
+    return null;
+  }
+}
+
 function celda(indice: number): { x: number; y: number } {
   return { x: (indice % ANCHO) + 1, y: Math.floor(indice / ANCHO) + 1 };
 }

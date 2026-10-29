@@ -172,6 +172,18 @@ describe("CarpetaTablaDeGrh y CarpetaMapaRepositorio", () => {
     await repo.eliminar(7);
     expect(await repo.listar()).toEqual([]);
   });
+
+  it("listar no necesita leer el mapa entero", async () => {
+    const { carpeta, contenidoDe } = carpetaDePrueba();
+    const repo = new CarpetaMapaRepositorio(carpeta);
+    const mapa = Mapa.vacio(3, { nombre: "Bosque" });
+    // Salpicado a propósito: así no comprime y el archivo queda mucho más largo que su cabecera.
+    for (let y = 1; y <= 100; y++) for (let x = 1; x <= 100; x++) mapa.ponerGrafico(x, y, 1, 1000 + ((x * 7 + y) % 11));
+    await repo.guardar({ mapa, anchoDeGrafico: 4, nombreArchivo: "Mapa3" });
+
+    expect((await contenidoDe("mapas", "3.json"))!.length).toBeGreaterThan(20_000);
+    expect(await repo.listar()).toEqual([{ numero: 3, nombre: "Bosque", nombreArchivo: "Mapa3" }]);
+  });
 });
 
 describe("CarpetaAlmacenDeExportacion", () => {

@@ -1,6 +1,6 @@
 import type { CarpetaDelProyecto } from "@/compartido/infraestructura/carpeta/CarpetaDelProyecto";
 import type { MapaGuardado, MapaRepositorio, ResumenDeMapa } from "../../dominio/MapaRepositorio";
-import { MapaMapper, type MapaDto } from "../MapaDto";
+import { BYTES_DE_CABECERA, MapaMapper, resumenDeCabecera, type MapaDto } from "../MapaDto";
 
 /** Un mapa = un archivo `mapas/<numero>.json` de la carpeta elegida. */
 export class CarpetaMapaRepositorio implements MapaRepositorio {
@@ -13,13 +13,23 @@ export class CarpetaMapaRepositorio implements MapaRepositorio {
   async listar(): Promise<ResumenDeMapa[]> {
     const archivos = (await this.carpeta.listar(["mapas"])).filter((f) => /^\d+\.json$/.test(f));
     const resumenes: ResumenDeMapa[] = [];
-    // De a uno: son 83 KB cada uno y un mundo entero son cientos. Leerlos todos de una deja al
-    // navegador masticando megas antes de poder mostrar la lista.
+    // De a uno y sólo la cabecera: son 83 KB cada uno y un mundo entero son cientos. Leerlos
+    // enteros deja al navegador masticando megas antes de poder mostrar la lista.
     for (const archivo of archivos) {
-      const crudo = await this.carpeta.leerTexto(["mapas", archivo]);
-      if (crudo) resumenes.push(MapaMapper.resumen(JSON.parse(crudo) as MapaDto));
+      const resumen = await this.resumenDe(archivo);
+      if (resumen) resumenes.push(resumen);
     }
     return resumenes.sort((a, b) => a.numero - b.numero);
+  }
+
+  /** Lo que no empieza como un mapa nuestro se lee entero: vale más la lista completa que el ahorro. */
+  private async resumenDe(archivo: string): Promise<ResumenDeMapa | null> {
+    const cabecera = await this.carpeta.leerCabecera(["mapas", archivo], BYTES_DE_CABECERA);
+    if (cabecera === null) return null;
+    const resumen = resumenDeCabecera(cabecera);
+    if (resumen) return resumen;
+    const crudo = await this.carpeta.leerTexto(["mapas", archivo]);
+    return crudo ? MapaMapper.resumen(JSON.parse(crudo) as MapaDto) : null;
   }
 
   async obtener(numero: number): Promise<MapaGuardado | null> {

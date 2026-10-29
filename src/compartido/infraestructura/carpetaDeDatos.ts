@@ -33,5 +33,26 @@ export async function leerSiExiste(ruta: string): Promise<Buffer | null> {
   }
 }
 
+/**
+ * Los primeros bytes de un archivo, sin traerse el resto.
+ *
+ * Es lo que deja listar los mapas sin leer sus 40.000 celdas. Si el corte parte un carácter
+ * multibyte no molesta: lo que se busca en esos bytes termina bastante antes del final.
+ */
+export async function leerCabecera(ruta: string, bytes: number): Promise<string | null> {
+  const archivo = await fs.open(ruta, "r").catch((e: NodeJS.ErrnoException) => {
+    if (e.code === "ENOENT") return null;
+    throw e;
+  });
+  if (!archivo) return null;
+  try {
+    const buffer = Buffer.alloc(bytes);
+    const { bytesRead } = await archivo.read(buffer, 0, bytes, 0);
+    return buffer.subarray(0, bytesRead).toString("utf8");
+  } finally {
+    await archivo.close();
+  }
+}
+
 // Los dos nombres seguros viven aparte porque los usa también el modo carpeta, en el navegador.
 export { idSeguro, nombreSeguroDeArchivo } from "./nombresSeguros";
