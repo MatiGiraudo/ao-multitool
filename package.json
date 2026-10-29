@@ -2,6 +2,7 @@
   "name": "ao-multitool",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "description": "Editor de mundo para el remake de Argentum Online: hojas de sprites, animaciones y objetos.",
   "scripts": {
     "dev": "next dev",

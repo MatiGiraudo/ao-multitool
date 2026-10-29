@@ -4,3 +4,13 @@ out/
 next-env.d.ts
 *.tsbuildinfo
 .DS_Store
+
+# Tus datos sí van a git —es para lo que está pensada `data/`—, menos estas dos cosas.
+#
+# Las imágenes de las hojas son las del cliente que importaste: 6.697 archivos y 237 MB acá,
+# contra 8,9 MB de JSON. Lo que el editor te deja escrito —la grilla y las animaciones de cada
+# hoja— está en el `.json` de al lado, que sí se versiona; las imágenes se vuelven a traer
+# importando el cliente. Si preferís versionarlas igual, borrá la línea.
+data/graficos/*.png
+# Y lo que escribe «Exportar todo» es salida: se arma de nuevo cuando haga falta.
+data/exportado/
