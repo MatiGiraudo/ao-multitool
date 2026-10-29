@@ -7,7 +7,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "AO World Editor",
-  description: "Editor de mundo para el remake de Argentum Online: hojas de sprites, animaciones y objetos.",
+  description: "Editor para el contenido de Argentum Online: gráficos, objetos, personajes, hechizos y mapas.",
 };
 
 /*
