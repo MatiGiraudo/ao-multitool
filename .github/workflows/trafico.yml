@@ -70,16 +70,21 @@ jobs:
       # `git add docs/metricas` y nada más: data/ es la carpeta de trabajo de quien use el editor y
       # este workflow no tiene nada que hacer ahí.
       #
+      # El `git add` va ANTES de comparar, y la comparación es contra el índice. `git diff` a secas no
+      # ve los archivos nuevos: con el `trafico.json` todavía sin entrar al repositorio, la primera
+      # corrida se iba en verde diciendo que no había nada que commitear, y el archivo no entraba
+      # nunca. Un workflow que no hace nada y no se queja es peor que uno que falla.
+      #
       # El `[skip ci]` es para que el commit no dispare un deploy de Vercel: es un JSON de métricas,
       # el sitio no cambia.
       - name: Commitear si cambió algo
         run: |
-          if git diff --quiet -- docs/metricas; then
+          git add docs/metricas
+          if git diff --cached --quiet -- docs/metricas; then
             echo "Los números son los mismos: no hay nada que commitear."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/metricas
           git commit -m "Tráfico del repositorio hasta el $(date -u +%F) [skip ci]"
           git push
