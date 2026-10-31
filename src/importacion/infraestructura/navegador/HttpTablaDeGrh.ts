@@ -20,6 +20,11 @@ export class HttpTablaDeGrh implements TablaDeGrhRepositorio {
     return tabla;
   }
 
+  async releer(): Promise<TablaDeGrh | null> {
+    this.enMemoria = null;
+    return this.leer();
+  }
+
   async guardar(tabla: TablaDeGrh): Promise<void> {
     await enviar(this.url, {
       method: "PUT",

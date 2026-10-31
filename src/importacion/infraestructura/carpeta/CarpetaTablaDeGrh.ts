@@ -23,6 +23,11 @@ export class CarpetaTablaDeGrh implements TablaDeGrhRepositorio {
     return this.enMemoria;
   }
 
+  async releer(): Promise<TablaDeGrh | null> {
+    this.enMemoria = null;
+    return this.leer();
+  }
+
   async guardar(tabla: TablaDeGrh): Promise<void> {
     const dto = TablaDeGrhMapper.aDto(tabla);
     const lineas = dto.grhs.map((g) => "    " + JSON.stringify(g));

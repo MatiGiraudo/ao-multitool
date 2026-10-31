@@ -314,9 +314,10 @@ explicado paso a paso, con ejemplos de este mismo código, en
 **[docs/ARQUITECTURA.md](docs/ARQUITECTURA.md)**.
 
 Lo que ya se puede reproducir y todavía no está arreglado vive en
-**[docs/PENDIENTES.md](docs/PENDIENTES.md)**. Hoy queda uno, y conviene saberlo: con el editor
-abierto en dos pestañas a la vez, las dos pueden repartir el mismo número de gráfico y la segunda
-pisa a la primera. Abrilo en una sola.
+**[docs/PENDIENTES.md](docs/PENDIENTES.md)**. Hoy queda uno, y es chico: con el editor abierto en
+dos pestañas, las dos reparten números de gráfico mirando la tabla del disco, pero entre mirarla y
+escribirla queda una ventana de milisegundos en la que podrían elegir el mismo. Antes la ventana
+duraba lo que durara la sesión; ahora hay que tener mala suerte en el mismo instante.
 
 ## Licencia
 

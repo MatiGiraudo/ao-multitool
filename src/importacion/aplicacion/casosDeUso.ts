@@ -115,11 +115,75 @@ export class GrhDelProyecto {
    * Leer, elegir los números y guardar no puede solaparse: dos tandas leerían las dos la misma
    * tabla, se llevarían los mismos números, y el segundo guardado dejaría afuera al primero. Las
    * celdas ya pintadas con esos números pasarían a mostrar otro gráfico.
+   *
+   * La cola arregla eso entre dos tandas de ESTA pestaña. Entre dos pestañas no alcanza: cada una
+   * tiene su propia copia de la tabla en memoria y ninguna se entera de lo que escribe la otra. De
+   * ahí los dos pasos de acá abajo.
    */
   private async resolver(pedidos: readonly GraficoDelProyecto[]): Promise<(GrhDelRecorte | null)[]> {
+    /*
+     * Primero con la copia que haya en memoria, que es la barata.
+     *
+     * Si de ahí no sale ningún número nuevo —el caso de todos los días: el tile que se acaba de
+     * elegir ya estaba en la tabla— no se escribe nada, y sin escritura no hay nada que pisar. Se
+     * devuelve y listo, sin volver a leer los varios megas de la tabla.
+     */
+    const conLoQueHaya = await this.calcular((await this.tablas.leer()) ?? TablaDeGrh.vacia(), pedidos);
+    if (!conLoQueHaya.cambiada) return conLoQueHaya.resueltos;
+
+    /*
+     * Hay números para inventar, y para eso la copia en memoria no sirve: si la pestaña de al lado
+     * repartió números desde la última vez que ésta leyó, los que se eligieron acá ya son de otro.
+     * Así que la cuenta se rehace sobre la tabla que está en el disco ahora.
+     *
+     * No se compara contra la de antes para decidir si vale la pena rehacerla: rehacer la cuenta es
+     * barato al lado de la lectura, y cualquier comparación más barata que rehacerla sería una
+     * heurística que puede equivocarse. Y el precio se paga sólo acá, en la tanda que ya iba a
+     * escribir la tabla entera de todos modos.
+     *
+     * Queda una ventana que no se puede cerrar, entre esta lectura y la escritura de abajo: en el
+     * modo carpeta no hay servidor que arbitre ni forma de tomarse el archivo. Pasó de durar lo que
+     * durara la tabla vieja en memoria —minutos, una sesión entera— a durar milisegundos. Está
+     * anotada en PENDIENTES.
+     */
+    const definitiva = await this.calcular((await this.tablas.releer()) ?? TablaDeGrh.vacia(), pedidos);
+
+    /*
+     * Las hojas renombradas se guardan recién acá, junto con la tabla.
+     *
+     * Guardarlas dentro de la cuenta era lo que rompía al rehacerla: la hoja quedaba escrita con su
+     * número, la segunda pasada la veía con número puesto y se salteaba el renombrado de la tabla,
+     * así que el GRH que ya dibujaba ese recorte seguía nombrando el archivo viejo y se inventaba
+     * uno nuevo al lado. Lo encontraron los tests que ya estaban.
+     */
+    for (const hoja of definitiva.renombradas) await this.hojas.guardar(hoja);
+    /* Una sola escritura para toda la tanda. El renombrado también cuenta: el GRH es el de antes,
+     * pero ahora nombra al archivo nuevo. */
+    await this.tablas.guardar(definitiva.tabla);
+    return definitiva.resueltos;
+  }
+
+  /**
+   * La cuenta, sobre la tabla que se le pase: qué número le toca a cada gráfico pedido y cómo queda
+   * la tabla.
+   *
+   * No escribe nada: ni la tabla ni las hojas. Las hojas que haya que renombrar salen en
+   * `renombradas` para que las guarde quien decida que esta cuenta es la definitiva. Por eso se
+   * puede rehacer sobre otra tabla sin dejar nada a medio camino.
+   */
+  private async calcular(
+    base: TablaDeGrh,
+    pedidos: readonly GraficoDelProyecto[],
+  ): Promise<{
+    resueltos: (GrhDelRecorte | null)[];
+    tabla: TablaDeGrh;
+    renombradas: readonly HojaDeSprites[];
+    cambiada: boolean;
+  }> {
     let hojas = await this.hojas.listar();
-    let tabla = (await this.tablas.leer()) ?? TablaDeGrh.vacia();
+    let tabla = base;
     let cambiada = false;
+    const renombradas: HojaDeSprites[] = [];
 
     // 1. Con qué nombre va cada hoja al `Graficos.ini`, dándole uno a la que no tenía.
     const archivoPorHoja = new Map<string, { archivo: string; asignado: boolean }>();
@@ -134,7 +198,7 @@ export class GrhDelProyecto {
       }
       const numero = proximoNumeroDeArchivo(hojas, tabla.archivos());
       const renombrada = hoja.conNumeroDeArchivo(numero);
-      await this.hojas.guardar(renombrada);
+      renombradas.push(renombrada);
       hojas = hojas.map((h) => (h.id === hoja.id ? renombrada : h));
       // Lo que ya se pintó con esta hoja sigue en su lugar: los GRH son los mismos, con otro nombre.
       tabla = tabla.renombrandoArchivo(baseDeArchivo(hoja.nombreArchivo), String(numero));
@@ -196,10 +260,7 @@ export class GrhDelProyecto {
       return { numero: crear(archivo, pedido.rects, pedido.msDelCiclo ?? 0), creado: true, archivo, asignado };
     });
 
-    // 4. Una sola escritura para toda la tanda. El renombrado también cuenta: el GRH es el de
-    // antes, pero ahora nombra al archivo nuevo.
-    if (cambiada) await this.tablas.guardar(tabla);
-    return resueltos;
+    return { resueltos, tabla, renombradas, cambiada };
   }
 }
 

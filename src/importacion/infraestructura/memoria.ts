@@ -6,6 +6,10 @@ export class MemoriaTablaDeGrh implements TablaDeGrhRepositorio {
   async leer() {
     return this.tabla;
   }
+  /* No hay caché que saltear: la tabla ES esta propiedad. */
+  async releer() {
+    return this.tabla;
+  }
   async guardar(tabla: TablaDeGrh) {
     this.tabla = tabla;
   }

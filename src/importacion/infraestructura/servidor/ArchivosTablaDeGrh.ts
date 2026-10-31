@@ -13,6 +13,11 @@ export class ArchivosTablaDeGrh implements TablaDeGrhRepositorio {
     return b ? TablaDeGrhMapper.aDominio(JSON.parse(b.toString("utf8")) as TablaDeGrhDto) : null;
   }
 
+  /* Del lado del servidor no hay caché: cada lectura ya va al archivo. */
+  releer(): Promise<TablaDeGrh | null> {
+    return this.leer();
+  }
+
   async guardar(tabla: TablaDeGrh): Promise<void> {
     const dto = TablaDeGrhMapper.aDto(tabla);
     const lineas = dto.grhs.map((g) => "    " + JSON.stringify(g));

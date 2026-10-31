@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 import { baseDeArchivo } from "@/compartido/dominio/nombreDeArchivo";
 import { HojaDeSprites } from "@/graficos/dominio/HojaDeSprites";
 import type { HojaRepositorio } from "@/graficos/dominio/HojaRepositorio";
+import { carpetaDePrueba } from "@/compartido/infraestructura/carpeta/memoria";
 import { MemoriaAlmacenDeImagenes, MemoriaHojaRepositorio } from "@/graficos/infraestructura/memoria";
+import { CarpetaTablaDeGrh } from "./infraestructura/carpeta/CarpetaTablaDeGrh";
+import type { TablaDeGrhRepositorio } from "./dominio/TablaDeGrhRepositorio";
 import { ExportarGraficosIni, ExportarHojasPropias, GrhDelProyecto, ImportarTablaDeGrh } from "./aplicacion/casosDeUso";
 import { TablaDeGrh, type Grh } from "./dominio/TablaDeGrh";
 import { EscritorGraficosIni } from "./infraestructura/EscritorGraficosIni";
@@ -282,3 +285,94 @@ describe("EscritorGraficosIni", () => {
     await expect(new ExportarGraficosIni(new MemoriaTablaDeGrh(), new EscritorGraficosIni()).ejecutar()).rejects.toThrow(/tabla de GRH/i);
   });
 });
+
+/*
+ * La carrera entre pestañas.
+ *
+ * La tabla queda en memoria en cada adaptador porque son varios megas y el editor de mapas la
+ * consulta con cada gráfico que se pone en el pincel. Esa copia sólo se entera de sus propias
+ * escrituras: con el editor abierto dos veces, la segunda pestaña repartía un número que la primera
+ * ya había usado y su guardado dejaba afuera al de la otra. Las celdas ya pintadas con ese número
+ * pasaban a mostrar otro gráfico.
+ *
+ * Dos adaptadores sobre la misma carpeta son, para esto, exactamente dos pestañas.
+ */
+describe("con el editor abierto en dos pestañas", () => {
+  it("la segunda no reparte un número que la primera ya usó", async () => {
+    const prueba = carpetaDePrueba();
+    const hojas = await conHojas("12.png");
+    await new CarpetaTablaDeGrh(prueba.carpeta).guardar(TablaDeGrh.desde([estatico(505, "12", 0, 0)]));
+
+    const pestania1 = new CarpetaTablaDeGrh(prueba.carpeta);
+    const pestania2 = new CarpetaTablaDeGrh(prueba.carpeta);
+    // Las dos miran la tabla y cada una se queda con su copia: hasta acá, las dos ven el 505.
+    expect((await pestania1.leer())?.proximoNumero()).toBe(506);
+    expect((await pestania2.leer())?.proximoNumero()).toBe(506);
+
+    const primera = await new GrhDelProyecto(pestania1, hojas).deRecorte({ hojaId: "12", x: 32, y: 0, ancho: 32, alto: 32 });
+    const segunda = await new GrhDelProyecto(pestania2, hojas).deRecorte({ hojaId: "12", x: 64, y: 0, ancho: 32, alto: 32 });
+
+    expect(primera.numero).toBe(506);
+    // Antes del arreglo esto era 506 otra vez, y el guardado de la segunda borraba el de la primera.
+    expect(segunda.numero).toBe(507);
+
+    const guardada = await new CarpetaTablaDeGrh(prueba.carpeta).leer();
+    expect(guardada?.recortes(505)).not.toBeNull();
+    expect(guardada?.recortes(506)).not.toBeNull();
+    expect(guardada?.recortes(507)).not.toBeNull();
+  });
+
+  it("releer se saltea la copia en memoria, y leer no", async () => {
+    const prueba = carpetaDePrueba();
+    await new CarpetaTablaDeGrh(prueba.carpeta).guardar(TablaDeGrh.desde([estatico(1, "12", 0, 0)]));
+    const adaptador = new CarpetaTablaDeGrh(prueba.carpeta);
+    expect((await adaptador.leer())?.proximoNumero()).toBe(2);
+
+    // Otra pestaña suma un GRH mientras esta copia sigue en memoria.
+    await new CarpetaTablaDeGrh(prueba.carpeta).guardar(TablaDeGrh.desde([estatico(1, "12", 0, 0), estatico(9, "12", 32, 0)]));
+
+    // `leer` sigue devolviendo la copia, que es lo que se quiere para mirar la tabla.
+    expect((await adaptador.leer())?.proximoNumero()).toBe(2);
+    // `releer` va al disco, que es lo que hace falta antes de repartir un número.
+    expect((await adaptador.releer())?.proximoNumero()).toBe(10);
+  });
+
+  it("si no hay ningún número para inventar, no vuelve a leer la tabla", async () => {
+    /*
+     * El caso de todos los días, y el que no puede pagar una lectura de varios megas: el tile que
+     * se acaba de elegir ya tenía número. Sin escritura no hay nada que pisar, así que alcanza con
+     * la copia en memoria.
+     */
+    const real = new MemoriaTablaDeGrh();
+    await real.guardar(TablaDeGrh.desde([estatico(505, "12", 32, 64)]));
+    const contador = new TablaQueCuentaReleidas(real);
+    const hojas = await conHojas("12.png");
+    const caso = new GrhDelProyecto(contador, hojas);
+
+    const conocido = await caso.deRecorte({ hojaId: "12", x: 32, y: 64, ancho: 32, alto: 32 });
+    expect(conocido).toMatchObject({ numero: 505, creado: false });
+    expect(contador.releidas).toBe(0);
+
+    // Y en cuanto hay uno nuevo, sí: es la tanda que ya iba a escribir la tabla entera.
+    await caso.deRecorte({ hojaId: "12", x: 0, y: 0, ancho: 32, alto: 32 });
+    expect(contador.releidas).toBe(1);
+  });
+});
+
+/** Cuenta las relecturas, para poder afirmar sobre lo que NO se lee. */
+class TablaQueCuentaReleidas implements TablaDeGrhRepositorio {
+  releidas = 0;
+
+  constructor(private readonly real: TablaDeGrhRepositorio) {}
+
+  leer() {
+    return this.real.leer();
+  }
+  releer() {
+    this.releidas++;
+    return this.real.releer();
+  }
+  guardar(tabla: TablaDeGrh) {
+    return this.real.guardar(tabla);
+  }
+}

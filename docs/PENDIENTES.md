@@ -50,16 +50,42 @@ lo que se decidió dejar para después, así no se pierde.
 > propia —columnas anchas y el nombre recortado con ellipsis—, en vez de la grilla de 40 px que es
 > para miniaturas. El nombre entero sigue estando en el `title`.
 
+> El 30/10/2026 salió el de la caché de la tabla de GRH entre pestañas, que era el único que
+> quedaba. De las dos salidas que proponía esta lista se tomó la segunda, releer antes de repartir,
+> porque es la única que sirve en los dos modos: en el modo carpeta no hay servidor que pueda
+> rechazar una escritura con versión vieja.
+>
+> No se relee siempre, que hubiera sido pagar varios megas en cada tile que se elige. Se resuelve
+> primero con la copia en memoria y, sólo si de ahí sale algún número nuevo, se rehace la cuenta
+> sobre la tabla del disco: la tanda que inventa números es la que ya iba a escribir la tabla
+> entera, así que la lectura de más se paga donde no se nota. Hay un test que cuenta las relecturas
+> para que eso no se pierda.
+>
+> El arreglo obligó a sacar una escritura de adentro de la cuenta. Renombrar una hoja se guardaba
+> en el momento, y al rehacer la cuenta la segunda pasada veía la hoja ya con número, se salteaba
+> el renombrado de la tabla e inventaba un GRH nuevo al lado del que ya dibujaba ese recorte. Ahora
+> `calcular` no escribe nada: devuelve las hojas renombradas y las guarda quien decide que esa
+> cuenta es la definitiva. Lo encontraron los tests que ya estaban.
+>
+> Quedó en esta lista lo único que de eso no se puede cerrar: la ventana entre releer y escribir.
+
 ---
 
-## 1. La caché de la tabla de GRH sólo se entera de sus propias escrituras
+## 1. La ventana entre releer la tabla de GRH y escribirla
 
-**Dónde:** `src/importacion/infraestructura/navegador/HttpTablaDeGrh.ts`.
+**Dónde:** `GrhDelProyecto.resolver`, en `src/importacion/aplicacion/casosDeUso.ts`.
 
-La tabla queda en memoria y se refresca únicamente cuando este mismo adaptador guarda. Con el editor
-abierto en dos pestañas, la segunda sigue con la tabla vieja: al elegir un tile, `proximoNumero()`
-puede devolver un número que la primera ya repartió, y el segundo guardado pisa al primero. Es la
-carrera que arregla `d925788`, pero entre pestañas en vez de entre clics.
+Antes de inventar números, la cuenta se rehace sobre la tabla que está en el disco. Entre esa
+lectura y la escritura hay unos milisegundos: si las dos pestañas caen justo ahí, las dos leen la
+misma tabla, eligen los mismos números y la segunda escritura deja afuera a la primera. Es la misma
+carrera de antes, con la ventana reducida de una sesión entera a un instante.
 
-**Qué haría falta:** que el guardado mande la versión que leyó y el servidor rechace la escritura si
-cambió mientras tanto, o que la tabla se relea antes de repartir un número nuevo.
+Se reproduce forzando el orden —que las dos releen antes de que cualquiera escriba—, no abriendo dos
+pestañas y usándolas normal.
+
+**Qué haría falta:** en el modo servidor, que el guardado mande la versión que leyó y la ruta de
+`app/api/` rechace la escritura si cambió mientras tanto; es el único lugar donde hay alguien que
+puede arbitrar. En el modo carpeta no hay forma de cerrarla: la File System Access API no da manera
+de tomarse un archivo. Ahí lo que corresponde es detectarlo después, y el lugar natural es
+**Diagnóstico**: dos GRH que dibujan exactamente el mismo recorte, o una celda que apunta a un
+número que no está en la tabla, son las dos marcas que deja esta carrera.
