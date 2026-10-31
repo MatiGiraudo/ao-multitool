@@ -1,3 +1,4 @@
+import Script from "next/script";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { SE_MIDE, SE_MIDEN_EVENTOS, UMAMI_ID, UMAMI_SRC } from "@/compartido/infraestructura/medicion";
@@ -25,6 +26,14 @@ import { SE_MIDE, SE_MIDEN_EVENTOS, UMAMI_ID, UMAMI_SRC } from "@/compartido/inf
  * script, ningún pedido. Umami pide además que haya un sitio configurado, así el que se lleva el
  * código y lo publica no manda nada a ninguna parte hasta que pone el suyo.
  *
+ * Umami va con `next/script` y no con un `<script>` a mano, y eso tiene una razón concreta: un
+ * `<script>` escrito acá es un nodo más del árbol que React hidrata, y el árbol de la puerta de
+ * carpeta no hidrata limpio —el servidor no tiene `showDirectoryPicker`, así que prerenderiza la
+ * pantalla de «este navegador no puede abrir carpetas» y el cliente dibuja otra—. Cuando React
+ * rehace el árbol por esa diferencia, vuelve a crear el nodo y queda el script dos veces en el
+ * `<body>`. `next/script` lo inyecta por fuera de lo hidratado, así que entra una sola vez y no
+ * depende de que ese árbol hidrate bien.
+ *
  * Qué se mide y qué no, contado para quien usa el editor, está en el README.
  */
 export function Analitica() {
@@ -33,7 +42,7 @@ export function Analitica() {
     <>
       <Analytics />
       <SpeedInsights />
-      {SE_MIDEN_EVENTOS && <script defer src={UMAMI_SRC} data-website-id={UMAMI_ID} />}
+      {SE_MIDEN_EVENTOS && <Script src={UMAMI_SRC} data-website-id={UMAMI_ID} strategy="afterInteractive" />}
     </>
   );
 }
