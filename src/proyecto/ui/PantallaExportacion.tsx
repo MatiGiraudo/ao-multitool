@@ -127,8 +127,9 @@ export function PantallaExportacion() {
                 <ListaDeArchivos archivos={clasico} />
                 <p className="hint">
                   Van en <code>Dat/</code> los del servidor y en <code>Init/</code> los del cliente. Vuelven con las claves que el editor no
-                  entiende —ropaje, sonidos, requisitos de herrería— tal como estaban: sólo cambian las líneas que editaste. De los `.ini` del
-                  cliente, lo único que el editor puede reescribir son los corrimientos; los números de GRH vuelven como vinieron.
+                  entiende —ropaje, sonidos, requisitos de herrería— tal como estaban: sólo cambian las líneas que editaste. Los gráficos
+                  también vuelven, traducidos a números de GRH; al que hiciste acá el proyecto le da un número, así que llevate también «El
+                  mundo», que es donde sale el <code>Graficos.ini</code> con ésos adentro.
                 </p>
               </>
             )}

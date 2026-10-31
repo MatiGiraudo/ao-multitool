@@ -1,6 +1,6 @@
 import type { Objeto } from "@/objetos/dominio/Objeto";
 import type { TipoDeObjetoId } from "@/objetos/dominio/TipoDeObjeto";
-import type { EscritorDeObjetosClasicos } from "../aplicacion/puertos";
+import type { EscritorDeObjetosClasicos, GrhPorNumero } from "../aplicacion/puertos";
 import { ENCABEZADO, type OriginalesDeFamilia } from "../dominio/OriginalesRepositorio";
 import { armarIni, reescribirSeccion, type ClavesPropias } from "./EscritorIni";
 
@@ -11,13 +11,13 @@ import { armarIni, reescribirSeccion, type ClavesPropias } from "./EscritorIni";
  * requisitos de herrería— vuelve tal como vino. Por eso un archivo importado y exportado sin
  * tocar nada sale idéntico, y uno con un nombre editado sale idéntico salvo esa línea.
  *
- * Dos cosas que no se reescriben nunca sobre un objeto importado, a propósito:
+ * El **`ObjType`** es lo único que no se reescribe nunca sobre un objeto importado, a propósito:
+ * varios tipos del clásico caen en el mismo del editor (1, 13 y 34 son todos «comida»), así que
+ * volver atrás sería adivinar. El del archivo es el que sabe.
  *
- * - **`ObjType`**: varios tipos del clásico caen en el mismo del editor (1, 13 y 34 son todos
- *   «comida»), así que volver atrás sería adivinar. El del archivo es el que sabe.
- * - **`GrhIndex`**: el editor guarda «tal hoja, tal animación», no un número de GRH. Mientras no
- *   se resuelva al revés, el icono vuelve como estaba; si lo cambiaste acá, en el clásico sigue
- *   el de antes.
+ * El **`GrhIndex`** sí vuelve, pero no lo deduce el escritor: el editor guarda «tal hoja, tal
+ * animación», y traducir eso a un número pide la tabla de GRH. Se lo da resuelto el caso de uso,
+ * y el objeto cuyo icono no se pudo resolver no entra en ese mapa: su línea queda como estaba.
  *
  * Un objeto creado en el editor no tiene original: sale con las claves conocidas y nada más. El
  * servidor lee las que faltan como 0, que para un objeto nuevo suele estar bien.
@@ -48,14 +48,14 @@ const EFECTO_CLASICO: Readonly<Record<string, number>> = {
 };
 
 export class EscritorObjDat implements EscritorDeObjetosClasicos {
-  escribir(objetos: readonly Objeto[], originales: OriginalesDeFamilia): string {
+  escribir(objetos: readonly Objeto[], originales: OriginalesDeFamilia, grhPorObjeto: GrhPorNumero): string {
     const ordenados = [...objetos].sort((a, b) => a.numero - b.numero);
     const secciones = ordenados.map((objeto) => {
       const original = originales[objeto.numero];
       // El original ya trae su propia línea `[OBJn]`, con el comentario que tuviera al lado. Uno
       // nuevo la necesita, y además un renglón en blanco para que no quede pegado al siguiente.
       const lineas = original ? original.split(/\r?\n/) : [`[OBJ${objeto.numero}]`];
-      const reescrita = reescribirSeccion(lineas, clavesDe(objeto, !!original));
+      const reescrita = reescribirSeccion(lineas, clavesDe(objeto, !!original, grhPorObjeto.get(objeto.numero) ?? null));
       return original ? reescrita : [...reescrita, ""];
     });
     // El encabezado del archivo vuelve tal cual: en un OBJ.dat es la tabla de tipos comentada que
@@ -66,7 +66,7 @@ export class EscritorObjDat implements EscritorDeObjetosClasicos {
   }
 }
 
-function clavesDe(objeto: Objeto, tieneOriginal: boolean): ClavesPropias {
+function clavesDe(objeto: Objeto, tieneOriginal: boolean, grhIcono: number | null): ClavesPropias {
   const atributos = objeto.atributosVigentes();
   /* Siempre un número, 0 incluido: si la clave ya estaba en el archivo hay que escribir lo que
    * dice el editor, y si no estaba, el escritor no la agrega cuando es 0. */
@@ -78,6 +78,7 @@ function clavesDe(objeto: Objeto, tieneOriginal: boolean): ClavesPropias {
 
   const claves: ClavesPropias = {
     Name: objeto.nombre,
+    GrhIndex: grhIcono,
     Valor: objeto.valor,
     Texto: objeto.descripcion || null,
     Newbie: bandera("newbie"),

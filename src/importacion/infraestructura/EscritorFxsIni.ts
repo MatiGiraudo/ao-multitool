@@ -1,26 +1,30 @@
 import type { Efecto } from "@/fx/dominio/Efecto";
-import type { EscritorDeEfectosClasicos } from "../aplicacion/puertos";
+import type { EscritorDeEfectosClasicos, GrhPorNumero } from "../aplicacion/puertos";
 import { ENCABEZADO, type OriginalesDeFamilia } from "../dominio/OriginalesRepositorio";
 import { armarIni, reescribirSeccion, type ClavesPropias } from "./EscritorIni";
 
 /**
- * Devuelve el `Fxs.ini` con los corrimientos del editor escritos encima del original.
+ * Devuelve el `Fxs.ini` con lo editado escrito encima del original.
  *
- * De las tres claves que tiene un FX —`Animacion`, `OffsetX`, `OffsetY`— el editor sólo puede
- * devolver dos. La primera es un número de GRH, y acá el efecto apunta a una animación del
- * proyecto («tal hoja, tal animación»): traducir eso de vuelta a un número pide buscar el recorte
- * en la tabla de GRH, que es un trabajo aparte y todavía no está.
+ * Las tres claves que tiene un FX vuelven las tres: el `Animacion`, que es el número de GRH del
+ * gráfico, y los dos corrimientos. El número no lo saca de acá el escritor —el editor guarda «tal
+ * hoja, tal animación», no un número—, sino que se lo da resuelto el caso de uso, que es quien
+ * tiene la tabla de GRH y las hojas.
  *
- * Así que `Animacion` vuelve como vino. Lo que sí se escribe son los corrimientos, que es
- * justamente lo que se edita acá: la vista previa del FX sobre el personaje existe para eso.
+ * Un FX cuyo gráfico no se pudo resolver no entra en ese mapa, y entonces su `Animacion` queda
+ * como estaba: es mejor dejarle al cliente el gráfico que ya tenía que escribirle un 0.
  */
 export class EscritorFxsIni implements EscritorDeEfectosClasicos {
-  escribir(efectos: readonly Efecto[], originales: OriginalesDeFamilia): string {
+  escribir(efectos: readonly Efecto[], originales: OriginalesDeFamilia, grhPorEfecto: GrhPorNumero): string {
     const ordenados = [...efectos].sort((a, b) => a.numero - b.numero);
     const secciones = ordenados.map((efecto) => {
       const original = originales[efecto.numero];
       const lineas = original ? original.split(/\r?\n/) : [`[FX${efecto.numero}]`];
-      const claves: ClavesPropias = { OffsetX: efecto.offsetX, OffsetY: efecto.offsetY };
+      const claves: ClavesPropias = {
+        Animacion: grhPorEfecto.get(efecto.numero) ?? null,
+        OffsetX: efecto.offsetX,
+        OffsetY: efecto.offsetY,
+      };
       const reescrita = reescribirSeccion(lineas, claves);
       return original ? reescrita : [...reescrita, ""];
     });

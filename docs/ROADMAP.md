@@ -15,7 +15,6 @@ Se apoya en **[ARQUITECTURA.md](ARQUITECTURA.md)**, en especial en la receta de 
 | FX (efectos visuales) | ✅ Lista | `src/fx/` | `ao-fx` |
 | Cuerpos y cabezas (apariencias) | ✅ Lista | `src/apariencias/` | `ao-bodies`, `ao-heads` |
 | Importar del AO original (GRH, cuerpos, cabezas, FX, objetos, hechizos) | ✅ Lista | `src/importacion/` | — |
-| Importar proyecto del indexador web | ✅ Lista | `src/proyecto/` | — |
 | Hechizos | ✅ Lista | `src/hechizos/` | `ao-spells` |
 | NPCs | ✅ Lista | `src/npcs/` | `ao-npcs` |
 | Mapas | ✅ Lista (visor + editor) | `src/mapas/` | `.map` + `.inf` + `.dat` |
@@ -341,7 +340,7 @@ Lo que hace a Mapas distinto de todo lo anterior:
 
 Chicas, de mucho valor, y conviene hacerlas en cuanto haya tres o cuatro módulos (no al final).
 
-- **Exportar todo.** Un caso de uso en `src/proyecto/` que junta los JSON de todos los módulos en una carpeta o un `.zip`: es lo que Unity quiere consumir de una vez, en lugar de siete descargas sueltas. Costo: medio día.
+- **Exportar todo.** Un caso de uso en `src/proyecto/` que junta los JSON de todos los módulos en una carpeta o un `.zip`: quien los va a leer los quiere de una vez, no en siete descargas sueltas. Costo: medio día.
 - **Diagnóstico del mundo.** `src/proyecto/aplicacion/RevisarMundo.ts` junta los `Problema[]` de todos los módulos y agrega los cruzados que ningún dominio puede ver solo: pergamino sin hechizo, NPC sin cuerpo, hechizo sin FX, mapa con tiles inexistentes, números repetidos. Con una página `/diagnostico`. Es el lugar natural para los chequeos entre contextos, sin ensuciar ningún dominio.
 - **Guardar y versionar.** Ya funciona por módulo; sólo hay que sumar las carpetas nuevas a `data/` y mencionarlas en el README.
 
@@ -370,6 +369,6 @@ Los importadores se adelantan porque diseñar fichas con dos registros de ejempl
 
 1. **Apariencias juntas o separadas.** El plan propone un módulo con dos entidades y una pantalla de dos pestañas. La alternativa es `src/cuerpos/` y `src/cabezas/` por separado, más fiel a "una carpeta por concepto" pero con pantalla y proveedor duplicados.
 2. ~~**Los archivos binarios del AO original.**~~ **Resuelta el 26/10/2026: no hacen falta.** Al lado de cada `.ind` está el `.ini` de texto desde el que se genera, y es el que conviene leer. Si alguna vez aparece un cliente que sólo traiga los binarios, ahí sí habrá que escribir el lector.
-3. **Cascos, escudos y armas.** El plan los deja como objetos equipables (lo que ya funciona). Si el cliente de Unity espera índices separados, hay que sumar un módulo.
+3. **Cascos, escudos y armas.** El plan los deja como objetos equipables (lo que ya funciona). Si del otro lado se esperan índices separados, como los tiene el clásico, hay que sumar un módulo.
 4. **Mapas.** ¿Tamaño fijo 100×100 como el clásico, o libre? Afecta al modelo de datos y al formato, así que conviene decidirlo antes de la Entrega A.
-5. **Nombres de formato.** `ao-bodies`, `ao-heads`, `ao-fx`, `ao-spells`, `ao-npcs`, `ao-maps` siguen la convención de `ao-anim` y `ao-objs` (claves en inglés, `format` + `version`). Si el lado de Unity ya espera otros nombres, hay que fijarlos antes de escribir los formatos.
+5. **Nombres de formato.** `ao-bodies`, `ao-heads`, `ao-fx`, `ao-spells`, `ao-npcs`, `ao-maps` siguen la convención de `ao-anim` y `ao-objs` (claves en inglés, `format` + `version`). Si quien los lee ya espera otros nombres, hay que fijarlos antes de escribir los formatos.

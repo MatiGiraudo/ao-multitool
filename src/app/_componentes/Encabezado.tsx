@@ -1,7 +1,6 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BotonImportarProyecto } from "@/proyecto/ui/BotonImportarProyecto";
 import { seccionDe, seccionesPorFamilia } from "./secciones";
 
 export function Encabezado() {
@@ -20,7 +19,6 @@ export function Encabezado() {
         </nav>
       ))}
       <span className="sub">{actual.sub}</span>
-      <BotonImportarProyecto />
     </header>
   );
 }

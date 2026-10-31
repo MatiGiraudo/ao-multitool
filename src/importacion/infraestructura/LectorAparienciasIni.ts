@@ -1,14 +1,8 @@
 import type { Direccion } from "@/compartido/dominio/Direccion";
 import { ErrorDeDominio } from "@/compartido/dominio/ErrorDeDominio";
 import type { ArchivoDeAparienciasClasicas, LectorDeAparienciasClasicas } from "../aplicacion/puertos";
+import { DIRECCION_DE_AO } from "../dominio/direcciones";
 import { ArchivoIni } from "./LectorIni";
-
-/**
- * El orden de las direcciones en los archivos del clásico, tal como las numera el cliente
- * (en Declares.bas: NORTH = 1, EAST = 2, SOUTH = 3, WEST = 4). Es el mismo para cuerpos, cabezas,
- * cascos, armas y escudos, así que alcanza con esta tabla y el prefijo de la clave.
- */
-const DIRECCION_DE_AO: readonly Direccion[] = ["norte", "este", "sur", "oeste"];
 
 /**
  * Lee los índices de apariencias del AO clásico, que son todos el mismo archivo con otros nombres:

@@ -1,13 +1,14 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useCadaFrame, usePrefiereMenosMovimiento } from "@/compartido/ui/utilidades";
+import type { ImagenDibujable } from "@/compartido/ui/negroTransparente";
 import type { Animacion } from "../dominio/Animacion";
 import { posicionEnCaja } from "../dominio/Ancla";
 
 /** Reproduce la animación respetando ms por frame, duraciones propias, bucle y ancla. */
 export function VistaPreviaAnimacion(p: {
   animacion: Animacion | undefined;
-  img: HTMLImageElement | null;
+  img: ImagenDibujable | null;
   /** Si cambia, la vista salta a ese frame y se pausa (por ejemplo, al hacer clic en la lista). */
   irA: { indice: number; n: number } | null;
   onFrameActual(i: number): void;

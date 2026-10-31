@@ -25,6 +25,22 @@ lo que se decidió dejar para después, así no se pierde.
 > hay que mantener al día, y una carpeta donde los mapas pueden aparecer de afuera —de un git pull,
 > de otra máquina— lo deja mintiendo sin que nadie se entere.
 >
+> El 29/10/2026, más tarde, salió también el que ese mismo arreglo había dejado acá: los tres del
+> cliente ya están medidos contra un `INIT/` de verdad, con `AO_INIT_DIR` al lado de la
+> `AO_DAT_DIR` que ya existía. De paso aparecieron las dos cosas que sólo se ven con archivos de
+> verdad: el comentario que los índices dejan pegado al valor —`Walk1=4582 ' arriba`— se perdía
+> al reescribir la línea, y un `Graficos.ini` puede definir el mismo dibujo dos veces, con lo que
+> el editor, que los ve iguales, devolvía el número más chico y cambiaba cuatro líneas del
+> `Personajes.ini` sin que nadie se lo pidiera.
+>
+> El 29/10/2026 salió el del ida y vuelta a medias del cliente. De las dos salidas posibles se
+> tomó la que ya estaba andando del lado de los mapas: el gráfico se busca por sus recortes, y si
+> esos recortes todavía no son ningún GRH el proyecto le da el primer número libre y lo suma a la
+> tabla. Buscar y nada más —que era lo que esta lista proponía— dejaba afuera justo el caso que
+> importa, el del gráfico hecho acá: sin número no hay manera de nombrarlo en un archivo del
+> clásico. Quedó en esta lista lo único que de eso no se resolvió: que los tres del cliente
+> siguen sin estar medidos contra archivos de verdad.
+>
 > El 28/10/2026, al final, salió el de las hojas con nombre no numérico. De las dos salidas que
 > decía esta lista se tomó la segunda: el proyecto le da a la hoja un número de archivo propio la
 > primera vez que pintás con ella, igual que ya hacía con los números de GRH, y su imagen sale con
@@ -47,21 +63,3 @@ carrera que arregla `d925788`, pero entre pestañas en vez de entre clics.
 
 **Qué haría falta:** que el guardado mande la versión que leyó y el servidor rechace la escritura si
 cambió mientras tanto, o que la tabla se relea antes de repartir un número nuevo.
-## 2. El ida y vuelta del cliente está a medias
-
-**Dónde:** `src/importacion/infraestructura/`, al lado de `EscritorObjDat.ts`.
-
-Los seis archivos vuelven, pero hay una diferencia grande entre los tres del servidor y los tres
-del cliente. En `OBJ.dat`, `NPCs.dat` y `Hechizos.dat` el editor reescribe todo lo que maneja, y
-está medido contra un servidor de verdad. En `Fxs.ini`, `Personajes.ini` y `Cabezas.ini` lo único
-que puede reescribir son los corrimientos: el resto de cada entrada son números de GRH, y el editor
-guarda «tal hoja, tal animación», no un número.
-
-**Qué haría falta:** resolver el camino de vuelta, de una animación del proyecto a un número de
-GRH. `TablaDeGrh.buscarRecorte` ya encuentra el GRH de un recorte estático; faltaría el de una
-animación (buscar un GRH cuyos cuadros sean esos). Con eso resuelto se arreglan de una las tres
-cosas: el `GrhIndex` de los objetos, la `Animacion` de los FX y los `Walk1..4` de las apariencias.
-
-Los tres del cliente tampoco están medidos contra archivos reales: en el servidor que tenemos a
-mano no están (viven en el cliente, en `INIT/`). El test con `AO_DAT_DIR` cubre los tres del
-servidor; para los otros haría falta apuntar a una carpeta `INIT` de verdad.

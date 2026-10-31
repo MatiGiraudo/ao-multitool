@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" shape-rendering="crispEdges">
+  <title>AO World Editor</title>
+  <!--
+    Dibujado en una grilla de 16×16, un rectángulo por píxel, como una hoja de sprites del juego.
+    A ese tamaño no entra un dibujo: entra una silueta. La espada vertical es lo único que se
+    sigue reconociendo en la pestaña del navegador cuando el ícono mide 16 px de verdad.
+
+    No es el logo del AO, que es de otros: es una marca propia con la paleta de la app —el dorado
+    del acento sobre el fondo oscuro— para que se note que es esta herramienta y no otra.
+  -->
+  <rect width="16" height="16" rx="3" fill="#12151c" />
+
+  <!--
+    Punta y hoja, partidas al medio: el lado derecho más oscuro hace de bisel.
+    La punta es una sola fila de 2 px sobre una hoja de 4: con dos filas se leía como una hoja
+    de punta plana, y un solo escalón de un píxel por lado alcanza para que se entienda.
+  -->
+  <rect x="7" y="1" width="1" height="1" fill="#f2f4f8" />
+  <rect x="8" y="1" width="1" height="1" fill="#b9c0cd" />
+  <rect x="6" y="2" width="2" height="7" fill="#f2f4f8" />
+  <rect x="8" y="2" width="2" height="7" fill="#b9c0cd" />
+
+  <!-- Guarda y pomo, en el dorado del acento. -->
+  <rect x="4" y="9" width="8" height="2" fill="#e2a43a" />
+  <rect x="6" y="13" width="4" height="2" fill="#e2a43a" />
+
+  <!-- Empuñadura. -->
+  <rect x="7" y="11" width="2" height="2" fill="#7a4a12" />
+</svg>

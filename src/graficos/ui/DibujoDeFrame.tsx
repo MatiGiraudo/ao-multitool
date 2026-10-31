@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef } from "react";
+import type { ImagenDibujable } from "@/compartido/ui/negroTransparente";
 import type { Frame } from "../dominio/Frame";
 
 /** Dibuja un frame de una imagen, centrado y escalado para entrar en `tamanio` px. Escala entera si se agranda. */
@@ -18,7 +19,7 @@ export function dibujarFrameAjustado(ctx: CanvasRenderingContext2D, img: CanvasI
 }
 
 /** Miniatura de un frame como componente. */
-export function DibujoDeFrame(props: { img: HTMLImageElement | null; frame: Frame | undefined; tamanio: number; maxEscala?: number; className?: string; title?: string }) {
+export function DibujoDeFrame(props: { img: ImagenDibujable | null; frame: Frame | undefined; tamanio: number; maxEscala?: number; className?: string; title?: string }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const { img, frame, maxEscala } = props;
   useEffect(() => {

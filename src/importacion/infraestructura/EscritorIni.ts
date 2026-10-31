@@ -1,3 +1,5 @@
+import { partirComentario } from "./LectorIni";
+
 /*
  * Reescribir una sección de un archivo del clásico sin perder lo que el editor no entiende.
  *
@@ -71,7 +73,9 @@ export function reescribirSeccion(lineasOriginales: readonly string[], propias: 
       continue;
     }
     pendientes.delete(clave);
-    const anterior = linea.slice(igual + 1).trim();
+    /* El comentario que el archivo deja pegado al valor —`Walk1=4582	 ' arriba`— no es parte del
+     * valor y no se pierde: dice para qué lado mira esa línea, no qué gráfico es. */
+    const { valor: anterior, comentario } = partirComentario(linea.slice(igual + 1).trim());
     const valor = typeof propia.valor === "function" ? propia.valor(anterior) : propia.valor;
     // Si el valor es el mismo, o es «no la toco», la línea queda tal cual: así un archivo
     // exportado sin editar nada sale igual al que entró, con sus espacios de más incluidos, y el
@@ -81,7 +85,7 @@ export function reescribirSeccion(lineasOriginales: readonly string[], propias: 
       continue;
     }
     // La clave se escribe como estaba en el archivo: hay servidores que las leen con mayúsculas.
-    salida.push(`${linea.slice(0, igual).trim()}=${valor}`);
+    salida.push(`${linea.slice(0, igual).trim()}=${valor}${comentario}`);
   }
 
   // Lo que el editor agregó y el archivo no tenía va al final de la sección, si dice algo.

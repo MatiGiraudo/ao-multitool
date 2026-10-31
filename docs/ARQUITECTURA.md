@@ -171,7 +171,7 @@ Otros puertos del proyecto:
 
 - `AlmacenDeImagenes`: dónde viven los PNG.
 - `ProcesadorDeImagenes`: decodificar y redimensionar. En el navegador lo implementa `CanvasProcesadorDeImagenes`; en los tests, un falso.
-- `FormatoDeAnimaciones` y `FormatoDeObjetos`: los JSON de intercambio con Unity (`FormatoAoAnim`, `FormatoAoObjs`).
+- `FormatoDeAnimaciones` y `FormatoDeObjetos`: los JSON de intercambio, para leer esto desde otro programa (`FormatoAoAnim`, `FormatoAoObjs`).
 - `GeneradorDeIds`: así los tests pueden usar ids predecibles.
 
 ### El recorrido de un clic
@@ -247,7 +247,7 @@ en vez de fallar raro.
   - `EditorDeHojas` y `EditorDeObjetos` manejan el estado de la pantalla.
   - `LienzoDeHoja`, `ListaDeFrames`, `RanuraGrafica` y el resto reciben datos y avisan lo que hizo el usuario, pero no guardan nada por su cuenta.
 - **Edición optimista con guardado diferido** (`compartido/ui/useColeccionEditable.ts`): el cambio se ve al instante y se guarda 400 ms después del último. Si cerrás la pestaña con cambios pendientes, el navegador te avisa. Las dos pantallas usan el mismo hook, y la regla al usarlo es una sola: antes de cualquier operación que vuelva a leer del servidor (crear, duplicar, importar, exportar) hay que llamar a `guardarPendientes()`.
-- **Refrescar todo sin conocer a nadie**: cada colección se anota en `ProveedorDeAplicacion` con `registrarRecarga`, así "Importar proyecto del indexador web…" refresca lo que esté montado sin importar un solo módulo.
+- **Refrescar todo sin conocer a nadie**: cada colección se anota en `ProveedorDeAplicacion` con `registrarRecarga`, así una importación que toca varios módulos a la vez —el `OBJ.dat`, que trae objetos y crea animaciones— refresca lo que esté montado sin importar un solo módulo.
 - **Composición entre módulos en la página**: `app/animaciones/PantallaAnimaciones.tsx` le pasa a `EditorDeHojas` un `renderUso` que muestra «Usada por: …» con datos de Objetos. Gráficos no sabe que Objetos existe; la página los junta.
 
 La interfaz de Objetos **sí** usa piezas de la interfaz de Gráficos (`DibujoDeFrame`, `useGraficos`) para dibujar. Es una decisión consciente: el desacople estricto está en el dominio, que es donde más importa.
