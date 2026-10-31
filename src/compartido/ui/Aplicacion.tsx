@@ -1,6 +1,8 @@
 "use client";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import type { Telemetria } from "@/compartido/aplicacion/Telemetria";
+import { usePathname } from "next/navigation";
+import { pantallaDe, type Telemetria } from "@/compartido/aplicacion/Telemetria";
+import { clasificarError } from "@/compartido/infraestructura/clasificarError";
 import { contenedorCliente, telemetria, type ContenedorCliente } from "@/contenedor/cliente";
 import { Cargando } from "./componentes";
 
@@ -16,6 +18,11 @@ interface ValorAplicacion {
    * pantallas no sepan cuál les toca: en los tests se inyecta la de memoria y nadie se entera.
    */
   telemetria: Telemetria;
+  /**
+   * Mide que algo se rompió, sin mandar qué decía. Lo llama `intentar` solo; afuera lo usa el
+   * boundary de `app/error.tsx`, que es el otro lugar donde llegan errores.
+   */
+  medirError: (e: unknown) => void;
   avisar: (mensaje: string) => void;
   /**
    * Ejecuta una acción y muestra el error como aviso si falla. Devuelve undefined en ese caso.
@@ -82,16 +89,47 @@ export function ProveedorDeAplicacion({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  /*
+   * Los errores, medidos donde de verdad pasan.
+   *
+   * `intentar` es el embudo: todo lo que puede fallar en el editor —leer, guardar, importar,
+   * exportar, redimensionar— pasa por acá y termina como un aviso. Un error boundary solo no
+   * alcanzaría: atrapa las caídas al renderizar, que son las menos, y no ve nada de esto.
+   *
+   * La ruta va en un ref y no en las dependencias a propósito. Si `intentar` cambiara con cada
+   * navegación, cambiaría con él el valor del contexto, y eso vuelve a renderizar la app entera
+   * cada vez que se cambia de pestaña. Es la misma razón por la que `enVuelo` quedó afuera.
+   *
+   * Y se mide una vez por pantalla y por clase de error. No es por ahorrar: el JSON de la vista
+   * previa se recalcula con cada tecla, así que un error ahí se repetiría cientos de veces y
+   * taparía todo lo demás. Lo que interesa es que pasó y dónde, no cuántas veces.
+   */
+  const ruta = usePathname();
+  const rutaActual = useRef(ruta);
+  rutaActual.current = ruta;
+  const erroresMedidos = useRef(new Set<string>());
+
+  const medirError = useCallback((e: unknown) => {
+    const error = clasificarError(e);
+    if (!error) return;
+    const pantalla = pantallaDe(rutaActual.current);
+    const clave = `${pantalla}/${error}`;
+    if (erroresMedidos.current.has(clave)) return;
+    erroresMedidos.current.add(clave);
+    telemetria.medir({ tipo: "error inesperado", pantalla, error });
+  }, []);
+
   const intentar = useCallback(
     async <T,>(fn: () => Promise<T>, etiqueta?: string) => {
       try {
         return etiqueta ? await conEtiqueta(etiqueta, fn) : await fn();
       } catch (e) {
         avisar(e instanceof Error ? e.message : String(e));
+        medirError(e);
         return undefined;
       }
     },
-    [avisar, conEtiqueta],
+    [avisar, conEtiqueta, medirError],
   );
 
   const recargas = useRef(new Set<() => Promise<void>>());
@@ -110,8 +148,8 @@ export function ProveedorDeAplicacion({ children }: { children: ReactNode }) {
   );
 
   const valor = useMemo(
-    () => ({ casos: contenedorCliente(), telemetria, avisar, intentar, registrarRecarga, recargarTodo }),
-    [avisar, intentar, registrarRecarga, recargarTodo],
+    () => ({ casos: contenedorCliente(), telemetria, medirError, avisar, intentar, registrarRecarga, recargarTodo }),
+    [medirError, avisar, intentar, registrarRecarga, recargarTodo],
   );
 
   return (

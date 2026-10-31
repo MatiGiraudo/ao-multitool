@@ -231,7 +231,7 @@ El sitio publicado mide uso, y conviene saber exactamente qué.
 **Las visitas**: cuánta gente entra, de qué país, con qué navegador y qué pestañas abre, más cuánto
 tarda la app en cargar y en responder. Eso lo cuentan Vercel Web Analytics y Speed Insights.
 
-**Cinco eventos propios**, que son los que contestan lo que las visitas no dicen:
+**Seis eventos propios**, que son los que contestan lo que las visitas no dicen:
 
 | Evento | Qué dice |
 |---|---|
@@ -240,17 +240,25 @@ tarda la app en cargar y en responder. Eso lo cuentan Vercel Web Analytics y Spe
 | `mundo medido` | Con qué tamaño de proyecto se trabaja, en tramos: `11-100`, `1000+` |
 | `exportado` | Qué partes del mundo se llevan |
 | `importado` | Qué paso del importador del clásico corrió y si salió bien |
+| `error inesperado` | Qué clase de error se rompió y en qué pantalla |
 
 Los recibe [Umami](https://umami.is), que no usa cookies ni guarda nada que identifique a nadie: por
 eso no hay cartel de consentimiento que aceptar.
 
 Lo que **no** sale, y no tiene por dónde salir: ningún archivo, ningún nombre de archivo, ninguna
-imagen, ningún dato de lo que estás editando, ni el mensaje de ningún error —que acá trae rutas de
-tu disco—. Los eventos son una unión cerrada de TypeScript donde cada campo es otra unión cerrada:
-no hay un solo lugar donde quepa un texto libre, así que no es que nos acordemos de no mandar nada,
-es que no hay dónde ponerlo. Está en
+imagen, ningún dato de lo que estás editando, ni el mensaje de ningún error —que acá trae nombres de
+tus hojas y rutas de tu disco—. Los eventos son una unión cerrada de TypeScript donde cada campo es
+otra unión cerrada: no hay un solo lugar donde quepa un texto libre, así que no es que nos acordemos
+de no mandar nada, es que no hay dónde ponerlo. Está en
 [`src/compartido/aplicacion/Telemetria.ts`](src/compartido/aplicacion/Telemetria.ts). Los tamaños
 van en tramos por lo mismo: un número exacto identifica a una persona entre pocas.
+
+De los errores sale la clase y nada más: si fue una regla del editor, un permiso de carpeta que el
+navegador retiró, un archivo que ya no está, quedarse sin espacio, quedarse sin memoria, la red, o
+algo sin clasificar. El mensaje **se lee en tu máquina** para decidir cuál de esas clases es —sin
+mirarlo, medio error de red sería indistinguible de un bug— y lo único que viaja es la clase. Está
+en [`clasificarError.ts`](src/compartido/infraestructura/clasificarError.ts), y cancelar no cuenta
+como error: cerrar el selector de carpetas no mide nada.
 
 Y si levantás el editor en tu máquina, que es el modo por defecto, **no se mide nada**: no se baja
 ningún script de medición ni sale un solo pedido. Son dos condiciones en
