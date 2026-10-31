@@ -1,0 +1,85 @@
+# Guarda el tráfico del repositorio antes de que GitHub lo tire.
+#
+# GitHub guarda catorce días de clones y de visitas. Esto los baja una vez por semana y los
+# acumula en docs/metricas/trafico.json, que es el único lugar donde queda registro de la gente
+# que se clona el repo y corre el editor en su máquina: ésos no aparecen —ni tienen por qué— en
+# la medición del sitio publicado.
+#
+# Una semana da margen de sobra sobre la ventana de catorce días: se puede saltear una corrida
+# sin perder nada.
+#
+# Ojo con dos cosas de GitHub Actions:
+#
+#   - Los workflows programados se desactivan solos si el repositorio pasa 60 días sin actividad.
+#     Si alguna semana no corre, es lo primero que hay que mirar.
+#   - El cron de GitHub no es puntual; puede correr bastante más tarde que la hora pedida. Para
+#     esto da igual.
+name: Tráfico del repositorio
+
+on:
+  schedule:
+    # Lunes a las 6 UTC, que son las 3 de la mañana en Argentina.
+    - cron: "0 6 * * 1"
+  # Para correrlo a mano desde la pestaña Actions, que es lo que conviene la primera vez.
+  workflow_dispatch:
+
+permissions:
+  # Para poder commitear el archivo. La API de tráfico no se lee con este token: ver abajo.
+  contents: write
+
+jobs:
+  juntar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # La API de tráfico pide permiso de escritura sobre el repositorio, y eso el GITHUB_TOKEN de
+      # Actions no lo puede tener: `administration` no está entre los permisos que se le pueden dar.
+      # Hace falta un token propio, así que si falta conviene decirlo claro y no fallar con un 403
+      # pelado seis meses después de haber escrito esto.
+      - name: Revisar que esté el token
+        env:
+          TRAFICO_TOKEN: ${{ secrets.TRAFICO_TOKEN }}
+        run: |
+          if [ -z "$TRAFICO_TOKEN" ]; then
+            echo "::error::Falta el secreto TRAFICO_TOKEN. Es un token propio con permiso de lectura"
+            echo "::error::sobre Administration del repositorio (o un token clásico con el scope 'repo'):"
+            echo "::error::la API de tráfico no se puede leer con el GITHUB_TOKEN de Actions."
+            echo "::error::Se agrega en Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+
+      - name: Bajar el tráfico
+        env:
+          GH_TOKEN: ${{ secrets.TRAFICO_TOKEN }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/traffic/clones" > "$RUNNER_TEMP/clones.json"
+          gh api "repos/$GITHUB_REPOSITORY/traffic/views" > "$RUNNER_TEMP/vistas.json"
+          gh api "repos/$GITHUB_REPOSITORY" > "$RUNNER_TEMP/repo.json"
+
+      # Los tres JSON crudos quedan en el temporal del runner y no en el repositorio: así no hay
+      # manera de que se cuelen en el commit.
+      - name: Juntarlo con lo que ya había
+        run: |
+          node scripts/juntar-trafico.mjs \
+            "$RUNNER_TEMP/clones.json" \
+            "$RUNNER_TEMP/vistas.json" \
+            "$RUNNER_TEMP/repo.json" \
+            docs/metricas/trafico.json
+
+      # `git add docs/metricas` y nada más: data/ es la carpeta de trabajo de quien use el editor y
+      # este workflow no tiene nada que hacer ahí.
+      #
+      # El `[skip ci]` es para que el commit no dispare un deploy de Vercel: es un JSON de métricas,
+      # el sitio no cambia.
+      - name: Commitear si cambió algo
+        run: |
+          if git diff --quiet -- docs/metricas; then
+            echo "Los números son los mismos: no hay nada que commitear."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/metricas
+          git commit -m "Tráfico del repositorio hasta el $(date -u +%F) [skip ci]"
+          git push

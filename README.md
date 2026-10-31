@@ -270,6 +270,23 @@ de Umami en `NEXT_PUBLIC_AO_UMAMI_ID`: los números son tuyos y no pasan por ac�
 `NEXT_PUBLIC_AO_UMAMI_SRC` podés apuntar a un Umami hospedado por vos en lugar de a su nube, que
 además tiene la ventaja de que los bloqueadores no lo cortan.
 
+### Los que lo corren en su máquina
+
+Todo lo de arriba es del sitio publicado. La otra mitad del público probable se clona el repositorio
+y corre el editor en su máquina, donde **no se mide nada**, y está bien que no se mida. De ésos lo
+único que se puede saber es el tráfico del repositorio: clones, visitas, estrellas y forks.
+
+GitHub guarda **catorce días** de eso y después lo tira. Así que hay un workflow,
+[`trafico.yml`](.github/workflows/trafico.yml), que una vez por semana lo baja y lo acumula en
+`docs/metricas/trafico.json`, indexado por fecha: una semana da margen de sobra sobre la ventana de
+catorce días, y correrlo de nuevo no duplica ni pierde nada.
+
+Hace falta un token propio en el secreto `TRAFICO_TOKEN`, porque la API de tráfico pide permiso de
+escritura sobre el repositorio y el `GITHUB_TOKEN` de Actions no lo puede tener. Sirve uno de grano
+fino con lectura de **Administration**, o uno clásico con el scope `repo`, y va en *Settings →
+Secrets and variables → Actions*. Sin ese secreto el workflow falla con un mensaje que explica
+exactamente esto, en vez de no hacer nada en silencio.
+
 ## Para desarrollar
 
 | Comando | Para qué sirve |
