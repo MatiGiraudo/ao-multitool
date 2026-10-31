@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { tramoDe } from "@/compartido/aplicacion/Telemetria";
 import { useAplicacion } from "@/compartido/ui/Aplicacion";
 import { BotonArchivos, BotonConfirmar, CampoNumero, Cargando } from "@/compartido/ui/componentes";
 import type { EstadoGuardado } from "@/compartido/ui/useColeccionEditable";
@@ -45,7 +46,7 @@ interface Abierto {
 }
 
 export function PantallaMapas() {
-  const { casos, avisar, intentar } = useAplicacion();
+  const { casos, avisar, intentar, telemetria } = useAplicacion();
   const [trios, setTrios] = useState<Trio[]>([]);
   const [abierto, setAbierto] = useState<Abierto | null>(null);
   const [abriendo, setAbriendo] = useState<number | null>(null);
@@ -109,10 +110,18 @@ export function PantallaMapas() {
     [casos],
   );
 
+  /* Los mapas no pasan por `useColeccionEditable`, así que su tamaño se mide acá. Ver el puerto. */
+  const medidos = useRef(false);
+
   const refrescarGuardados = useCallback(async () => {
     const lista = await intentar(() => casos.mapas.listarGuardados.ejecutar());
-    if (lista) setGuardados(lista);
-  }, [casos, intentar]);
+    if (!lista) return;
+    setGuardados(lista);
+    if (!medidos.current) {
+      medidos.current = true;
+      telemetria.medir({ tipo: "mundo medido", coleccion: "mapas", tamanio: tramoDe(lista.length) });
+    }
+  }, [casos, intentar, telemetria]);
 
   useEffect(() => {
     void refrescarGuardados();

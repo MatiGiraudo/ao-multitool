@@ -45,6 +45,7 @@ export function ProveedorDeNpcs({ children, catalogos = CATALOGOS_VACIOS }: { ch
     claveDe: (n) => n.clave,
     listar: () => c.listar.ejecutar(),
     guardar: (n) => c.guardar.ejecutar(n),
+    medirComo: "npcs",
   });
 
   const valor = useMemo<ValorNpcs>(

@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { tramoDe, type Coleccion } from "@/compartido/aplicacion/Telemetria";
 import { useAplicacion } from "./Aplicacion";
 
 /*
@@ -52,8 +53,16 @@ export function useColeccionEditable<T>(opciones: {
   demoraMs?: number;
   /** Con qué nombre recordar la lista entre pantallas (ver `recordadas`). */
   recordarComo?: string;
+  /**
+   * Con qué nombre medir el tamaño de esta colección, si se mide.
+   *
+   * Se mide acá, y no en cada pantalla, porque acá ya está la lista leída: no cuesta una lectura
+   * más. Y va en tramos («101-1000»), una vez por sesión, para contestar una sola pregunta: si el
+   * editor aguanta proyectos de verdad o sólo pruebas de diez objetos.
+   */
+  medirComo?: Coleccion;
 }): ColeccionEditable<T> {
-  const { intentar, registrarRecarga } = useAplicacion();
+  const { intentar, registrarRecarga, telemetria } = useAplicacion();
   const demora = opciones.demoraMs ?? 400;
 
   // Los callbacks se leen siempre en su versión más nueva, así el hook no se recrea con cada render.
@@ -67,11 +76,21 @@ export function useColeccionEditable<T>(opciones: {
   const pendientes = useRef(new Map<string, { item: T; timer: ReturnType<typeof setTimeout> }>());
   const enVuelo = useRef(0);
 
+  // Una vez por colección y por sesión: interesa con qué mundo se trabaja, no cada relectura.
+  const medida = useRef(false);
+
   const recargar = useCallback(async () => {
     const lista = await intentar(() => ops.current.listar());
-    if (lista) setItems(lista);
+    if (lista) {
+      setItems(lista);
+      const coleccion = ops.current.medirComo;
+      if (coleccion && !medida.current) {
+        medida.current = true;
+        telemetria.medir({ tipo: "mundo medido", coleccion, tamanio: tramoDe(lista.length) });
+      }
+    }
     setCargando(false);
-  }, [intentar]);
+  }, [intentar, telemetria]);
 
   useEffect(() => {
     void recargar();

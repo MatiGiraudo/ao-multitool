@@ -1,7 +1,9 @@
 "use client";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import type { NavegadorSinCarpetas } from "@/compartido/aplicacion/Telemetria";
 import { CarpetaDelProyecto, type EstadoDeLaCarpeta } from "@/compartido/infraestructura/carpeta/CarpetaDelProyecto";
 import { carpetaDelProyecto, MODO_DE_DATOS } from "@/contenedor/cliente";
+import { useAplicacion } from "./Aplicacion";
 import { Cargando } from "./componentes";
 
 /*
@@ -13,6 +15,7 @@ import { Cargando } from "./componentes";
  * montar las pantallas antes sería mostrar siete herramientas vacías que fallan al tocarlas.
  */
 export function PuertaDeCarpeta({ children }: { children: ReactNode }) {
+  const { telemetria } = useAplicacion();
   const [estado, setEstado] = useState<EstadoDeLaCarpeta | "mirando">("mirando");
   const [error, setError] = useState("");
 
@@ -27,6 +30,32 @@ export function PuertaDeCarpeta({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (MODO_DE_DATOS === "carpeta" && CarpetaDelProyecto.disponible) void mirar();
   }, [mirar]);
+
+  /*
+   * Lo único que vale la pena medir de esta pantalla: quién la pasa y quién se queda afuera.
+   *
+   * «Carpeta elegida» es la medida de uso real del editor, y no las visitas: entrar a la dirección
+   * no cuesta nada, y abrir una carpeta es ponerse a trabajar. Va con el estado "lista" y no con el
+   * clic en el botón porque a la carpeta se llega de tres maneras —recuperada, elegida de nuevo o
+   * con el permiso repedido— y las tres son lo mismo acá.
+   *
+   * «Navegador sin soporte» es la otra cara: cuánta gente rebota por estar en Firefox o en Safari.
+   * Es el número que decide si vale la pena ofrecerles otra forma de entrar o no.
+   *
+   * Una sola vez por sesión, de ahí el ref.
+   */
+  const medido = useRef(false);
+
+  useEffect(() => {
+    if (medido.current || MODO_DE_DATOS !== "carpeta") return;
+    if (!CarpetaDelProyecto.disponible) {
+      medido.current = true;
+      telemetria.medir({ tipo: "navegador sin soporte", navegador: cualNavegador() });
+    } else if (estado === "lista") {
+      medido.current = true;
+      telemetria.medir({ tipo: "carpeta elegida" });
+    }
+  }, [estado, telemetria]);
 
   if (MODO_DE_DATOS !== "carpeta") return <>{children}</>;
 
@@ -97,4 +126,19 @@ export function PuertaDeCarpeta({ children }: { children: ReactNode }) {
       </section>
     </main>
   );
+}
+
+/*
+ * Cuál es el navegador que no abre carpetas. Sólo para saber a quién le estamos cerrando la puerta:
+ * tres valores y nada más, ni versión ni sistema ni el user agent entero.
+ *
+ * Chrome y Edge también dicen «Safari» en el user agent; el verdadero Safari es el que no dice
+ * «Chrom». De todos modos acá sólo llegan los navegadores sin la API de carpetas, así que los
+ * basados en Chromium no deberían aparecer.
+ */
+function cualNavegador(): NavegadorSinCarpetas {
+  const ua = navigator.userAgent;
+  if (ua.includes("Firefox/")) return "firefox";
+  if (ua.includes("Safari/") && !ua.includes("Chrom")) return "safari";
+  return "otro";
 }

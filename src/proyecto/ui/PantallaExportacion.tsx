@@ -21,7 +21,7 @@ const ETIQUETAS: { clave: keyof QueExportar; titulo: string; ayuda: string }[] =
   { clave: "clasico", titulo: "Archivos del AO clásico", ayuda: "El OBJ.dat, con todo lo que el editor no entiende en su lugar." },
 ];
 export function PantallaExportacion() {
-  const { casos, avisar, intentar } = useAplicacion();
+  const { casos, avisar, intentar, telemetria } = useAplicacion();
   const [archivos, setArchivos] = useState<ArchivoExportado[] | null>(null);
   const [guardado, setGuardado] = useState<ResultadoDeGuardado | null>(null);
   const [guardando, setGuardando] = useState(false);
@@ -44,6 +44,14 @@ export function PantallaExportacion() {
     if (!r) return;
     setGuardado(r);
     avisar(`${r.escritos} archivos escritos en ${r.carpeta}.`);
+    /*
+     * Qué partes se llevó, una por parte marcada. Lo interesante es cuál: son cuatro cosas
+     * distintas y casi nadie quiere las cuatro. Se mide al guardar y no al armar, porque armar
+     * pasa solo al entrar a la pantalla y guardar es la decisión.
+     *
+     * Las claves son las de `QueExportar`; si allá aparece una quinta, esto deja de compilar.
+     */
+    for (const { clave } of ETIQUETAS) if (que[clave]) telemetria.medir({ tipo: "exportado", que: clave });
   };
 
   const total = archivos?.reduce((n, a) => n + a.contenido.length, 0) ?? 0;

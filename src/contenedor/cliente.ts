@@ -1,5 +1,9 @@
 "use client";
+import type { Telemetria } from "@/compartido/aplicacion/Telemetria";
 import { GeneradorDeIdsAleatorio } from "@/compartido/infraestructura/GeneradorDeIdsAleatorio";
+import { SE_MIDEN_EVENTOS } from "@/compartido/infraestructura/medicion";
+import { TelemetriaSilenciosa } from "@/compartido/infraestructura/TelemetriaSilenciosa";
+import { TelemetriaUmami } from "@/compartido/infraestructura/navegador/TelemetriaUmami";
 import {
   CargarHojasEnLote,
   CrearHojaDesdeImagen,
@@ -157,6 +161,15 @@ import { LectorAoProj } from "@/proyecto/infraestructura/LectorAoProj";
  */
 export type ModoDeDatos = "servidor" | "carpeta";
 export const MODO_DE_DATOS: ModoDeDatos = process.env.NEXT_PUBLIC_AO_MODO === "carpeta" ? "carpeta" : "servidor";
+
+/*
+ * La medición de uso, elegida igual que los repositorios: un puerto y dos adaptadores.
+ *
+ * En el sitio publicado mide; en tu máquina, en desarrollo y en los tests, la silenciosa no hace
+ * nada. Las pantallas no saben cuál les toca, así que no hay un solo `if` de medición en la
+ * interfaz: o se mide todo o no se mide nada.
+ */
+export const telemetria: Telemetria = SE_MIDEN_EVENTOS ? new TelemetriaUmami() : new TelemetriaSilenciosa();
 
 /** La carpeta elegida, compartida por todos los adaptadores del modo carpeta. */
 export const carpetaDelProyecto = new CarpetaDelProyecto();

@@ -1,5 +1,6 @@
 "use client";
 import { createContext, useContext, useMemo, type ReactNode } from "react";
+import type { Coleccion } from "@/compartido/aplicacion/Telemetria";
 import type { CatalogoGrafico } from "@/compartido/dominio/CatalogoGrafico";
 import type { ReferenciaGrafica } from "@/compartido/dominio/ReferenciaGrafica";
 import { useAplicacion } from "@/compartido/ui/Aplicacion";
@@ -47,13 +48,15 @@ interface ValorApariencias {
 
 const Contexto = createContext<ValorApariencias | null>(null);
 
-function useEspecie<T extends Apariencia>(nombre: string, casos: CasosDeEspecie<T>, catalogo: CatalogoGrafico): ColeccionDeApariencias<T> {
+/* El `nombre` es "cuerpos" o "cabezas": sirve de clave para recordar la lista y de nombre al medirla. */
+function useEspecie<T extends Apariencia>(nombre: Coleccion, casos: CasosDeEspecie<T>, catalogo: CatalogoGrafico): ColeccionDeApariencias<T> {
   const { intentar } = useAplicacion();
   const { items, cargando, estadoGuardado, actualizar, poner, quitar, cancelarPendiente, guardarPendientes, recargar } = useColeccionEditable<T>({
     claveDe: (x) => x.clave,
     listar: () => casos.listar.ejecutar(),
     guardar: (x) => casos.guardar.ejecutar(x),
     recordarComo: nombre,
+    medirComo: nombre,
   });
 
   return useMemo(

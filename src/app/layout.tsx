@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { ProveedorDeAplicacion } from "@/compartido/ui/Aplicacion";
 import { PuertaDeCarpeta } from "@/compartido/ui/PuertaDeCarpeta";
+import { Analitica } from "./_componentes/Analitica";
 import { Encabezado } from "./_componentes/Encabezado";
 import "./globals.css";
 
@@ -14,7 +15,8 @@ export const metadata: Metadata = {
  * La carpeta app/ es sólo la "capa de entrega" de Next: rutas, layout y API.
  * Toda la lógica vive en los módulos (graficos/, objetos/, proyecto/) que están al lado.
  *
- * Acá va únicamente lo que necesita TODA la app: el contenedor de casos de uso y los avisos.
+ * Acá va únicamente lo que necesita TODA la app: el contenedor de casos de uso, los avisos y
+ * la medición de uso del sitio publicado.
  * Los proveedores de cada módulo los monta su propia página, así una pestaña no carga los datos
  * de las otras (con siete herramientas eso se nota).
  */
@@ -34,6 +36,8 @@ export default function Layout({ children }: { children: ReactNode }) {
           {/* En el modo carpeta, las pantallas no se montan hasta que haya una carpeta elegida. */}
           <PuertaDeCarpeta>{children}</PuertaDeCarpeta>
         </ProveedorDeAplicacion>
+        {/* No es parte de la app: sólo se monta en el sitio publicado. Ver Analitica.tsx. */}
+        <Analitica />
       </body>
     </html>
   );

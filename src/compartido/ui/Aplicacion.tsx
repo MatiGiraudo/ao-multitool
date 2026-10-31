@@ -1,6 +1,7 @@
 "use client";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { contenedorCliente, type ContenedorCliente } from "@/contenedor/cliente";
+import type { Telemetria } from "@/compartido/aplicacion/Telemetria";
+import { contenedorCliente, telemetria, type ContenedorCliente } from "@/contenedor/cliente";
 import { Cargando } from "./componentes";
 
 /*
@@ -10,6 +11,11 @@ import { Cargando } from "./componentes";
 
 interface ValorAplicacion {
   casos: ContenedorCliente;
+  /**
+   * La medición de uso. Viaja por el contexto, y no importada del contenedor, para que las
+   * pantallas no sepan cuál les toca: en los tests se inyecta la de memoria y nadie se entera.
+   */
+  telemetria: Telemetria;
   avisar: (mensaje: string) => void;
   /**
    * Ejecuta una acción y muestra el error como aviso si falla. Devuelve undefined en ese caso.
@@ -104,7 +110,7 @@ export function ProveedorDeAplicacion({ children }: { children: ReactNode }) {
   );
 
   const valor = useMemo(
-    () => ({ casos: contenedorCliente(), avisar, intentar, registrarRecarga, recargarTodo }),
+    () => ({ casos: contenedorCliente(), telemetria, avisar, intentar, registrarRecarga, recargarTodo }),
     [avisar, intentar, registrarRecarga, recargarTodo],
   );
 

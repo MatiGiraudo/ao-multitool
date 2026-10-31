@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
+import type { PasoDeImportacion } from "@/compartido/aplicacion/Telemetria";
 import { useAplicacion } from "@/compartido/ui/Aplicacion";
 import { BotonArchivo, PuntosDeCarga } from "@/compartido/ui/componentes";
 import { descargar } from "@/compartido/ui/utilidades";
@@ -24,7 +25,7 @@ import { textoDeArchivoClasico } from "../infraestructura/navegador/textoDeArchi
  * queda anotado, cargás esa imagen y volvés a importar.
  */
 export function PantallaImportacion() {
-  const { casos, avisar, intentar } = useAplicacion();
+  const { casos, avisar, intentar, telemetria } = useAplicacion();
   const [tabla, setTabla] = useState<ResultadoDeTablaDeGrh | null>(null);
   const [cuerpos, setCuerpos] = useState<ResultadoDeAparienciasClasicas | null>(null);
   const [cabezas, setCabezas] = useState<ResultadoDeAparienciasClasicas | null>(null);
@@ -44,11 +45,20 @@ export function PantallaImportacion() {
   }, [refrescarEstado]);
 
   /** Todos los pasos hacen lo mismo: leer el archivo, importarlo, guardar el resultado y avisar. */
-  function importador<T>(paso: string, correr: (texto: string) => Promise<T>, guardar: (r: T) => void, mensaje: (r: T) => string) {
+  function importador<T>(paso: PasoDeImportacion, correr: (texto: string) => Promise<T>, guardar: (r: T) => void, mensaje: (r: T) => string) {
     return async (archivo: File) => {
       setOcupado(paso);
       const r = await intentar(async () => correr(await textoDeArchivoClasico(archivo)), `Leyendo ${archivo.name}…`);
       setOcupado("");
+      /*
+       * Qué paso corrió y si salió bien. Es el punto de fricción del editor: son siete pasos, el
+       * primero manda, y el que se traba abandona.
+       *
+       * El motivo del error no se manda, y no es un olvido: sale del archivo de quien lo usa y
+       * puede traer su nombre, su ruta o una línea de sus datos. Con saber cuál de los siete pasos
+       * se rompe alcanza para ir a mirar el parser.
+       */
+      telemetria.medir({ tipo: "importado", paso, resultado: r === undefined || r === null ? "error" : "ok" });
       if (r === undefined || r === null) return;
       guardar(r);
       avisar(mensaje(r));

@@ -107,6 +107,44 @@ Un par de cosas que conviene saber:
 - **El formato es el mismo** que el del modo servidor, así que podés abrir con el modo carpeta la
   misma `data/` que usás en tu máquina, y al revés.
 
+## Qué se mide
+
+El sitio publicado mide uso, y conviene saber exactamente qué.
+
+**Las visitas**: cuánta gente entra, de qué país, con qué navegador y qué pestañas abre, más cuánto
+tarda la app en cargar y en responder. Eso lo cuentan Vercel Web Analytics y Speed Insights.
+
+**Cinco eventos propios**, que son los que contestan lo que las visitas no dicen:
+
+| Evento | Qué dice |
+|---|---|
+| `carpeta elegida` | Cuántos de los que entran abren una carpeta y se ponen a trabajar |
+| `navegador sin soporte` | Cuántos rebotan por estar en Firefox o en Safari |
+| `mundo medido` | Con qué tamaño de proyecto se trabaja, en tramos: `11-100`, `1000+` |
+| `exportado` | Qué partes del mundo se llevan |
+| `importado` | Qué paso del importador del clásico corrió y si salió bien |
+
+Los recibe [Umami](https://umami.is), que no usa cookies ni guarda nada que identifique a nadie: por
+eso no hay cartel de consentimiento que aceptar.
+
+Lo que **no** sale, y no tiene por dónde salir: ningún archivo, ningún nombre de archivo, ninguna
+imagen, ningún dato de lo que estás editando, ni el mensaje de ningún error —que acá trae rutas de
+tu disco—. Los eventos son una unión cerrada de TypeScript donde cada campo es otra unión cerrada:
+no hay un solo lugar donde quepa un texto libre, así que no es que nos acordemos de no mandar nada,
+es que no hay dónde ponerlo. Está en
+[`src/compartido/aplicacion/Telemetria.ts`](src/compartido/aplicacion/Telemetria.ts). Los tamaños
+van en tramos por lo mismo: un número exacto identifica a una persona entre pocas.
+
+Y si levantás el editor en tu máquina, que es el modo por defecto, **no se mide nada**: no se baja
+ningún script de medición ni sale un solo pedido. Son dos condiciones en
+[`src/compartido/infraestructura/medicion.ts`](src/compartido/infraestructura/medicion.ts) —modo
+carpeta y producción— y las dos tienen que darse.
+
+Si te llevás el editor y lo publicás vos, no se mide ningún evento hasta que pongas tu propio sitio
+de Umami en `NEXT_PUBLIC_AO_UMAMI_ID`: los números son tuyos y no pasan por acá. Con
+`NEXT_PUBLIC_AO_UMAMI_SRC` podés apuntar a un Umami hospedado por vos en lugar de a su nube, que
+además tiene la ventaja de que los bloqueadores no lo cortan.
+
 ## Traer los archivos del AO original
 
 En la pestaña **Importar** hay siete pasos, y el primero manda. El `Graficos.ini` arma la tabla de GRH: ahí está, para cada número de gráfico del juego, de qué imagen sale y qué recorte es. Con esa tabla se leen después el `Personajes.ini` y el `Cabezas.ini` (los cuerpos y las cabezas, con sus cuatro direcciones y el corrimiento de la cabeza), el `Fxs.ini` y el `OBJ.dat`, que trae todos los objetos con su nombre, tipo, valor, banderas y atributos, y les vincula el icono creando en cada hoja las animaciones que hagan falta (las llama `grh505` y así). El `Hechizos.dat` y el `NPCs.dat` no necesitan el paso 1: apuntan al FX y a los cuerpos por número, igual que acá.

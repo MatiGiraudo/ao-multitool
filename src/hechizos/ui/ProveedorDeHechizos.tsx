@@ -38,6 +38,7 @@ export function ProveedorDeHechizos({ children, fx = CATALOGO_VACIO }: { childre
     listar: () => c.listar.ejecutar(),
     guardar: (h) => c.guardar.ejecutar(h),
     recordarComo: "hechizos",
+    medirComo: "hechizos",
   });
 
   const valor = useMemo<ValorHechizos>(
