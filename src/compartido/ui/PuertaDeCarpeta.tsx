@@ -16,7 +16,7 @@ import { Cargando } from "./componentes";
  */
 export function PuertaDeCarpeta({ children }: { children: ReactNode }) {
   const { telemetria } = useAplicacion();
-  const [estado, setEstado] = useState<EstadoDeLaCarpeta | "mirando">("mirando");
+  const [estado, setEstado] = useState<EstadoDeLaCarpeta | "mirando" | "sin-soporte">("mirando");
   const [error, setError] = useState("");
 
   const mirar = useCallback(async () => {
@@ -28,7 +28,9 @@ export function PuertaDeCarpeta({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (MODO_DE_DATOS === "carpeta" && CarpetaDelProyecto.disponible) void mirar();
+    if (MODO_DE_DATOS !== "carpeta") return;
+    if (!CarpetaDelProyecto.disponible) setEstado("sin-soporte");
+    else void mirar();
   }, [mirar]);
 
   /*
@@ -48,7 +50,7 @@ export function PuertaDeCarpeta({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (medido.current || MODO_DE_DATOS !== "carpeta") return;
-    if (!CarpetaDelProyecto.disponible) {
+    if (estado === "sin-soporte") {
       medido.current = true;
       telemetria.medir({ tipo: "navegador sin soporte", navegador: cualNavegador() });
     } else if (estado === "lista") {
@@ -59,7 +61,23 @@ export function PuertaDeCarpeta({ children }: { children: ReactNode }) {
 
   if (MODO_DE_DATOS !== "carpeta") return <>{children}</>;
 
-  if (!CarpetaDelProyecto.disponible) {
+  /*
+   * Acá importa el orden, y es la diferencia entre hidratar bien y no.
+   *
+   * `MODO_DE_DATOS` se decide al compilar, así que el servidor y el navegador coinciden siempre y
+   * ese `return` de arriba es seguro. `CarpetaDelProyecto.disponible` no: pregunta por
+   * `showDirectoryPicker`, que en el servidor no existe. Cuando se decidía al renderizar, el HTML
+   * prerenderizado era el de «este navegador no puede abrir carpetas» —el que le llegaba, por un
+   * instante, a todo el mundo— y el cliente dibujaba otra cosa. React no podía hidratar eso y
+   * rehacía el árbol entero en cada carga.
+   *
+   * Ahora "mirando" es lo primero: es lo único que el servidor puede afirmar, y es lo mismo que
+   * dibuja el navegador en su primer render. Qué navegador es y si había una carpeta lo resuelve el
+   * efecto de arriba, ya montado, que es el único que puede.
+   */
+  if (estado === "mirando") return <Cargando bloque>Buscando la carpeta del proyecto…</Cargando>;
+
+  if (estado === "sin-soporte") {
     return (
       <main className="layout">
         <section className="panel">
@@ -74,7 +92,6 @@ export function PuertaDeCarpeta({ children }: { children: ReactNode }) {
     );
   }
 
-  if (estado === "mirando") return <Cargando bloque>Buscando la carpeta del proyecto…</Cargando>;
   if (estado === "lista") return <>{children}</>;
 
   const elegir = async () => {
