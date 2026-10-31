@@ -8,8 +8,15 @@
  *
  * El archivo se indexa por fecha, así que correrlo de nuevo no duplica ni pierde: los días que ya
  * estaban quedan como están y los nuevos se suman. Volver a correrlo el mismo día corrige el
- * número de hoy, que llega incompleto. Un día que no está es un día sin actividad: la API no los
- * manda, y guardar catorce ceros por semana sería engordar el archivo para no decir nada.
+ * número de hoy, que llega incompleto.
+ *
+ * Los días en cero sí se guardan. La primera corrida de verdad mostró que la API los manda —manda
+ * los catorce, con ceros y todo—, y conviene quedárselos: así un día en cero («no pasó nada») se
+ * distingue de un día que no está («esa semana el workflow no corrió»), que es justo lo que uno
+ * quiere saber cuando mira un hueco en la serie.
+ *
+ * También mostró que la ventana que devuelve termina un par de días antes de hoy, así que el día
+ * de hoy no viene y no hay nada que corregir de él: lo completa la corrida siguiente.
  *
  * No lleva fecha de actualización a propósito. Sería un campo que cambia todas las semanas aunque
  * no haya pasado nada, y entonces el workflow commitearía siempre: cuándo corrió ya lo dice el
