@@ -2,7 +2,8 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import type { PasoDeImportacion } from "@/compartido/aplicacion/Telemetria";
 import { useAplicacion } from "@/compartido/ui/Aplicacion";
-import { BotonArchivo, PuntosDeCarga } from "@/compartido/ui/componentes";
+import { PuntosDeCarga } from "@/compartido/ui/componentes";
+import { BotonArchivoRecordado } from "@/compartido/ui/SelectoresRecordados";
 import { descargar } from "@/compartido/ui/utilidades";
 import { BotonCargarCarpeta } from "@/graficos/ui/BotonCargarCarpeta";
 import type {
@@ -23,7 +24,21 @@ import { textoDeArchivoClasico } from "../infraestructura/navegador/textoDeArchi
  * datos, que la usan para traducir sus números de gráfico a hojas y animaciones. Todos los pasos
  * del 2 en adelante son independientes entre sí y se pueden repetir: lo que no se pudo vincular
  * queda anotado, cargás esa imagen y volvés a importar.
+ *
+ * Y porque se repiten, cada paso recuerda el archivo que elegiste: volver a importar es un clic y
+ * no una vuelta por el selector del sistema, que en una instalación del clásico son cuatro
+ * carpetas de ida y cuatro de vuelta. El archivo se relee del disco cada vez, así que si lo
+ * editaste afuera entra la versión nueva.
  */
+
+/*
+ * Qué deja elegir el selector del sistema en cada paso. El del cliente son `.ini`; los del
+ * servidor, `.dat`; y los pasos del molde aceptan los dos, porque el `OBJ.dat` comparte molde con
+ * los tres `.ini`.
+ */
+const TIPOS_INI: FilePickerAcceptType[] = [{ description: "Archivos .ini del cliente", accept: { "text/plain": [".ini", ".txt"] } }];
+const TIPOS_DAT: FilePickerAcceptType[] = [{ description: "Archivos .dat del servidor", accept: { "text/plain": [".dat", ".txt"] } }];
+const TIPOS_CLASICOS: FilePickerAcceptType[] = [{ description: "Archivos del AO clásico", accept: { "text/plain": [".ini", ".dat", ".txt"] } }];
 export function PantallaImportacion() {
   const { casos, avisar, intentar, telemetria } = useAplicacion();
   const [tabla, setTabla] = useState<ResultadoDeTablaDeGrh | null>(null);
@@ -138,9 +153,15 @@ export function PantallaImportacion() {
             permite que todo lo demás se vincule solo. Se guarda en <code>data/importacion/grh.json</code>, así que se hace una vez.
           </p>
           <div className="row">
-            <BotonArchivo accept=".ini,.txt,text/plain" onArchivo={importarGraficos} className="primary">
-              {ocupado === "graficos" ? <Leyendo /> : "Elegir Graficos.ini…"}
-            </BotonArchivo>
+            <BotonArchivoRecordado
+              clave="clasico-graficos-ini"
+              accept=".ini,.txt,text/plain"
+              tipos={TIPOS_INI}
+              className="primary"
+              etiqueta="Elegir Graficos.ini…"
+              ocupado={ocupado === "graficos" ? <Leyendo /> : undefined}
+              onArchivo={importarGraficos}
+            />
             {tabla && <span className="status">{tabla.grhs.toLocaleString("es-AR")} GRH leídos</span>}
             {tabla && (
               <button onClick={exportarGraficos} title="Incluye los gráficos que el editor fue inventando al pintar mapas">
@@ -203,6 +224,7 @@ export function PantallaImportacion() {
 
         <Paso
           titulo="Paso 2 · Personajes.ini"
+          clave="clasico-personajes-ini"
           boton="Elegir Personajes.ini…"
           ocupado={ocupado === "cuerpos"}
           onArchivo={importarCuerpos}
@@ -223,6 +245,7 @@ export function PantallaImportacion() {
 
         <Paso
           titulo="Paso 3 · Cabezas.ini"
+          clave="clasico-cabezas-ini"
           boton="Elegir Cabezas.ini…"
           ocupado={ocupado === "cabezas"}
           onArchivo={importarCabezas}
@@ -241,7 +264,7 @@ export function PantallaImportacion() {
           )}
         </Paso>
 
-        <Paso titulo="Paso 4 · Fxs.ini" boton="Elegir Fxs.ini…" ocupado={ocupado === "fx"} onArchivo={importarFx} sinTabla={!tabla}>
+        <Paso titulo="Paso 4 · Fxs.ini" clave="clasico-fxs-ini" boton="Elegir Fxs.ini…" ocupado={ocupado === "fx"} onArchivo={importarFx} sinTabla={!tabla}>
           <p className="hint">
             Los efectos visuales, con su animación y su corrimiento. El clásico no les guarda nombre ni repeticiones: quedan como «FX n», se
             reproducen una vez, y el nombre lo cambiás en su ficha.
@@ -254,7 +277,7 @@ export function PantallaImportacion() {
           )}
         </Paso>
 
-        <Paso titulo="Paso 5 · OBJ.dat" boton="Elegir OBJ.dat…" ocupado={ocupado === "objetos"} onArchivo={importarObjetos} sinTabla={!tabla}>
+        <Paso titulo="Paso 5 · OBJ.dat" clave="clasico-obj-dat" boton="Elegir OBJ.dat…" ocupado={ocupado === "objetos"} onArchivo={importarObjetos} sinTabla={!tabla}>
           <p className="hint">
             Todos los objetos con su nombre, tipo, valor, banderas y atributos, y el icono vinculado. Este archivo es del <strong>servidor</strong>:
             en la carpeta del cliente no está.
@@ -275,9 +298,15 @@ export function PantallaImportacion() {
             <code>Paraliza</code>, <code>Target</code>…), y el del cliente sólo el texto que se muestra en pantalla.
           </p>
           <div className="row">
-            <BotonArchivo accept=".dat,.txt,text/plain" onArchivo={importarHechizos} className="primary">
-              {ocupado === "hechizos" ? <Leyendo /> : "Elegir Hechizos.dat…"}
-            </BotonArchivo>
+            <BotonArchivoRecordado
+              clave="clasico-hechizos-dat"
+              accept=".dat,.txt,text/plain"
+              tipos={TIPOS_DAT}
+              className="primary"
+              etiqueta="Elegir Hechizos.dat…"
+              ocupado={ocupado === "hechizos" ? <Leyendo /> : undefined}
+              onArchivo={importarHechizos}
+            />
           </div>
           {hechizos && (
             <>
@@ -305,9 +334,15 @@ export function PantallaImportacion() {
             diagnóstico lo marca.
           </p>
           <div className="row">
-            <BotonArchivo accept=".dat,.txt,text/plain" onArchivo={importarNpcs} className="primary">
-              {ocupado === "npcs" ? <Leyendo /> : "Elegir NPCs.dat…"}
-            </BotonArchivo>
+            <BotonArchivoRecordado
+              clave="clasico-npcs-dat"
+              accept=".dat,.txt,text/plain"
+              tipos={TIPOS_DAT}
+              className="primary"
+              etiqueta="Elegir NPCs.dat…"
+              ocupado={ocupado === "npcs" ? <Leyendo /> : undefined}
+              onArchivo={importarNpcs}
+            />
           </div>
           {npcs && (
             <div className="row">
@@ -324,6 +359,11 @@ export function PantallaImportacion() {
           <p className="hint">
             Importar es incremental: podés hacer el paso 1, cargar algunas imágenes, volver a importar y vincular más gráficos. Nada se duplica — lo
             que tiene el mismo ID se reemplaza y las animaciones ya creadas se reusan.
+          </p>
+          <p className="hint">
+            Los archivos y la carpeta que elegís quedan recordados: la próxima vez el botón dice «Volver a leer…» y no hay que ir a buscarlos otra
+            vez. El navegador pide el permiso de nuevo en cada sesión y sólo puede pedirlo cuando hacés clic, así que el primer clic de cada paso
+            puede abrir ese cartel en lugar de leer.
           </p>
           <h3>Lo que todavía no trae</h3>
           <p className="hint">
@@ -350,6 +390,7 @@ function Leyendo() {
 /** Un paso de los que dependen de la tabla de GRH: todos se ven igual. */
 function Paso({
   titulo,
+  clave,
   boton,
   ocupado,
   onArchivo,
@@ -357,6 +398,8 @@ function Paso({
   children,
 }: {
   titulo: string;
+  /** Con qué nombre recuerda este paso el archivo que elegiste. */
+  clave: string;
   boton: string;
   ocupado: boolean;
   onArchivo: (archivo: File) => void;
@@ -368,9 +411,15 @@ function Paso({
       <h2>{titulo}</h2>
       {children}
       <div className="row">
-        <BotonArchivo accept=".ini,.dat,.txt,text/plain" onArchivo={onArchivo} className="primary">
-          {ocupado ? <Leyendo /> : boton}
-        </BotonArchivo>
+        <BotonArchivoRecordado
+          clave={clave}
+          accept=".ini,.dat,.txt,text/plain"
+          tipos={TIPOS_CLASICOS}
+          className="primary"
+          etiqueta={boton}
+          ocupado={ocupado ? <Leyendo /> : undefined}
+          onArchivo={onArchivo}
+        />
         {sinTabla && <span className="hint">Sin el paso 1 se importan los datos, pero sin gráficos.</span>}
       </div>
     </section>

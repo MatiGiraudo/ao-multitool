@@ -3,7 +3,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { tramoDe } from "@/compartido/aplicacion/Telemetria";
 import { useAplicacion } from "@/compartido/ui/Aplicacion";
 import { conNegroTransparente } from "@/compartido/ui/negroTransparente";
-import { BotonArchivos, BotonConfirmar, CampoNumero, Cargando } from "@/compartido/ui/componentes";
+import { BotonConfirmar, CampoNumero, Cargando } from "@/compartido/ui/componentes";
+import { BotonCarpetaRecordada } from "@/compartido/ui/SelectoresRecordados";
 import type { EstadoGuardado } from "@/compartido/ui/useColeccionEditable";
 import { descargar } from "@/compartido/ui/utilidades";
 import type { GraficosDelMapa } from "../aplicacion/casosDeUso";
@@ -437,9 +438,13 @@ export function PantallaMapas() {
     <main className="mapa-layout">
       <section className="panel">
         <h2>Mapas</h2>
-        <BotonArchivos accept=".map,.inf,.dat" carpeta onArchivos={elegirCarpeta} className="primary">
-          Elegir la carpeta Mundos…
-        </BotonArchivos>
+        <BotonCarpetaRecordada
+          clave="carpeta-mundos"
+          accept=".map,.inf,.dat"
+          className="primary"
+          etiqueta="Elegir la carpeta Mundos…"
+          onArchivos={elegirCarpeta}
+        />
         <p className="hint">Los archivos se leen en tu máquina; lo que edites sale por «Exportar».</p>
         <div className="row">
           <CampoNumero

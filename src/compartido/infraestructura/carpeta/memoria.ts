@@ -1,11 +1,13 @@
 import { CarpetaDelProyecto } from "./CarpetaDelProyecto";
+import type { AlmacenDeHandles } from "./handlesGuardados";
 
 /*
  * Una carpeta de mentira, en memoria.
  *
  * La File System Access API no existe en Node, así que sin esto los adaptadores de carpeta sólo
  * se podrían probar a mano en un navegador. Implementa lo que esos adaptadores usan de los
- * handles —entrar a una carpeta, abrir un archivo, escribirlo, borrarlo y recorrer— y nada más.
+ * handles —entrar a una carpeta, abrir un archivo, escribirlo, borrarlo, recorrer y los permisos—
+ * y nada más.
  */
 
 class ArchivoEnMemoria {
@@ -13,7 +15,16 @@ class ArchivoEnMemoria {
   constructor(
     readonly name: string,
     public contenido: string | Blob | Uint8Array = "",
+    private permiso: PermissionState = "granted",
   ) {}
+
+  async queryPermission(): Promise<PermissionState> {
+    return this.permiso;
+  }
+
+  async requestPermission(): Promise<PermissionState> {
+    return this.permiso === "denied" ? "denied" : (this.permiso = "granted");
+  }
 
   async getFile(): Promise<File> {
     return new File([this.contenido as BlobPart], this.name);
@@ -32,7 +43,18 @@ class ArchivoEnMemoria {
 class CarpetaEnMemoria {
   readonly kind = "directory";
   readonly hijos = new Map<string, CarpetaEnMemoria | ArchivoEnMemoria>();
-  constructor(readonly name = "proyecto") {}
+  constructor(
+    readonly name = "proyecto",
+    private permiso: PermissionState = "granted",
+  ) {}
+
+  async queryPermission(): Promise<PermissionState> {
+    return this.permiso;
+  }
+
+  async requestPermission(): Promise<PermissionState> {
+    return this.permiso === "denied" ? "denied" : (this.permiso = "granted");
+  }
 
   async getDirectoryHandle(nombre: string, opciones?: { create?: boolean }): Promise<CarpetaEnMemoria> {
     const hay = this.hijos.get(nombre);
@@ -89,6 +111,71 @@ export function carpetaDePrueba(): CarpetaDePrueba {
     },
     nombresEn(...ruta: string[]) {
       return [...(bajar(ruta)?.hijos.keys() ?? [])].sort();
+    },
+  };
+}
+
+/*
+ * Lo que hace falta para probar las rutas recordadas: un almacén de handles que no sea IndexedDB
+ * —tampoco existe en Node— y handles sueltos, de una carpeta o de un archivo, como los que
+ * devuelve el selector del sistema.
+ */
+
+export function handlesEnMemoria(): AlmacenDeHandles {
+  const guardados = new Map<string, FileSystemHandle>();
+  return {
+    async guardar(clave, handle) {
+      guardados.set(clave, handle);
+    },
+    async leer(clave) {
+      return guardados.get(clave) ?? null;
+    },
+    async borrar(clave) {
+      guardados.delete(clave);
+    },
+  };
+}
+
+/**
+ * Una carpeta elegida por el usuario, con los archivos que le pongas.
+ *
+ * Las rutas pueden tener subcarpetas (`"cascos/3.png"`): el selector entrega la carpeta entera, y
+ * recorrerla hasta el fondo es justo lo que hay que probar.
+ */
+export function carpetaElegida(nombre: string, rutas: readonly string[], permiso: PermissionState = "granted"): FileSystemDirectoryHandle {
+  const raiz = new CarpetaEnMemoria(nombre, permiso);
+  for (const ruta of rutas) {
+    const partes = ruta.split("/");
+    let actual = raiz;
+    for (const parte of partes.slice(0, -1)) {
+      const hay = actual.hijos.get(parte);
+      if (hay instanceof CarpetaEnMemoria) {
+        actual = hay;
+        continue;
+      }
+      const nueva = new CarpetaEnMemoria(parte);
+      actual.hijos.set(parte, nueva);
+      actual = nueva;
+    }
+    const hoja = partes[partes.length - 1]!;
+    actual.hijos.set(hoja, new ArchivoEnMemoria(hoja));
+  }
+  return raiz as unknown as FileSystemDirectoryHandle;
+}
+
+export interface ArchivoElegido {
+  handle: FileSystemFileHandle;
+  /** Cambia lo que dice el archivo en el disco, como si lo hubieras editado por fuera del editor. */
+  escribir(texto: string): void;
+}
+
+/** Un archivo elegido por el usuario, de los que recuerda cada paso de la importación. */
+export function archivoElegido(nombre: string, texto = "", permiso: PermissionState = "granted"): ArchivoElegido {
+  const archivo = new ArchivoEnMemoria(nombre, texto, permiso);
+  return {
+    handle: archivo as unknown as FileSystemFileHandle,
+    escribir(nuevo) {
+      archivo.contenido = nuevo;
     },
   };
 }

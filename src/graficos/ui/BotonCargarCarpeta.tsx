@@ -1,12 +1,16 @@
 "use client";
 import { useState } from "react";
 import { useAplicacion } from "@/compartido/ui/Aplicacion";
-import { BotonArchivos, PuntosDeCarga } from "@/compartido/ui/componentes";
+import { PuntosDeCarga } from "@/compartido/ui/componentes";
+import { BotonCarpetaRecordada } from "@/compartido/ui/SelectoresRecordados";
 import { cuantas } from "@/compartido/ui/utilidades";
 import type { ResultadoDeLote } from "../aplicacion/casosDeUso";
 
 /** Lo que el selector de archivos deja elegir cuando se piden imágenes sueltas. */
 export const ACEPTA_IMG = "image/png,image/bmp,image/gif,image/webp,image/jpeg";
+
+/** Con qué nombre se recuerda la carpeta elegida. */
+const CLAVE = "carpeta-imagenes";
 
 /** Al elegir una carpeta el navegador entrega todo lo que hay dentro, así que el filtro va acá. */
 const ES_IMAGEN = /\.(png|bmp|gif|webp|jpe?g)$/i;
@@ -21,6 +25,10 @@ const ES_IMAGEN = /\.(png|bmp|gif|webp|jpe?g)$/i;
  *
  * Habla con el caso de uso y después pide `recargarTodo`, en vez de pasar por el proveedor de
  * gráficos: así también sirve en la pantalla de importación, que no monta proveedores.
+ *
+ * La carpeta elegida queda recordada, y la comparten las dos pantallas a propósito: es la misma
+ * `Graficos` del cliente las dos veces, y la que usás en Animaciones es la que la importación
+ * está pidiendo.
  */
 export function BotonCargarCarpeta({
   soloEstas,
@@ -59,16 +67,21 @@ export function BotonCargarCarpeta({
 
   return (
     <>
-      <BotonArchivos carpeta accept={ACEPTA_IMG} className={className} disabled={!!avance} onArchivos={cargar}>
-        {avance ? (
-          <>
-            <PuntosDeCarga />
-            {`Cargando ${avance.hechas.toLocaleString("es-AR")} de ${avance.total.toLocaleString("es-AR")}…`}
-          </>
-        ) : (
-          (etiqueta ?? "Cargar carpeta…")
-        )}
-      </BotonArchivos>
+      <BotonCarpetaRecordada
+        clave={CLAVE}
+        accept={ACEPTA_IMG}
+        className={className}
+        etiqueta={etiqueta ?? "Cargar carpeta…"}
+        onArchivos={cargar}
+        ocupado={
+          avance ? (
+            <>
+              <PuntosDeCarga />
+              {`Cargando ${avance.hechas.toLocaleString("es-AR")} de ${avance.total.toLocaleString("es-AR")}…`}
+            </>
+          ) : undefined
+        }
+      />
       {!!fallidas.length && (
         <p className="hint aviso">
           No se {fallidas.length === 1 ? "pudo" : "pudieron"} leer {cuantas(fallidas.length, "imagen", "imágenes")}:{" "}

@@ -5,13 +5,16 @@
  * suban a ningún lado: el navegador abre un selector de carpetas, el usuario elige la suya, y a
  * partir de ahí los adaptadores leen y escriben ahí mismo con la File System Access API.
  *
- * El permiso se pide una vez por sesión. El handle se guarda en IndexedDB —es lo único que se
- * puede guardar: una ruta en texto no sirve, el navegador no abre archivos por ruta—, así que al
- * volver alcanza con un clic para recuperar el acceso en vez de volver a buscar la carpeta.
+ * El permiso se pide una vez por sesión. El handle se guarda en IndexedDB (`handlesGuardados.ts`),
+ * así que al volver alcanza con un clic para recuperar el acceso en vez de volver a buscar la
+ * carpeta. Las demás rutas que el usuario elige —la carpeta de imágenes, los archivos del
+ * clásico— se recuerdan igual, con `HandleRecordado`, que sale de la misma pieza.
  *
  * El formato en disco es exactamente el mismo que escribe el modo servidor (`data/objetos/…`,
  * `data/graficos/…`), así que la misma carpeta sirve para los dos modos.
  */
+
+import { handlesEnIndexedDb } from "./handlesGuardados";
 
 const CLAVE = "carpeta-del-proyecto";
 
@@ -38,7 +41,7 @@ export class CarpetaDelProyecto {
   async elegir(): Promise<void> {
     const raiz = await window.showDirectoryPicker({ id: "ao-multitool", mode: "readwrite" });
     this.raiz = raiz;
-    await guardarHandle(raiz);
+    await handlesEnIndexedDb.guardar(CLAVE, raiz);
   }
 
   /**
@@ -49,7 +52,7 @@ export class CarpetaDelProyecto {
    * solo. Es a propósito: nadie quiere que una pestaña vieja escriba en su disco sin avisar.
    */
   async recuperar(): Promise<EstadoDeLaCarpeta> {
-    const guardado = await leerHandle();
+    const guardado = (await handlesEnIndexedDb.leer(CLAVE)) as FileSystemDirectoryHandle | null;
     if (!guardado) return "sin-carpeta";
     if ((await guardado.queryPermission({ mode: "readwrite" })) !== "granted") {
       this.raiz = guardado;
@@ -67,7 +70,7 @@ export class CarpetaDelProyecto {
 
   async olvidar(): Promise<void> {
     this.raiz = null;
-    await borrarHandle();
+    await handlesEnIndexedDb.borrar(CLAVE);
   }
 
   // ---------- archivos ----------
@@ -151,37 +154,4 @@ export class CarpetaDelProyecto {
     }
     return actual;
   }
-}
-
-/* IndexedDB a mano: es la única forma de guardar un handle de carpeta (no sobrevive a JSON ni a
- * localStorage), y traer una biblioteca entera para tres operaciones no se justifica. */
-const BASE = "ao-multitool";
-const ALMACEN = "handles";
-
-function conLaBase<T>(fn: (store: IDBObjectStore) => IDBRequest<T>): Promise<T | null> {
-  return new Promise((listo, mal) => {
-    const pedido = indexedDB.open(BASE, 1);
-    pedido.onupgradeneeded = () => pedido.result.createObjectStore(ALMACEN);
-    pedido.onerror = () => mal(pedido.error);
-    pedido.onsuccess = () => {
-      const db = pedido.result;
-      const tx = db.transaction(ALMACEN, "readwrite");
-      const r = fn(tx.objectStore(ALMACEN));
-      r.onsuccess = () => listo(r.result ?? null);
-      r.onerror = () => mal(r.error);
-      tx.oncomplete = () => db.close();
-    };
-  });
-}
-
-async function guardarHandle(handle: FileSystemDirectoryHandle): Promise<void> {
-  await conLaBase((s) => s.put(handle, CLAVE));
-}
-
-function leerHandle(): Promise<FileSystemDirectoryHandle | null> {
-  return conLaBase<FileSystemDirectoryHandle>((s) => s.get(CLAVE) as IDBRequest<FileSystemDirectoryHandle>);
-}
-
-async function borrarHandle(): Promise<void> {
-  await conLaBase((s) => s.delete(CLAVE));
 }

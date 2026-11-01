@@ -125,6 +125,37 @@ una vez, con un componente de lista virtualizada compartido, antes de que NPCs y
   Importar. Lo mismo con los 433 objetos sin gráfico de equipado: son datos que deberían estar donde se
   trabaja, no escondidos en otra pestaña. (Es, en chiquito, el «Diagnóstico del mundo» de la Fase 6.)
 
+## 10. Cada visita empezaba volviendo a buscar los mismos archivos ✅ hecho
+
+El editor lee archivos de otro programa —la carpeta `Graficos` del cliente, los siete archivos del paso
+a paso de Importar, la carpeta `Mundos`— y no los copia, así que cada pestaña que se abría arrancaba
+igual: selector del sistema y cuatro carpetas de ida para llegar a la misma de siempre. En una
+instalación del clásico eso son más clics que el trabajo que venías a hacer, y en Importar se paga
+siete veces, justo en la pantalla que ya era el punto de fricción del editor.
+
+La carpeta del proyecto ya se recordaba desde que existe el modo carpeta (`CarpetaDelProyecto`), y el
+resto no, por nada en particular. Ahora lo hacen todas, con la misma pieza:
+`HandleRecordado` guarda el handle en el mismo IndexedDB (`handlesGuardados.ts`) y
+`BotonArchivoRecordado` / `BotonCarpetaRecordada` dibujan los dos botones que salen de eso —«Volver a
+leer «Personajes.ini»» y «Elegir otro…»— en lugar del `<input type=file>` de antes.
+
+Tres decisiones que valen la pena:
+
+- **Se guarda el handle, no la ruta.** No es una elección: el navegador no abre nada por ruta, y un
+  texto con `C:AOINITPersonajes.ini` no serviría para leer nada. Es a propósito de la API.
+- **El archivo se relee del disco cada vez**, en vez de quedarse con el `File` de la primera. Es justo
+  el caso que hace útil recordarlo —lo editás afuera y volvés a importar—, así que entregar la versión
+  vieja hubiera sido peor que no recordar nada.
+- **Modo lectura**, y no `readwrite` como la carpeta del proyecto. El editor nunca escribe en los
+  archivos del juego: lo que devuelve sale por «Exportar». Pedir escritura sobre la carpeta del cliente
+  es pedir de más, y el navegador lo cuenta con un cartel más serio.
+
+Lo que no se puede evitar es el permiso: el navegador lo pide de nuevo en cada sesión y sólo puede
+pedirlo desde un clic, así que el primer clic de cada paso puede abrir ese cartel en vez de leer. De
+ahí que `recuperar()` distinga «está, pero falta el permiso» de «no hay nada»: con lo primero se
+ofrece un clic, con lo segundo un selector. En Firefox y Safari, que no tienen la API, los botones
+caen al `<input>` de antes: se pierde la comodidad, no la función.
+
 ---
 
 ## Por dónde conviene ir
