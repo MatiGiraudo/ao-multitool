@@ -169,8 +169,11 @@ del sistema, que es justo cuando el aviso de arriba ya se borró.
   42459: nada en el error los distingue, y la negativa no llega a pasar por los permisos. **Pero el
   reloj sí los distingue.** Cancelar es ver el cuadro, mirarlo y cerrarlo, y eso no baja del medio
   segundo; una negativa vuelve en lo que tarda una llamada que no hizo nada. Así que se mide: menos
-  de 250 ms es «no se abrió nunca» y manda al permiso del sitio, y más es «lo cerraste vos» y
-  pregunta dónde está la carpeta. Son dos consejos opuestos y antes no se daba ninguno.
+  de 250 ms es «no se abrió nunca» y manda al permiso del sitio, lo único que puede cerrar un
+  selector sin abrirlo; más, es «se abrió y volvió vacío» y manda al cartelito que pregunta si el
+  sitio puede ver los archivos —bloqueado, Chrome lo rechaza solo y sin mostrar nada, con el cuadro
+  ya cerrado— y recién después a dónde está la carpeta. Son consejos opuestos y antes no se daba
+  ninguno.
 - **Un archivo que el disco no entrega.** Los `getFile()` iban en tandas de 50 con `Promise.all`,
   así que uno solo —tomado por otro programa, borrado entre que se listó y se fue a leer— rechazaba
   su tanda entera y la carpeta terminaba contada como perdida: «esa carpeta ya no está donde

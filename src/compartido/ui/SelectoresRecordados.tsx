@@ -273,9 +273,11 @@ const PIDE_PERMISO = "El navegador pide el permiso de nuevo en cada sesión, y s
  * llamada que no hizo nada.
  *
  * Vale la pena separarlos porque los consejos son opuestos. Al que no vio ningún cuadro hay que
- * mandarlo al permiso del sitio; al que lo vio y volvió con las manos vacías, a mirar dónde está
- * la carpeta, porque Chrome no entrega lo que vive en `Program Files`, en `Windows` o en la raíz
- * de `C:`, y una instalación del AO suele estar justo adentro de una.
+ * mandarlo al permiso del sitio, que es lo único que puede cerrar un selector sin abrirlo. Al que
+ * lo vio y volvió con las manos vacías, al cartelito de Chrome que pregunta si el sitio puede ver
+ * los archivos: si el sitio lo tiene bloqueado, Chrome lo rechaza solo y sin mostrar nada, después
+ * de que el cuadro ya estuvo abierto. Y recién en tercer lugar, a dónde está la carpeta, porque
+ * tampoco entrega lo que vive en `Program Files`, en `Windows` o en la raíz de `C:`.
  */
 const NO_ABRIO = "no-abrio";
 const CANCELADO = "cancelado";
@@ -297,7 +299,7 @@ const NUNCA_SE_ABRIO =
   "El navegador cerró el selector sin llegar a abrirlo. Eso no lo decide la página: es el permiso del sitio. Tocá el candado al lado de la dirección y fijate si hay algo bloqueado ahí; si la máquina es de la empresa, puede ser una política de Chrome.";
 
 const QUIZAS_CANCELASTE =
-  "El selector se cerró sin entregar nada. Si lo cancelaste, listo. Si elegíste una carpeta y aun así no pasó nada, puede ser dónde está: Chrome no entrega lo que vive en Program Files, en Windows o en la raíz de C:. Copiala a Documentos o al Escritorio y elegí esa.";
+  "El selector se abrió pero volvió con las manos vacías. Si lo cancelaste, listo. Si elegíste la carpeta, lo más probable es que el sitio tenga bloqueado el permiso para ver archivos, y entonces Chrome lo rechaza solo, sin mostrar nada: tocá el candado al lado de la dirección, dale a restablecer los permisos y volvé a elegirla. Lo tercero que puede ser es dónde está: tampoco entrega lo que vive en Program Files, en Windows o en la raíz de C:.";
 
 /** Los cuadraditos y un texto, para adentro de un botón. */
 function Trabajando({ children }: { children: ReactNode }) {
