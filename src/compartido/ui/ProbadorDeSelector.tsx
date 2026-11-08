@@ -131,6 +131,13 @@ export function ProbadorDeSelector() {
         Estos dos no usan esa API para nada: son el <code>&lt;input type=file&gt;</code> de toda la vida. Si éstos andan y los de arriba no, lo roto es
         la API del navegador; si no anda ninguno, lo roto es el cuadro de Windows y hay que mirar la máquina.
       </p>
+      {/* El final del único caso real que tuvimos, puesto acá para que el próximo no tarde una tarde:
+          Chrome 157 con esta API muerta, el mismo Windows con Edge andando perfecto. */}
+      <p className="hint">
+        Si las cuatro de arriba fallan y estas dos andan, probá esta misma dirección en <b>Edge</b>, que es el mismo Chromium en otra instalación. Hay
+        Chrome donde esta parte del navegador simplemente no anda, y ahí no hay nada que el editor pueda hacer: se arregla en el navegador o se usa el
+        otro.
+      </p>
       <div className="olist-items">
         {POR_INPUT.map((fila) => (
           <div key={fila.clave} className="row between">

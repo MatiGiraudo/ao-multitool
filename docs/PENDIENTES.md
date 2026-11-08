@@ -101,7 +101,8 @@ usuario elige la carpeta, y vuelve `AbortError` —el mismo con que se cuenta un
 en las cuatro variantes que prueba el probador de **Diagnóstico**, modo escritura incluido. En esa
 misma máquina, en ese mismo navegador y sobre esa misma carpeta, el `<input type=file>` de toda la
 vida entregó 951 archivos: no es el cuadro del sistema, no es la máquina y no es una política
-—`chrome://policy` no tenía nada—. Es esa API. Sin el selector no hay carpeta del proyecto, y sin
+—`chrome://policy` no tenía nada—. Es esa API, y en esa instalación: el mismo Windows con Edge
+—el mismo Chromium, otra instalación— abre la carpeta sin chistar. Sin el selector no hay carpeta del proyecto, y sin
 carpeta del proyecto el modo carpeta no arranca: la puerta es lo primero que se ve y no tiene otra
 puerta.
 
