@@ -65,8 +65,8 @@ export function BotonArchivoRecordado({
 
   const elegir = async () => {
     const archivo = await intentar(() => abrirSelector(() => recordado.elegir(tipos)));
-    if (archivo === NO_ABRIO || archivo === CANCELADO) {
-      avisar(archivo === NO_ABRIO ? NUNCA_SE_ABRIO : QUIZAS_CANCELASTE);
+    if (archivo instanceof SelectorVacio) {
+      avisar(archivo.explicacion);
       return;
     }
     if (!archivo) return;
@@ -182,28 +182,31 @@ export function BotonCarpetaRecordada({
 
   const entregar = async () => {
     setLeyendo(true);
-    const archivos = await recordada.archivos().catch(() => null);
+    const leido = await recordada.archivos().then(
+      (archivos) => ({ archivos }),
+      (e: unknown) => ({ archivos: null, fallo: comoLoDijo(e) }),
+    );
     setLeyendo(false);
-    if (!archivos) {
+    if (!leido.archivos) {
       /* El nombre antes de olvidarla: `olvidar` suelta el handle y con él el nombre. */
       const nombre = recordada.nombre;
       await recordada.olvidar();
       setEstado("sin-elegir");
-      setNota(`No se pudo abrir «${nombre}». Puede que se haya movido, o que el navegador ya no la deje leer: elegila de nuevo.`);
+      setNota(`No se pudo abrir «${nombre}». Puede que se haya movido, o que el navegador ya no la deje leer: elegila de nuevo. ${comoLoDijoEl(leido.fallo)}`);
       return;
     }
     setNota("");
     /* Se entrega aunque no haya venido nada. Que la carpeta esté vacía, o que no tenga lo que se
      * buscaba, lo sabe decir quien pidió —y lo dice en su propio panel, con el detalle de qué
      * esperaba—; quedarse callado acá dejaba la pantalla igual que antes del clic. */
-    onArchivos(archivos);
+    onArchivos(leido.archivos);
   };
 
   const elegir = async () => {
     empezar();
     const elegida = await intentar(() => abrirSelector(() => recordada.elegir().then(() => "elegida" as const)));
-    if (elegida === NO_ABRIO || elegida === CANCELADO) {
-      setNota(elegida === NO_ABRIO ? NUNCA_SE_ABRIO : QUIZAS_CANCELASTE);
+    if (elegida instanceof SelectorVacio) {
+      setNota(elegida.explicacion);
       return;
     }
     if (!elegida) return;
@@ -221,7 +224,25 @@ export function BotonCarpetaRecordada({
     await entregar();
   };
 
-  const aviso = nota ? <p className="hint aviso">{nota}</p> : null;
+  /*
+   * El cartel y, debajo, la salida de emergencia.
+   *
+   * El `<input type=file webkitdirectory>` de siempre no pasa por la File System Access API, así
+   * que no se topa con nada de lo que a esa la hace fallar: ni el permiso del sitio, ni la lista
+   * de carpetas que el navegador no entrega, ni IndexedDB. Es el mismo camino por el que entran
+   * Firefox y Safari, y devuelve exactamente la misma lista de `File`. Se pierde que la carpeta
+   * quede recordada; se gana poder trabajar hoy en vez de esperar a que alguien adivine qué le
+   * pasa a tu navegador. Aparece recién cuando el camino bueno falló, que es cuando vale la pena
+   * ofrecer el que tiene menos comodidades.
+   */
+  const aviso = nota ? (
+    <>
+      <p className="hint aviso">{nota}</p>
+      <BotonArchivos carpeta accept={accept} disabled={!!trabajando} onArchivos={onArchivos}>
+        Probar de otra forma…
+      </BotonArchivos>
+    </>
+  ) : null;
 
   if (estado === "mirando" || estado === "sin-soporte") {
     return (
@@ -279,21 +300,46 @@ const PIDE_PERMISO = "El navegador pide el permiso de nuevo en cada sesión, y s
  * de que el cuadro ya estuvo abierto. Y recién en tercer lugar, a dónde está la carpeta, porque
  * tampoco entrega lo que vive en `Program Files`, en `Windows` o en la raíz de `C:`.
  */
-const NO_ABRIO = "no-abrio";
-const CANCELADO = "cancelado";
-
 /** Menos que esto no lo cerró una persona. */
 const UN_PARPADEO = 250;
 
-async function abrirSelector<T>(abrir: () => Promise<T>): Promise<T | typeof NO_ABRIO | typeof CANCELADO> {
+/** El selector que volvió con las manos vacías, con las palabras del navegador adentro. */
+class SelectorVacio {
+  constructor(
+    readonly abrio: boolean,
+    private readonly dijo: string,
+  ) {}
+
+  get explicacion(): string {
+    return `${this.abrio ? QUIZAS_CANCELASTE : NUNCA_SE_ABRIO} ${comoLoDijoEl(this.dijo)}`;
+  }
+}
+
+async function abrirSelector<T>(abrir: () => Promise<T>): Promise<T | SelectorVacio> {
   const empezo = performance.now();
   try {
     return await abrir();
   } catch (e) {
     if ((e as DOMException)?.name !== "AbortError") throw e;
-    return performance.now() - empezo < UN_PARPADEO ? NO_ABRIO : CANCELADO;
+    const tardo = performance.now() - empezo;
+    return new SelectorVacio(tardo >= UN_PARPADEO, `${comoLoDijo(e)}, a los ${Math.round(tardo)} ms`);
   }
 }
+
+/*
+ * Las palabras del navegador, tal cual, pegadas al final del cartel.
+ *
+ * Son en inglés y no se las escribió nadie pensando en quien las va a leer, así que van al final
+ * y entre paréntesis. Pero son lo único que distingue un caso del otro cuando el nuestro falla en
+ * la máquina de otro: sin esto, lo único que vuelve es «sigue igual», y de ahí no se sale
+ * adivinando.
+ */
+function comoLoDijo(e: unknown): string {
+  const error = e as DOMException;
+  return error?.name ? `${error.name}: ${error.message}` : String(e);
+}
+
+const comoLoDijoEl = (dijo: string | undefined) => (dijo ? `(El navegador dijo: ${dijo}.)` : "");
 
 const NUNCA_SE_ABRIO =
   "El navegador cerró el selector sin llegar a abrirlo. Eso no lo decide la página: es el permiso del sitio. Tocá el candado al lado de la dirección y fijate si hay algo bloqueado ahí; si la máquina es de la empresa, puede ser una política de Chrome.";

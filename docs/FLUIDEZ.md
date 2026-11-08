@@ -197,6 +197,14 @@ del sistema, que es justo cuando el aviso de arriba ya se borró.
   cuatro lados por los que IndexedDB avisa que falló —el `open`, el pedido, la transacción que
   aborta sola, el `put` que tira en el acto—, y los otros dejaban la promesa colgada para siempre.
 
+Y cuando ninguno de los carteles alcanza, porque el que falla es el navegador de otro: el cartel
+termina con **las palabras del navegador tal cual** —`AbortError: The user aborted a request., a los
+996 ms`— y debajo aparece **«Probar de otra forma…»**, que es el `<input type=file webkitdirectory>`
+de toda la vida. Ese no pasa por la File System Access API, así que no se topa con nada de lo que a
+esa la hace fallar: ni el permiso del sitio, ni la lista de carpetas que el navegador no entrega, ni
+IndexedDB. Es el mismo camino por el que entran Firefox y Safari y devuelve la misma lista de
+`File`: se pierde que la carpeta quede recordada, se gana poder trabajar hoy.
+
 Lo que queda para la próxima: un camino que termina sin hacer nada tiene que dejar algo escrito
 **donde se hizo el clic**. Y el otro: una comodidad nunca puede estar en el camino crítico de la
 función que acompaña. El aviso de arriba dura 3,2 segundos y estas cosas pasan mientras el
