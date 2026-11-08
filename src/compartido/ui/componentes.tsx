@@ -102,13 +102,19 @@ export function BotonArchivos(props: {
       <input
         id={props.id}
         type="file"
-        accept={props.accept}
+        /* Elegir una carpeta va sin filtro, y no es un olvido: el navegador se lo aplica a lo que
+         * hay adentro y devuelve sólo lo que pasa, así que una extensión que no reconoce —la
+         * `.map` del juego, sin ir más lejos— deja la carpeta entera en nada. Qué sirve de ahí
+         * adentro lo decide quien pidió, que para eso los recorre. */
+        accept={props.carpeta ? undefined : props.accept}
         multiple
         disabled={props.disabled}
         {...(props.carpeta ? ATRIBUTOS_DE_CARPETA : {})}
         onChange={(e) => {
-          const archivos = [...(e.target.files ?? [])];
-          if (archivos.length) props.onArchivos(archivos);
+          /* Se entrega aunque no haya venido nada. Cancelar el selector no dispara este evento en
+           * ningún navegador, así que llegar acá con cero archivos es «elegiste y no vino nada»:
+           * eso hay que contarlo, no callarlo. */
+          props.onArchivos([...(e.target.files ?? [])]);
           e.target.value = "";
         }}
       />

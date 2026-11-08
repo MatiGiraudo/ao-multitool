@@ -119,6 +119,12 @@ export function PuertaDeCarpeta({ children }: { children: ReactNode }) {
           Tus datos no se suben a ningún lado: el editor los lee y los escribe en una carpeta tuya, acá en tu máquina. Es la misma carpeta{" "}
           <code>data/</code> que usa la versión local, con el mismo formato, así que podés abrir una que ya tengas o una vacía para empezar de cero.
         </p>
+        {/* La confusión que se come a cualquiera que entra a ver un mapa: el título de la pantalla dice
+            «abrí la carpeta Mundos» y lo primero que aparece es este selector, que pide otra cosa. */}
+        <p className="hint">
+          <strong>No es la carpeta del juego.</strong> El <code>Mundos</code>, el <code>Graficos</code> y el <code>INIT</code> del AO se eligen
+          después, cada uno desde su pantalla, y el editor nunca escribe ahí. Si elegís una de ésas acá, vas a entrar a un proyecto vacío.
+        </p>
         <div className="row">
           {estado === "falta-permiso" ? (
             <>

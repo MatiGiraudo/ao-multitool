@@ -59,6 +59,10 @@ interface Abierto {
 export function PantallaMapas() {
   const { casos, avisar, intentar, telemetria } = useAplicacion();
   const [trios, setTrios] = useState<MapaDelJuego[]>([]);
+  /* Qué pasó la última vez que se eligió una carpeta, cuando no salió nada. Va al panel y no sólo
+   * al aviso de arriba, que se borra solo a los tres segundos: para cuando volvés del selector del
+   * sistema ya no está, y lo que queda es una pantalla vacía sin explicación. */
+  const [sinMapas, setSinMapas] = useState("");
   const [abierto, setAbierto] = useState<Abierto | null>(null);
   const [abriendo, setAbriendo] = useState<number | null>(null);
   const [capas, setCapas] = useState<CapasVisibles>(CAPAS_POR_DEFECTO);
@@ -114,7 +118,15 @@ export function PantallaMapas() {
     encontrados.sort((a, b) => a.numero - b.numero || a.nombre.localeCompare(b.nombre));
     setTrios(encontrados);
     setAbierto(null);
-    avisar(encontrados.length ? `${encontrados.length} mapas encontrados.` : "No encontré ningún .map con su .inf al lado, ni ningún .csm.");
+    /* Los tres casos se cuentan distinto porque se arreglan distinto: faltan los archivos, es
+     * otra carpeta, o el navegador no entregó nada y hay que usar uno que sepa abrir carpetas. */
+    const mensaje = encontrados.length
+      ? `${encontrados.length} mapas encontrados.`
+      : archivos.length
+        ? `Miré ${archivos.length} archivo${archivos.length === 1 ? "" : "s"} y no hay ningún .map con su .inf al lado, ni ningún .csm. ¿Será otra carpeta?`
+        : "La carpeta vino vacía. Si el navegador no te deja leer carpetas enteras, probá con Chrome o Edge, entrando por localhost o por https.";
+    setSinMapas(encontrados.length ? "" : mensaje);
+    avisar(mensaje);
   };
 
   /** Lo que hace falta para poner un mapa en pantalla, venga de donde venga. */
@@ -477,6 +489,7 @@ export function PantallaMapas() {
           onArchivos={elegirCarpeta}
         />
         <p className="hint">Los archivos se leen en tu máquina; lo que edites sale por «Exportar».</p>
+        {!!sinMapas && <p className="hint aviso">{sinMapas}</p>}
         <div className="row">
           <CampoNumero
             id="mapa_nuevo"
