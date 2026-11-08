@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useAplicacion } from "@/compartido/ui/Aplicacion";
 import { Cargando } from "@/compartido/ui/componentes";
+import { ProbadorDeSelector } from "@/compartido/ui/ProbadorDeSelector";
 import type { RevisionDelMundo } from "../aplicacion/RevisarMundo";
 
 /**
@@ -27,7 +28,18 @@ export function PantallaDiagnostico() {
     void revisar();
   }, [revisar]);
 
-  if (!revision) return <Cargando bloque>Revisando el mundo…</Cargando>;
+  /* El probador va también acá, y no sólo abajo: si lo que no anda es justo leer la carpeta, la
+   * revisión no termina nunca y la única herramienta para averiguar por qué quedaba del otro lado
+   * de ese cartel. */
+  if (!revision)
+    return (
+      <main className="layout">
+        <div className="col">
+          <Cargando bloque>Revisando el mundo…</Cargando>
+          <ProbadorDeSelector />
+        </div>
+      </main>
+    );
 
   const sano = !revision.errores && !revision.avisos;
 
@@ -70,6 +82,8 @@ export function PantallaDiagnostico() {
           </div>
           <p className="hint">Las columnas son: cuántas se revisaron, cuántos errores y cuántos avisos. Tocá una familia para ir a su pantalla.</p>
         </section>
+
+        <ProbadorDeSelector />
       </div>
 
       <aside className="side">
