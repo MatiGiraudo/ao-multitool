@@ -2,7 +2,10 @@ import type { Apariencia } from "@/apariencias/dominio/Apariencia";
 import type { EscritorDeAparienciasClasicas, GrhPorDireccionYNumero } from "../aplicacion/puertos";
 import { DIRECCION_DE_AO } from "../dominio/direcciones";
 import { ENCABEZADO, type OriginalesDeFamilia } from "../dominio/OriginalesRepositorio";
-import { armarIni, reescribirSeccion, type ClavesPropias } from "./EscritorIni";
+import { armarIni, reescribirSeccion, type ClavesPropias, type ValorPropio } from "./EscritorIni";
+
+/** Sólo se apaga el que estaba prendido: a una cabeza, que no tiene `Std`, no hay que agregárselo. */
+const apagarElMolde = (original: string | undefined): ValorPropio => (original && original.trim() !== "0" ? 0 : null);
 
 /**
  * Devuelve el `Personajes.ini` o el `Cabezas.ini` con lo editado encima del original.
@@ -14,6 +17,12 @@ import { armarIni, reescribirSeccion, type ClavesPropias } from "./EscritorIni";
  *
  * Es una sola clase parametrizada, como el lector: `("BODY", "Walk")` para los cuerpos,
  * `("HEAD", "Head")` para las cabezas y los cascos.
+ *
+ * Un cuerpo que vino de un molde del AO20 vuelve convertido: con las cuatro direcciones
+ * resueltas se escriben sus `Walk1..4` y se apaga el molde, porque el cliente no mira los
+ * `Walk` mientras el `Std` esté prendido y las líneas no se verían. Los recortes del molde
+ * salen en el `Graficos.ini` como cualquier gráfico propio del proyecto, así que el cuerpo se
+ * dibuja igual que antes —pero hay que exportar los dos archivos, no uno.
  */
 export class EscritorAparienciasIni implements EscritorDeAparienciasClasicas {
   constructor(
@@ -38,6 +47,9 @@ export class EscritorAparienciasIni implements EscritorDeAparienciasClasicas {
         claves.HeadOffsetX = conOffset.offsetCabezaX;
         claves.HeadOffsetY = conOffset.offsetCabezaY ?? 0;
       }
+      /* Con una sola dirección sin resolver el molde queda como estaba: apagarlo dejaría al
+       * cuerpo sin esa dirección, y el molde entero dibuja mejor que tres cuartos de cuerpo. */
+      if (DIRECCION_DE_AO.every((d) => porDireccion?.[d] !== undefined)) claves.Std = apagarElMolde;
       const reescrita = reescribirSeccion(lineas, claves);
       return original ? reescrita : [...reescrita, ""];
     });

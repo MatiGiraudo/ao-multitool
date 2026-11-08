@@ -32,6 +32,20 @@ export function partirComentario(valor: string): { valor: string; comentario: st
   return { valor: antes, comentario: valor.slice(crudo.trimEnd().length) };
 }
 
+/**
+ * Un número leído como lo lee `val()` de Visual Basic: corta en el primer carácter que no sea
+ * parte del número, y la coma no lo es. Es lo que hace `parseFloat`, sin ayudarlo.
+ *
+ * Hace falta porque el `cuerpos.dat` del AO20 escribe la velocidad de las dos maneras —`Speed=0.375`
+ * y `Speed=0,333`— y el cliente lee la segunda como 0, que su propio código convierte en 1. Con
+ * `numero()`, que perdona la coma, esos cuerpos caminarían acá más lento que en el juego: no se
+ * trata de leer bien el archivo, sino de leerlo igual que quien lo dibuja.
+ */
+export function numeroDeVb(valor: string): number {
+  const n = Number.parseFloat(valor.trim());
+  return Number.isFinite(n) ? n : 0;
+}
+
 /** Sólo el valor. Como `numero` ya perdona la basura del final, el único que lo necesitaba es `texto`. */
 function sinComentarioAlFinal(valor: string): string {
   return partirComentario(valor).valor;

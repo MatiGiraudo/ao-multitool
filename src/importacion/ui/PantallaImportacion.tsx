@@ -43,6 +43,9 @@ export function PantallaImportacion() {
   const { casos, avisar, intentar, telemetria } = useAplicacion();
   const [tabla, setTabla] = useState<ResultadoDeTablaDeGrh | null>(null);
   const [cuerpos, setCuerpos] = useState<ResultadoDeAparienciasClasicas | null>(null);
+  /* El `moldes.ini` no es un paso: no entra nada al proyecto hasta que se importa el cuerpos.dat,
+   * y lo único que hace es que ese paso sepa dibujar los cuerpos con molde del AO20. */
+  const [moldes, setMoldes] = useState<{ nombre: string; texto: string } | null>(null);
   const [cabezas, setCabezas] = useState<ResultadoDeAparienciasClasicas | null>(null);
   const [fx, setFx] = useState<ResultadoDeEfectosClasicos | null>(null);
   const [objetos, setObjetos] = useState<ResultadoDeObjetosClasicos | null>(null);
@@ -107,10 +110,20 @@ export function PantallaImportacion() {
   );
   const importarCuerpos = importador(
     "cuerpos",
-    (t) => casos.clasico.cuerpos.ejecutar(t),
+    (t) => casos.clasico.cuerpos.ejecutar(t, moldes?.texto),
     setCuerpos,
-    (r) => `Cuerpos: ${r.apariencias.agregados} nuevos, ${r.apariencias.reemplazados} reemplazados.`,
+    (r) =>
+      `Cuerpos: ${r.apariencias.agregados} nuevos, ${r.apariencias.reemplazados} reemplazados.` +
+      (r.sinMolde ? ` ${r.sinMolde} usan moldes y entraron sin gráfico: elegí el moldes.ini y volvé a importar.` : ""),
   );
+
+  /** El moldes.ini no se importa: se deja a mano para el paso que lo necesita. */
+  const elegirMoldes = async (archivo: File) => {
+    const texto = await intentar(() => textoDeArchivoClasico(archivo), `Leyendo ${archivo.name}…`);
+    if (!texto) return;
+    setMoldes({ nombre: archivo.name, texto });
+    avisar(`${archivo.name} listo. Ahora elegí el cuerpos.dat: los cuerpos con molde entran con su gráfico.`);
+  };
   const importarCabezas = importador(
     "cabezas",
     (t) => casos.clasico.cabezas.ejecutar(t),
@@ -235,10 +248,31 @@ export function PantallaImportacion() {
             Ojo con cuál elegís: el cliente usa <code>Personajes.ini</code>, no <code>Cuerpos.ini</code> — ese último es un sobrante de otra versión
             y trae los corrimientos pisados por números de GRH.
           </p>
+          <p className="hint">
+            El <code>cuerpos.dat</code> del AO20 entra por acá y necesita una cosa más: casi todos sus cuerpos no nombran gráficos sino un molde
+            (<code>Std</code> + <code>FileNum</code>), y los moldes están en otro archivo. Elegí primero el <code>moldes.ini</code> y después el
+            <code>cuerpos.dat</code>. Al exportar, esos cuerpos vuelven con sus <code>Walk1..4</code> y el molde apagado, así que acordate de
+            exportar también el <code>Graficos.ini</code> del paso 1.
+          </p>
+          <div className="row">
+            <BotonArchivoRecordado
+              clave="clasico-moldes-ini"
+              accept=".ini,.txt,text/plain"
+              tipos={TIPOS_INI}
+              etiqueta="Elegir moldes.ini…"
+              onArchivo={elegirMoldes}
+            />
+            {moldes && <span className="status">{moldes.nombre} listo</span>}
+          </div>
           {cuerpos && (
             <Resultado vinculos={cuerpos}>
               <span className="pill ok">{cuerpos.apariencias.agregados} nuevos</span>
               <span className="pill ok">{cuerpos.apariencias.reemplazados} reemplazados</span>
+              {!!cuerpos.sinMolde && (
+                <span className="pill bad" title="Piden un molde que no está. Elegí el moldes.ini y volvé a importar.">
+                  {cuerpos.sinMolde} sin molde
+                </span>
+              )}
             </Resultado>
           )}
         </Paso>

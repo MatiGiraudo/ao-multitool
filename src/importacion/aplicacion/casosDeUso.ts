@@ -1,4 +1,3 @@
-import type { ReferenciaPorNombre } from "@/compartido/aplicacion/ReferenciaPorNombre";
 import type { CatalogoGrafico } from "@/compartido/dominio/CatalogoGrafico";
 import type { Direccion } from "@/compartido/dominio/Direccion";
 import type { AlmacenDeImagenes } from "@/graficos/aplicacion/puertos";
@@ -20,12 +19,13 @@ import type { FabricaDeCatalogo } from "@/proyecto/aplicacion/ImportarProyectoLe
 import { baseDeArchivo } from "@/compartido/dominio/nombreDeArchivo";
 import { esElArchivo, numeroDeArchivoDe, proximoNumeroDeArchivo } from "../dominio/nombres";
 import { ErrorDeDominio } from "@/compartido/dominio/ErrorDeDominio";
-import { firmaDeGrafico, TablaDeGrh, type Grh, type RectDeGrh } from "../dominio/TablaDeGrh";
+import { firmaDeGrafico, TablaDeGrh, type Grh, type RectDeGrh, type RecortesDeGrh } from "../dominio/TablaDeGrh";
+import { claveDeMolde, nombreDeMolde } from "../dominio/moldes";
 import { ENCABEZADO, SIN_ORIGINALES, type FamiliaClasica, type OriginalesRepositorio } from "../dominio/OriginalesRepositorio";
 import type { TablaDeGrhRepositorio } from "../dominio/TablaDeGrhRepositorio";
 import { DIRECCION_DE_AO } from "../dominio/direcciones";
 import type { GrhDeReferencias, ModoDeGrh } from "./GrhDeReferencias";
-import type { PuenteDeGrh, VinculosDeGrh } from "./PuenteDeGrh";
+import type { GraficoSuelto, PuenteDeGrh, VinculosDeGrh } from "./PuenteDeGrh";
 import type {
   AparienciaClasica,
   EscritorDeGraficosClasicos,
@@ -38,6 +38,7 @@ import type {
   LectorDeEfectosClasicos,
   LectorDeGraficosClasicos,
   LectorDeHechizosClasicos,
+  LectorDeMoldesClasicos,
   LectorDeNpcsClasicos,
   LectorDeObjetosClasicos,
 } from "./puertos";
@@ -548,6 +549,11 @@ export interface ResultadoDeObjetosClasicos extends ResumenDeVinculos {
 
 export interface ResultadoDeAparienciasClasicas extends ResumenDeVinculos {
   apariencias: ResultadoDeImportacionDeApariencias;
+  /**
+   * Cuántos cuerpos pedían un molde que no estaba. Entraron sin gráfico, y se arregla eligiendo
+   * el `moldes.ini` y volviendo a importar. En cabezas y cascos no existe.
+   */
+  sinMolde?: number;
 }
 
 export interface ResultadoDeEfectosClasicos extends ResumenDeVinculos {
@@ -618,6 +624,11 @@ export class ImportarObjetosClasicos implements ConGraficos {
  *
  * Los cuerpos del clásico no tienen nombre, así que se lo pone el importador ("Cuerpo 12"). Como
  * los que ya existen se reemplazan, un nombre editado a mano se pierde al reimportar.
+ *
+ * Es el único importador que acepta un segundo texto, y es por el `cuerpos.dat` del AO20: ahí los
+ * gráficos no se nombran por número de GRH sino con un molde y una hoja, y los moldes están en
+ * otro archivo. El `moldes.ini` no se guarda en el proyecto porque lo único que aporta —los
+ * recortes— queda en las animaciones de la hoja (ver `dominio/moldes.ts`).
  */
 export class ImportarCuerposClasicos implements ConGraficos {
   constructor(
@@ -628,23 +639,25 @@ export class ImportarCuerposClasicos implements ConGraficos {
     private readonly cuerpos: ImportarApariencias<Cuerpo, CuerpoImportado>,
     readonly fabricaDeCatalogo: FabricaDeCatalogo,
     private readonly originales: OriginalesRepositorio = SIN_ORIGINALES,
+    private readonly lectorDeMoldes: LectorDeMoldesClasicos | null = null,
   ) {}
 
-  async ejecutar(texto: string): Promise<ResultadoDeAparienciasClasicas> {
-    const { apariencias: clasicas, encabezado } = this.lector.leer(texto);
+  async ejecutar(texto: string, textoDeMoldes?: string): Promise<ResultadoDeAparienciasClasicas> {
+    const moldes = textoDeMoldes && this.lectorDeMoldes ? this.lectorDeMoldes.leer(textoDeMoldes) : undefined;
+    const { apariencias: clasicas, encabezado } = this.lector.leer(texto, moldes);
     await this.originales.guardar("cuerpos", { [ENCABEZADO]: encabezado, ...Object.fromEntries(clasicas.map((c) => [c.numero, c.crudo])) });
-    const { vinculos, catalogo } = await conGraficos(this, grhDe(clasicas));
+    const { vinculos, catalogo } = await conGraficos(this, grhDe(clasicas), sueltosDe(clasicas));
     const apariencias = await this.cuerpos.importar(
       clasicas.map((c) => ({
         numero: c.numero,
         nombre: `Cuerpo ${c.numero}`,
-        direcciones: direccionesVinculadas(c, vinculos.referencias),
+        direcciones: direccionesVinculadas(c, vinculos),
         offsetCabezaX: c.offsetCabezaX,
         offsetCabezaY: c.offsetCabezaY,
       })),
       catalogo,
     );
-    return { apariencias, ...resumen(vinculos) };
+    return { apariencias, ...resumen(vinculos), sinMolde: clasicas.filter((c) => c.molde && !c.recortesPorDireccion).length };
   }
 }
 
@@ -671,7 +684,7 @@ export class ImportarCabezasClasicas implements ConGraficos {
       clasicas.map((c) => ({
         numero: c.numero,
         nombre: `Cabeza ${c.numero}`,
-        direcciones: direccionesVinculadas(c, vinculos.referencias),
+        direcciones: direccionesVinculadas(c, vinculos),
       })),
       catalogo,
     );
@@ -741,9 +754,13 @@ export class ImportarHechizosClasicos {
 }
 
 /** El paso común de los cuatro: leer la tabla, vincular los GRH del archivo y armar el catálogo. */
-async function conGraficos(quien: ConGraficos, grhs: number[]): Promise<{ vinculos: VinculosDeGrh; catalogo: CatalogoGrafico }> {
+async function conGraficos(
+  quien: ConGraficos,
+  grhs: number[],
+  sueltos: GraficoSuelto[] = [],
+): Promise<{ vinculos: VinculosDeGrh; catalogo: CatalogoGrafico }> {
   const tabla = (await quien.tablas.leer()) ?? TablaDeGrh.vacia();
-  const vinculos = await quien.puente.vincular(tabla, grhs);
+  const vinculos = await quien.puente.vincular(tabla, grhs, sueltos);
   // El catálogo se arma DESPUÉS de vincular: el puente acaba de crear animaciones que tiene que ver.
   return { vinculos, catalogo: quien.fabricaDeCatalogo(await quien.hojas.listar()) };
 }
@@ -756,17 +773,38 @@ function grhDe(clasicas: readonly AparienciaClasica[]): number[] {
   return clasicas.flatMap((c) => Object.values(c.grhPorDireccion));
 }
 
-/** De "esta dirección usa el GRH 4582" a "esta dirección usa tal animación de tal hoja". */
-function direccionesVinculadas(
-  clasica: AparienciaClasica,
-  referencias: Map<number, ReferenciaPorNombre>,
-): Partial<Record<Direccion, ReferenciaImportada>> {
+/** Lo que un cuerpo con molde trae para vincular, ya sin molde: recortes con una clave. */
+function sueltosDe(clasicas: readonly AparienciaClasica[]): GraficoSuelto[] {
+  return clasicas.flatMap((c) =>
+    entradasDeMolde(c).map(([direccion, recortes]) => ({
+      clave: claveDeMolde(c.molde ?? 0, direccion, recortes.archivo),
+      nombre: nombreDeMolde(c.molde ?? 0, direccion),
+      recortes,
+    })),
+  );
+}
+
+/**
+ * De "esta dirección usa el GRH 4582" a "esta dirección usa tal animación de tal hoja".
+ *
+ * El molde va después del `Walk` a propósito: si un cuerpo trae las dos cosas, el cliente dibuja
+ * el molde e ignora los `Walk1..4` (ver `CargarCuerpos`), así que acá tiene que ganar el mismo.
+ */
+function direccionesVinculadas(clasica: AparienciaClasica, vinculos: VinculosDeGrh): Partial<Record<Direccion, ReferenciaImportada>> {
   const out: Partial<Record<Direccion, ReferenciaImportada>> = {};
   for (const [direccion, grh] of Object.entries(clasica.grhPorDireccion) as [Direccion, number][]) {
-    const ref = referencias.get(grh);
+    const ref = vinculos.referencias.get(grh);
+    if (ref) out[direccion] = ref;
+  }
+  for (const [direccion, recortes] of entradasDeMolde(clasica)) {
+    const ref = vinculos.sueltas.get(claveDeMolde(clasica.molde ?? 0, direccion, recortes.archivo));
     if (ref) out[direccion] = ref;
   }
   return out;
+}
+
+function entradasDeMolde(clasica: AparienciaClasica): [Direccion, RecortesDeGrh][] {
+  return Object.entries(clasica.recortesPorDireccion ?? {}) as [Direccion, RecortesDeGrh][];
 }
 
 /**

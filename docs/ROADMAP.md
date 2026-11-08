@@ -173,6 +173,39 @@ Se reusa tal cual: `RanuraGrafica`, `SelectorDeAnimacion`, `DibujoDeFrame`, `Vis
 >   en «Animaciones». La carpeta `data/graficos` no es un buzón: una hoja es su `.json` más su PNG,
 >   así que copiar imágenes ahí a mano no carga nada.
 >
+> Ampliada el 7/11/2026 para el **AO20**, que es el fork más usado y escribe los mismos archivos con
+> una vuelta más. Lo que se aprendió:
+>
+> - **Sus cuerpos vienen con moldes.** El `init/cuerpos.dat` no nombra GRH: 2.780 de sus 3.021
+>   entradas dicen `Std=199` y `FileNum=394`, y el molde —en `init/moldes.ini`— cuenta desde qué
+>   píxel empieza, cuánto mide un cuadro y cuántos cuadros tiene cada dirección. El cliente los
+>   expande en memoria al arrancar (`CargarCuerpos`, en `Recursos.bas`) y no los escribe nunca.
+> - **La salida elegida fue expandirlos a recortes, no a números de GRH.** El puente ya sabía ir de
+>   un recorte a una animación de la hoja; inventarles un número al importar, como hace el cliente,
+>   habría metido en la tabla miles de GRH que no están en ningún `Graficos.ini` y que nadie más
+>   podría resolver. Los números aparecen recién al exportar, como cualquier gráfico propio.
+> - **La animación se llama por el molde (`molde199-sur`) y no por el cuerpo.** Lo que dibuja una
+>   fila depende del molde y de la hoja, así que los cientos de cuerpos que comparten los dos
+>   comparten la animación: son unas pocas por hoja en vez de cuatro por cuerpo, y reimportar no
+>   duplica nada. Se pierde la velocidad del segundo que la pide, igual que la tabla de GRH
+>   considera que dos gráficos con los mismos cuadros son el mismo dibujo aunque uno corra más
+>   rápido.
+> - **Las filas del molde no van en el orden de los `Walk`.** Son sur, norte, oeste, este
+>   (`BodiesHeading`), y los `Walk1..4` son norte, este, sur, oeste. Confundirlos deja a todos los
+>   cuerpos caminando para el lado que no es sin que nada avise.
+> - **De vuelta, el molde se apaga.** Un cuerpo con `Std` prendido ignora sus `Walk1..4`, así que
+>   escribirlos sin más habría sido devolver el archivo igual que antes creyendo que algo cambió:
+>   el escritor pone `Std=0` cuando tiene las cuatro direcciones resueltas, y si falta alguna deja
+>   el molde como estaba (medio cuerpo es peor que el molde entero).
+> - **La velocidad se lee con las reglas del juego, no con las nuestras.** El `Speed` aparece como
+>   `0.375` y como `0,333`, y el `val()` de VB corta en la coma: esos valen 0, que el cliente
+>   convierte en 1. El editor hace lo mismo (`numeroDeVb`), porque acá no se trata de leer bien el
+>   archivo sino de leerlo igual que quien lo dibuja.
+> - **Lo que del AO20 sigue sin entrar son los binarios.** Los mapas son `.csm` (uno por mapa,
+>   comprimido) y no el trío `.map`/`.inf`/`.dat`, y los `.ind` del cliente —`graficos.ind`,
+>   `Personajes.ind`, `cabezas.ind`, `fxs.ind`— se generan desde los `.ini` que el editor sí lee,
+>   así que después de exportar hay que regenerarlos con la herramienta del fork.
+>
 > **Lo que falta de esta fase**, por orden de valor:
 >
 > 1. Los gráficos de **equipado** de los objetos (arma en la mano, escudo en el brazo): `Armas.dat` y

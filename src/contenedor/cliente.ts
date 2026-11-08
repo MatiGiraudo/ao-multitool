@@ -130,6 +130,7 @@ import { HttpOriginales } from "@/importacion/infraestructura/navegador/HttpOrig
 import { CarpetaMapaRepositorio } from "@/mapas/infraestructura/carpeta/CarpetaMapaRepositorio";
 import { CarpetaAlmacenDeExportacion } from "@/proyecto/infraestructura/carpeta/CarpetaAlmacenDeExportacion";
 import { LectorAparienciasIni } from "@/importacion/infraestructura/LectorAparienciasIni";
+import { LectorMoldesIni } from "@/importacion/infraestructura/LectorMoldesIni";
 import { LectorFxsIni } from "@/importacion/infraestructura/LectorFxsIni";
 import { EscritorGraficosIni } from "@/importacion/infraestructura/EscritorGraficosIni";
 import { EscritorAparienciasIni } from "@/importacion/infraestructura/EscritorAparienciasIni";
@@ -320,6 +321,7 @@ function crear() {
         importarCuerpos,
         fabricaDeCatalogo,
         originales,
+        new LectorMoldesIni(),
       ),
       cabezas: new ImportarCabezasClasicas(
         new LectorAparienciasIni("head", "Head", "Cabezas.ini"),

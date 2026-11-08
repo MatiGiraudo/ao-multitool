@@ -7,8 +7,9 @@ import type { Efecto } from "@/fx/dominio/Efecto";
 import type { Hechizo } from "@/hechizos/dominio/Hechizo";
 import type { Npc } from "@/npcs/dominio/Npc";
 import type { Objeto } from "@/objetos/dominio/Objeto";
+import type { MoldesDeCuerpos } from "../dominio/moldes";
 import type { OriginalesDeFamilia } from "../dominio/OriginalesRepositorio";
-import type { Grh, TablaDeGrh } from "../dominio/TablaDeGrh";
+import type { Grh, RecortesDeGrh, TablaDeGrh } from "../dominio/TablaDeGrh";
 
 /** Puerto: sabe leer el `Graficos.ini` y devolver los GRH que define. */
 export interface LectorDeGraficosClasicos {
@@ -128,6 +129,17 @@ export interface AparienciaClasica {
   /** Dónde se apoya la cabeza. Sólo lo traen los cuerpos; en cabezas y cascos viene en 0. */
   offsetCabezaX: number;
   offsetCabezaY: number;
+  /**
+   * El molde que pide este cuerpo (su `Std`), si usa uno. Los cuerpos con molde del AO20 no
+   * traen GRH: traen el número de una receta y la hoja donde aplicarla (ver `dominio/moldes.ts`).
+   */
+  molde?: number;
+  /**
+   * Los recortes que salieron de ese molde. No están si el molde no se pudo aplicar —no se cargó
+   * el `moldes.ini`, o no trae ese número—, y ahí el cuerpo entra sin gráfico, que es mejor que
+   * entrar apuntando al GRH 0.
+   */
+  recortesPorDireccion?: Partial<Record<Direccion, RecortesDeGrh>>;
 }
 
 /** Puerto: sabe leer un índice de apariencias (cuerpos, cabezas o cascos). */
@@ -137,7 +149,13 @@ export interface ArchivoDeAparienciasClasicas {
 }
 
 export interface LectorDeAparienciasClasicas {
-  leer(texto: string): ArchivoDeAparienciasClasicas;
+  /** Los moldes sólo los usan los cuerpos del AO20; sin ellos se lee lo mismo que siempre. */
+  leer(texto: string, moldes?: MoldesDeCuerpos): ArchivoDeAparienciasClasicas;
+}
+
+/** Puerto: sabe leer el `moldes.ini`, que es lo que le falta a un `cuerpos.dat` con moldes. */
+export interface LectorDeMoldesClasicos {
+  leer(texto: string): MoldesDeCuerpos;
 }
 
 /** Un FX tal como viene del Fxs.ini, con su gráfico todavía como número de GRH. */
