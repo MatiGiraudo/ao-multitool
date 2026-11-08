@@ -89,3 +89,28 @@ puede arbitrar. En el modo carpeta no hay forma de cerrarla: la File System Acce
 de tomarse un archivo. Ahí lo que corresponde es detectarlo después, y el lugar natural es
 **Diagnóstico**: dos GRH que dibujan exactamente el mismo recorte, o una celda que apunta a un
 número que no está en la tabla, son las dos marcas que deja esta carrera.
+
+---
+
+## 2. Si el navegador rompe el selector, el modo carpeta no tiene por dónde entrar
+
+**Dónde:** `PuertaDeCarpeta` y `CarpetaDelProyecto.elegir`, en `src/compartido/`.
+
+Pasó de verdad, en un Chrome 157 de Windows: `showDirectoryPicker` abre el cuadro del sistema, el
+usuario elige la carpeta, y vuelve `AbortError` —el mismo con que se cuenta un cancelar—, siempre,
+en las cuatro variantes que prueba el probador de **Diagnóstico**, modo escritura incluido. Sin el
+selector no hay carpeta del proyecto, y sin carpeta del proyecto el modo carpeta no arranca: la
+puerta es lo primero que se ve y no tiene otra puerta.
+
+Los selectores de archivos del juego sí tienen salida: cuando fallan ofrecen «Probar de otra
+forma…», que es el `<input type=file>` de siempre y no pasa por esa API. La carpeta del proyecto no
+puede usar ese camino, y no es un olvido: un `<input>` entrega `File` de sólo lectura, y la carpeta
+del proyecto es justo donde el editor **escribe**. No hay forma de escribir en una carpeta del
+usuario sin la File System Access API.
+
+**Qué haría falta:** una tercera forma de tener proyecto que no dependa de esa API. La más barata
+es la que ya existe a medias —el proyecto en memoria, que se importa de un `.zip` al entrar y se
+exporta a otro al salir—, con el costo obvio de que guardar deja de ser automático y pasa a ser un
+paso que el usuario tiene que acordarse de dar. La otra es decirle que levante el editor en su
+máquina (`npm run dev`), que es el modo servidor y no toca el navegador para nada. Por ahora el
+editor no dice ninguna de las dos: se queda en la puerta.

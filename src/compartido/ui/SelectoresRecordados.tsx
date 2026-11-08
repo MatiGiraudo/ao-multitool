@@ -48,9 +48,11 @@ export function BotonArchivoRecordado({
   className?: string;
   id?: string;
 }) {
-  const { avisar, intentar } = useAplicacion();
+  const { intentar } = useAplicacion();
   const recordado = useMemo(() => new ArchivoRecordado(clave), [clave]);
   const [estado, setEstado] = useState<Estado>("mirando");
+  /** Lo mismo que en `BotonCarpetaRecordada`, y por lo mismo: ver el comentario de su `nota`. */
+  const [nota, setNota] = useState("");
 
   useEffect(() => {
     if (!ArchivoRecordado.disponible) {
@@ -64,9 +66,10 @@ export function BotonArchivoRecordado({
   }, [recordado]);
 
   const elegir = async () => {
+    setNota("");
     const archivo = await intentar(() => abrirSelector(() => recordado.elegir(tipos)));
     if (archivo instanceof SelectorVacio) {
-      avisar(archivo.explicacion);
+      setNota(archivo.explicacion);
       return;
     }
     if (!archivo) return;
@@ -75,8 +78,9 @@ export function BotonArchivoRecordado({
   };
 
   const volverALeer = async () => {
+    setNota("");
     if (estado === "falta-permiso" && !(await recordado.pedirPermiso())) {
-      avisar(`El navegador no dio permiso sobre «${recordado.nombre}». Podés elegirlo de nuevo.`);
+      setNota(`El navegador no dio permiso sobre «${recordado.nombre}». Podés elegirlo de nuevo.`);
       return;
     }
     setEstado("listo");
@@ -86,11 +90,23 @@ export function BotonArchivoRecordado({
     if (!archivo) {
       await recordado.olvidar();
       setEstado("sin-elegir");
-      avisar("Ese archivo ya no está donde estaba. Elegilo de nuevo.");
+      setNota("Ese archivo ya no está donde estaba. Elegilo de nuevo.");
       return;
     }
     onArchivo(archivo);
   };
+
+  /* El cartel y la salida de emergencia, igual que en la carpeta: ver el comentario de allá. Un
+   * navegador al que se le rompió el selector nuevo los rompió todos, y la importación son siete
+   * archivos seguidos: sin esto, esa pantalla entera queda inservible. */
+  const aviso = nota ? (
+    <>
+      <p className="hint aviso">{nota}</p>
+      <BotonArchivo accept={accept} onArchivo={onArchivo}>
+        Probar de otra forma…
+      </BotonArchivo>
+    </>
+  ) : null;
 
   if (estado === "mirando" || estado === "sin-soporte") {
     return (
@@ -102,9 +118,12 @@ export function BotonArchivoRecordado({
 
   if (estado === "sin-elegir") {
     return (
-      <button id={id} className={className} disabled={!!ocupado} onClick={elegir}>
-        {ocupado ?? etiqueta}
-      </button>
+      <>
+        <button id={id} className={className} disabled={!!ocupado} onClick={elegir}>
+          {ocupado ?? etiqueta}
+        </button>
+        {aviso}
+      </>
     );
   }
 
@@ -122,6 +141,7 @@ export function BotonArchivoRecordado({
       <button disabled={!!ocupado} onClick={elegir}>
         Elegir otro…
       </button>
+      {aviso}
     </>
   );
 }
