@@ -4,6 +4,7 @@ import { ArchivoRecordado, CarpetaRecordada, type EstadoRecordado } from "@/comp
 import { useAplicacion } from "./Aplicacion";
 import { BotonArchivo, BotonArchivos, PuntosDeCarga } from "./componentes";
 import { abrirSelector, comoLoDijo, comoLoDijoEl, SelectorVacio } from "./selectorDelSistema";
+import { anotarSelectorVacio, huboSelectorVacio, olvidarSelectorVacio } from "./selectorRoto";
 
 /*
  * Los selectores que no se olvidan de lo que elegiste.
@@ -54,6 +55,7 @@ export function BotonArchivoRecordado({
   const [estado, setEstado] = useState<Estado>("mirando");
   /** Lo mismo que en `BotonCarpetaRecordada`, y por lo mismo: ver el comentario de su `nota`. */
   const [nota, setNota] = useState("");
+  const seRompioAntes = useSelectorRoto();
 
   useEffect(() => {
     if (!ArchivoRecordado.disponible) {
@@ -70,10 +72,12 @@ export function BotonArchivoRecordado({
     setNota("");
     const archivo = await intentar(() => abrirSelector(() => recordado.elegir(tipos)));
     if (archivo instanceof SelectorVacio) {
+      anotarSelectorVacio();
       setNota(archivo.explicacion);
       return;
     }
     if (!archivo) return;
+    olvidarSelectorVacio();
     setEstado("listo");
     onArchivo(archivo);
   };
@@ -100,14 +104,15 @@ export function BotonArchivoRecordado({
   /* El cartel y la salida de emergencia, igual que en la carpeta: ver el comentario de allá. Un
    * navegador al que se le rompió el selector nuevo los rompió todos, y la importación son siete
    * archivos seguidos: sin esto, esa pantalla entera queda inservible. */
-  const aviso = nota ? (
-    <>
-      <p className="hint aviso">{nota}</p>
-      <BotonArchivo accept={accept} onArchivo={onArchivo}>
-        Probar de otra forma…
-      </BotonArchivo>
-    </>
-  ) : null;
+  const aviso =
+    nota || seRompioAntes ? (
+      <>
+        {!!nota && <p className="hint aviso">{nota}</p>}
+        <BotonArchivo accept={accept} onArchivo={onArchivo}>
+          Probar de otra forma…
+        </BotonArchivo>
+      </>
+    ) : null;
 
   if (estado === "mirando" || estado === "sin-soporte") {
     return (
@@ -178,6 +183,7 @@ export function BotonCarpetaRecordada({
    * aviso de arriba, que se borra a los tres segundos: el usuario vuelve del selector del sistema
    * justo para no verlo, y lo que le queda es la misma pantalla que antes de hacer clic. */
   const [nota, setNota] = useState("");
+  const seRompioAntes = useSelectorRoto();
   /* Recorrer la `Graficos` del clásico son miles de archivos: tarda lo suficiente como para que
    * el botón tenga que decir algo, y eso pasa antes de que quien lo usa vea el primer archivo. */
   const [leyendo, setLeyendo] = useState(false);
@@ -227,10 +233,12 @@ export function BotonCarpetaRecordada({
     empezar();
     const elegida = await intentar(() => abrirSelector(() => recordada.elegir().then(() => "elegida" as const)));
     if (elegida instanceof SelectorVacio) {
+      anotarSelectorVacio();
       setNota(elegida.explicacion);
       return;
     }
     if (!elegida) return;
+    olvidarSelectorVacio();
     setEstado("listo");
     await entregar();
   };
@@ -256,14 +264,15 @@ export function BotonCarpetaRecordada({
    * pasa a tu navegador. Aparece recién cuando el camino bueno falló, que es cuando vale la pena
    * ofrecer el que tiene menos comodidades.
    */
-  const aviso = nota ? (
-    <>
-      <p className="hint aviso">{nota}</p>
-      <BotonArchivos carpeta accept={accept} disabled={!!trabajando} onArchivos={onArchivos}>
-        Probar de otra forma…
-      </BotonArchivos>
-    </>
-  ) : null;
+  const aviso =
+    nota || seRompioAntes ? (
+      <>
+        {!!nota && <p className="hint aviso">{nota}</p>}
+        <BotonArchivos carpeta accept={accept} disabled={!!trabajando} onArchivos={onArchivos}>
+          Probar de otra forma…
+        </BotonArchivos>
+      </>
+    ) : null;
 
   if (estado === "mirando" || estado === "sin-soporte") {
     return (
@@ -304,6 +313,19 @@ export function BotonCarpetaRecordada({
 }
 
 const PIDE_PERMISO = "El navegador pide el permiso de nuevo en cada sesión, y sólo lo puede pedir cuando hacés clic: por eso el botón.";
+
+/*
+ * Si a este navegador el selector nuevo ya le volvió vacío alguna vez, la salida de emergencia se
+ * ofrece desde el principio en vez de esperar a que le falles otro clic. Ver `selectorRoto`.
+ *
+ * En un efecto y no al renderizar, como todo lo que pregunta por el navegador en este archivo: en
+ * el servidor no hay `localStorage`, y decidirlo antes daría un HTML distinto al de la hidratación.
+ */
+function useSelectorRoto(): boolean {
+  const [roto, setRoto] = useState(false);
+  useEffect(() => setRoto(huboSelectorVacio()), []);
+  return roto;
+}
 
 /** Los cuadraditos y un texto, para adentro de un botón. */
 function Trabajando({ children }: { children: ReactNode }) {

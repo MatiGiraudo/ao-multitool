@@ -7,6 +7,7 @@ import { useAplicacion } from "./Aplicacion";
 import { Cargando } from "./componentes";
 import { ProbadorDeSelector } from "./ProbadorDeSelector";
 import { abrirSelector, comoLoDijo, SelectorVacio } from "./selectorDelSistema";
+import { anotarSelectorVacio, olvidarSelectorVacio } from "./selectorRoto";
 
 /*
  * La puerta del modo carpeta: hasta que no haya una carpeta elegida, no hay editor.
@@ -112,6 +113,7 @@ export function PuertaDeCarpeta({ children }: { children: ReactNode }) {
     try {
       const vino = await abrirSelector(() => carpetaDelProyecto.elegir().then(() => "lista" as const));
       if (vino instanceof SelectorVacio) {
+        anotarSelectorVacio();
         setError(vino.explicacion);
         /* También cuando el cuadro llegó a abrirse: el caso que trajo todo esto es justo ese
          * —se abre, elegís, y vuelve vacío—, y esconderle el probador a quien más lo necesita para
@@ -119,6 +121,7 @@ export function PuertaDeCarpeta({ children }: { children: ReactNode }) {
         setSeRompio(true);
         return;
       }
+      olvidarSelectorVacio();
       setEstado("lista");
     } catch (e) {
       setError(comoLoDijo(e));

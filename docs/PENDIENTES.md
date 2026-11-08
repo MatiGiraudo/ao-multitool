@@ -98,9 +98,12 @@ número que no está en la tabla, son las dos marcas que deja esta carrera.
 
 Pasó de verdad, en un Chrome 157 de Windows: `showDirectoryPicker` abre el cuadro del sistema, el
 usuario elige la carpeta, y vuelve `AbortError` —el mismo con que se cuenta un cancelar—, siempre,
-en las cuatro variantes que prueba el probador de **Diagnóstico**, modo escritura incluido. Sin el
-selector no hay carpeta del proyecto, y sin carpeta del proyecto el modo carpeta no arranca: la
-puerta es lo primero que se ve y no tiene otra puerta.
+en las cuatro variantes que prueba el probador de **Diagnóstico**, modo escritura incluido. En esa
+misma máquina, en ese mismo navegador y sobre esa misma carpeta, el `<input type=file>` de toda la
+vida entregó 951 archivos: no es el cuadro del sistema, no es la máquina y no es una política
+—`chrome://policy` no tenía nada—. Es esa API. Sin el selector no hay carpeta del proyecto, y sin
+carpeta del proyecto el modo carpeta no arranca: la puerta es lo primero que se ve y no tiene otra
+puerta.
 
 Los selectores de archivos del juego sí tienen salida: cuando fallan ofrecen «Probar de otra
 forma…», que es el `<input type=file>` de siempre y no pasa por esa API. La carpeta del proyecto no
