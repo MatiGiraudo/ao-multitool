@@ -344,8 +344,17 @@ const comoLoDijoEl = (dijo: string | undefined) => (dijo ? `(El navegador dijo: 
 const NUNCA_SE_ABRIO =
   "El navegador cerró el selector sin llegar a abrirlo. Eso no lo decide la página: es el permiso del sitio. Tocá el candado al lado de la dirección y fijate si hay algo bloqueado ahí; si la máquina es de la empresa, puede ser una política de Chrome.";
 
+/*
+ * La lista de carpetas que el navegador no entrega, en el orden en que conviene revisarla.
+ *
+ * Las cuatro primeras son la trampa buena, porque son las que uno usa todos los días: Chrome las
+ * bloquea a ellas mismas pero no a lo que tienen adentro (`kDontBlockChildren`), así que
+ * `Descargas\Mundos` se entrega y `Descargas` no. En el cuadro de Windows la diferencia es un
+ * doble clic: parado en Descargas, «Seleccionar carpeta» elige Descargas. Y el rechazo después es
+ * el mismo `AbortError` del cancelar, así que uno jura que eligió bien.
+ */
 const QUIZAS_CANCELASTE =
-  "El selector se abrió pero volvió con las manos vacías. Si lo cancelaste, listo. Si elegíste la carpeta, lo más probable es que el sitio tenga bloqueado el permiso para ver archivos, y entonces Chrome lo rechaza solo, sin mostrar nada: tocá el candado al lado de la dirección, dale a restablecer los permisos y volvé a elegirla. Lo tercero que puede ser es dónde está: tampoco entrega lo que vive en Program Files, en Windows o en la raíz de C:.";
+  "El selector se abrió pero volvió con las manos vacías. Si lo cancelaste, listo. Si elegíste una carpeta, fijate cuál: el navegador no entrega Descargas, Documentos, el Escritorio ni tu carpeta de usuario —esas mismas, no lo que tienen adentro—, ni nada que viva en Program Files, en Windows o en la raíz de C:. Entrá a la carpeta que querés y elegí esa, no la que la contiene. Si la carpeta estaba bien, entonces es el permiso del sitio: tocá el candado al lado de la dirección y restablecé los permisos.";
 
 /** Los cuadraditos y un texto, para adentro de un botón. */
 function Trabajando({ children }: { children: ReactNode }) {

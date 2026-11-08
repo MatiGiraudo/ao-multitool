@@ -172,8 +172,14 @@ del sistema, que es justo cuando el aviso de arriba ya se borró.
   de 250 ms es «no se abrió nunca» y manda al permiso del sitio, lo único que puede cerrar un
   selector sin abrirlo; más, es «se abrió y volvió vacío» y manda al cartelito que pregunta si el
   sitio puede ver los archivos —bloqueado, Chrome lo rechaza solo y sin mostrar nada, con el cuadro
-  ya cerrado— y recién después a dónde está la carpeta. Son consejos opuestos y antes no se daba
-  ninguno.
+  ya cerrado— y a cuál carpeta eligió. Son consejos opuestos y antes no se daba ninguno.
+
+  Lo de «cuál carpeta» tiene una trampa que cuesta ver: Chrome bloquea `Descargas`, `Documentos`,
+  el Escritorio y la carpeta de usuario **a ellas mismas**, pero no a lo que tienen adentro
+  (`kDontBlockChildren` en su lista). O sea que `Descargas\Mundos` se entrega y `Descargas` no, y
+  en el cuadro de Windows la diferencia entre una y otra es un doble clic: parado en `Descargas`,
+  «Seleccionar carpeta» elige `Descargas`. El rechazo que sigue es el mismo `AbortError` del
+  cancelar, así que el usuario jura que eligió bien —y eligió bien, pero una carpeta más arriba—.
 - **Un archivo que el disco no entrega.** Los `getFile()` iban en tandas de 50 con `Promise.all`,
   así que uno solo —tomado por otro programa, borrado entre que se listó y se fue a leer— rechazaba
   su tanda entera y la carpeta terminaba contada como perdida: «esa carpeta ya no está donde
