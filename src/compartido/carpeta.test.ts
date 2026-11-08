@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { HojaDeSprites } from "@/graficos/dominio/HojaDeSprites";
 import { Tamanio } from "@/graficos/dominio/Tamanio";
 import { CarpetaAlmacenDeImagenes } from "@/graficos/infraestructura/carpeta/CarpetaAlmacenDeImagenes";
@@ -234,6 +234,31 @@ describe("rutas recordadas", () => {
     expect(await recordada.recuperar()).toBe("listo");
     expect(recordada.nombre).toBe("Graficos");
     expect((await recordada.archivos()).map((a) => a.name).sort()).toEqual(["1.png", "2.png", "3.png"]);
+  });
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("si no se puede recordar lo elegido, igual queda elegido", async () => {
+    /* Recordar es la comodidad; elegir es la función. Y el `put` que no sale rechaza con un
+     * `DOMException` que a veces se llama `AbortError`, el mismo nombre con que el selector dice
+     * «me cancelaron»: el editor salía a contar que habías cancelado un selector que te había
+     * entregado la carpeta, y te dejaba sin ella. */
+    const noGuarda = {
+      async guardar() {
+        throw Object.assign(new Error("la base del navegador dijo que no"), { name: "AbortError" });
+      },
+      async leer() {
+        return null;
+      },
+      async borrar() {},
+    };
+    vi.stubGlobal("window", { showDirectoryPicker: async () => carpetaElegida("Mundos", ["1.map", "1.inf"]) });
+
+    const recordada = new CarpetaRecordada("carpeta-mundos", noGuarda);
+    await recordada.elegir();
+
+    expect(recordada.nombre).toBe("Mundos");
+    expect((await recordada.archivos()).map((a) => a.name).sort()).toEqual(["1.inf", "1.map"]);
   });
 
   it("un archivo que el disco no entrega no se lleva puesta la carpeta entera", async () => {

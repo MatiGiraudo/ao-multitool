@@ -55,16 +55,27 @@ abstract class HandleRecordado<H extends FileSystemHandle> {
 
   async olvidar(): Promise<void> {
     this.handle = null;
-    await this.almacen.borrar(this.clave);
+    await this.almacen.borrar(this.clave).catch(() => undefined);
   }
 
   protected get elegido(): H | null {
     return this.handle;
   }
 
+  /**
+   * Deja el handle a mano y lo guarda para la próxima visita. Si no se puede guardar, no pasa nada.
+   *
+   * Recordar es la comodidad; elegir es la función. Que IndexedDB falle —la ventana de incógnito,
+   * los datos del sitio bloqueados, el disco lleno, otra pestaña con la base tomada— no puede
+   * voltear la elección que el usuario acaba de hacer. Y encima volteaba mintiendo: un `put` que
+   * no sale rechaza con un `DOMException` que a veces se llama `AbortError`, el mismo nombre con
+   * el que el selector dice «me cancelaron», así que el editor salía a contar que habías cancelado
+   * un selector que te había entregado la carpeta. Lo único que se pierde es que la próxima vez
+   * haya que volver a elegirla, y eso se ve solo: el botón vuelve a ser el de elegir.
+   */
   protected async recordar(handle: H): Promise<void> {
     this.handle = handle;
-    await this.almacen.guardar(this.clave, handle);
+    await this.almacen.guardar(this.clave, handle).catch(() => undefined);
   }
 }
 

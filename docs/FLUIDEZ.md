@@ -186,8 +186,20 @@ del sistema, que es justo cuando el aviso de arriba ya se borró.
   archivos había y qué se esperaba encontrar lo sabe quien pidió, no el botón, que no tiene idea de
   si buscaba mapas o imágenes.
 
+- **Y el que no era del navegador sino nuestro: recordar la carpeta volteaba elegirla.** El
+  selector entregaba la carpeta, `recordar()` la guardaba en IndexedDB, y si ese guardado fallaba
+  —la ventana de incógnito, los datos del sitio bloqueados, el disco lleno— el rechazo se comía la
+  elección entera, con el handle ya en la mano. Encima mintiendo: un `put` que no sale rechaza con
+  un `DOMException` que a veces se llama `AbortError`, el mismo nombre con que el selector dice
+  «me cancelaron», así que el editor salía a contar que habías cancelado un selector que te había
+  entregado la carpeta. Ahora recordar es al margen: si no se puede, se pierde que la próxima vez
+  esté el botón de «volver a leer», y nada más. De paso, `conLaBase` escuchaba uno y medio de los
+  cuatro lados por los que IndexedDB avisa que falló —el `open`, el pedido, la transacción que
+  aborta sola, el `put` que tira en el acto—, y los otros dejaban la promesa colgada para siempre.
+
 Lo que queda para la próxima: un camino que termina sin hacer nada tiene que dejar algo escrito
-**donde se hizo el clic**. El aviso de arriba dura 3,2 segundos y estas cosas pasan mientras el
+**donde se hizo el clic**. Y el otro: una comodidad nunca puede estar en el camino crítico de la
+función que acompaña. El aviso de arriba dura 3,2 segundos y estas cosas pasan mientras el
 usuario está mirando el selector del sistema.
 
 ---

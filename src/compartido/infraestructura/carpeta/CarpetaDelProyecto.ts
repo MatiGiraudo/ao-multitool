@@ -37,11 +37,17 @@ export class CarpetaDelProyecto {
     return !!this.raiz;
   }
 
-  /** Abre el selector del sistema. Tiene que salir de un clic del usuario. */
+  /**
+   * Abre el selector del sistema. Tiene que salir de un clic del usuario.
+   *
+   * Guardarla para la próxima visita es aparte: si eso falla se sigue, porque la carpeta ya está
+   * elegida y el trabajo de esta sesión no tiene por qué depender de que el navegador la recuerde.
+   * Ver `HandleRecordado.recordar`, que cuenta por qué esto duele más de lo que parece.
+   */
   async elegir(): Promise<void> {
     const raiz = await window.showDirectoryPicker({ id: "ao-multitool", mode: "readwrite" });
     this.raiz = raiz;
-    await handlesEnIndexedDb.guardar(CLAVE, raiz);
+    await handlesEnIndexedDb.guardar(CLAVE, raiz).catch(() => undefined);
   }
 
   /**
@@ -70,7 +76,7 @@ export class CarpetaDelProyecto {
 
   async olvidar(): Promise<void> {
     this.raiz = null;
-    await handlesEnIndexedDb.borrar(CLAVE);
+    await handlesEnIndexedDb.borrar(CLAVE).catch(() => undefined);
   }
 
   // ---------- archivos ----------
