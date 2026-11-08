@@ -487,6 +487,7 @@ export function PantallaMapas() {
           className="primary"
           etiqueta="Elegir la carpeta Mundos…"
           onArchivos={elegirCarpeta}
+          alIntentar={() => setSinMapas("")}
         />
         <p className="hint">Los archivos se leen en tu máquina; lo que edites sale por «Exportar».</p>
         {!!sinMapas && <p className="hint aviso">{sinMapas}</p>}

@@ -64,7 +64,11 @@ export function BotonArchivoRecordado({
   }, [recordado]);
 
   const elegir = async () => {
-    const archivo = await intentar(() => recordado.elegir(tipos).catch(seSalvoElCancelar));
+    const archivo = await intentar(() => recordado.elegir(tipos).catch(sinEntregar));
+    if (archivo === SIN_ENTREGAR) {
+      avisar(SE_CERRO_SOLO);
+      return;
+    }
     if (!archivo) return;
     setEstado("listo");
     onArchivo(archivo);
@@ -128,6 +132,7 @@ export function BotonCarpetaRecordada({
   etiqueta,
   ocupado,
   onArchivos,
+  alIntentar,
   className,
   id,
 }: {
@@ -137,12 +142,21 @@ export function BotonCarpetaRecordada({
   etiqueta: string;
   ocupado?: Ocupado;
   onArchivos: (archivos: File[]) => void;
+  /**
+   * Empieza un intento nuevo. Quien lo usa aprovecha para borrar lo que haya dicho del anterior:
+   * si no, su cartel —«la carpeta vino vacía»— queda al lado del de acá diciendo otra cosa.
+   */
+  alIntentar?: () => void;
   className?: string;
   id?: string;
 }) {
-  const { avisar, intentar } = useAplicacion();
+  const { intentar } = useAplicacion();
   const recordada = useMemo(() => new CarpetaRecordada(clave), [clave]);
   const [estado, setEstado] = useState<Estado>("mirando");
+  /* Lo que pasó en el último intento, cuando no se pudo entregar nada. Va pegado al botón y no al
+   * aviso de arriba, que se borra a los tres segundos: el usuario vuelve del selector del sistema
+   * justo para no verlo, y lo que le queda es la misma pantalla que antes de hacer clic. */
+  const [nota, setNota] = useState("");
   /* Recorrer la `Graficos` del clásico son miles de archivos: tarda lo suficiente como para que
    * el botón tenga que decir algo, y eso pasa antes de que quien lo usa vea el primer archivo. */
   const [leyendo, setLeyendo] = useState(false);
@@ -160,37 +174,54 @@ export function BotonCarpetaRecordada({
 
   const trabajando: Ocupado = ocupado ?? (leyendo ? <Trabajando>Leyendo la carpeta…</Trabajando> : undefined);
 
+  /** Lo dicho del intento anterior ya no vale, ni lo de acá ni lo de quien lo usa. */
+  const empezar = () => {
+    setNota("");
+    alIntentar?.();
+  };
+
   const entregar = async () => {
     setLeyendo(true);
     const archivos = await recordada.archivos().catch(() => null);
     setLeyendo(false);
     if (!archivos) {
+      /* El nombre antes de olvidarla: `olvidar` suelta el handle y con él el nombre. */
+      const nombre = recordada.nombre;
       await recordada.olvidar();
       setEstado("sin-elegir");
-      avisar("Esa carpeta ya no está donde estaba. Elegila de nuevo.");
+      setNota(`No se pudo abrir «${nombre}». Puede que se haya movido, o que el navegador ya no la deje leer: elegila de nuevo.`);
       return;
     }
-    if (!archivos.length) {
-      avisar(`«${recordada.nombre}» está vacía.`);
-      return;
-    }
+    setNota("");
+    /* Se entrega aunque no haya venido nada. Que la carpeta esté vacía, o que no tenga lo que se
+     * buscaba, lo sabe decir quien pidió —y lo dice en su propio panel, con el detalle de qué
+     * esperaba—; quedarse callado acá dejaba la pantalla igual que antes del clic. */
     onArchivos(archivos);
   };
 
   const elegir = async () => {
-    if (!(await intentar(() => recordada.elegir().then(() => true, seSalvoElCancelar)))) return;
+    empezar();
+    const elegida = await intentar(() => recordada.elegir().then(() => "elegida" as const, sinEntregar));
+    if (elegida === SIN_ENTREGAR) {
+      setNota(SE_CERRO_SOLO);
+      return;
+    }
+    if (!elegida) return;
     setEstado("listo");
     await entregar();
   };
 
   const volverALeer = async () => {
+    empezar();
     if (estado === "falta-permiso" && !(await recordada.pedirPermiso())) {
-      avisar(`El navegador no dio permiso sobre «${recordada.nombre}». Podés elegirla de nuevo.`);
+      setNota(`El navegador no dio permiso sobre «${recordada.nombre}». Podés elegirla de nuevo.`);
       return;
     }
     setEstado("listo");
     await entregar();
   };
+
+  const aviso = nota ? <p className="hint aviso">{nota}</p> : null;
 
   if (estado === "mirando" || estado === "sin-soporte") {
     return (
@@ -202,9 +233,12 @@ export function BotonCarpetaRecordada({
 
   if (estado === "sin-elegir") {
     return (
-      <button id={id} className={className} disabled={!!trabajando} onClick={elegir}>
-        {trabajando ?? etiqueta}
-      </button>
+      <>
+        <button id={id} className={className} disabled={!!trabajando} onClick={elegir}>
+          {trabajando ?? etiqueta}
+        </button>
+        {aviso}
+      </>
     );
   }
 
@@ -222,15 +256,31 @@ export function BotonCarpetaRecordada({
       <button disabled={!!trabajando} onClick={elegir}>
         Elegir otra…
       </button>
+      {aviso}
     </>
   );
 }
 
 const PIDE_PERMISO = "El navegador pide el permiso de nuevo en cada sesión, y sólo lo puede pedir cuando hacés clic: por eso el botón.";
 
-/** Cancelar el selector tira AbortError, y eso no es un problema que haya que mostrar. */
-function seSalvoElCancelar(e: unknown): null {
-  if ((e as DOMException)?.name === "AbortError") return null;
+/**
+ * El selector se cerró sin entregar nada, y no hay forma de saber por qué.
+ *
+ * Chrome tira el mismo `AbortError` si cancelaste y si se negó a entregar lo que elegíste: tiene
+ * una lista de carpetas de sistema que no deja leer —`Program Files`, `Windows`, la raíz de `C:`—
+ * y una instalación del AO suele estar justo adentro de una. Lo documenta MDN y lo confirma el bug
+ * de Electron 42459: el mismo error, sin nada que los distinga, y sin que llegue a pasar por los
+ * permisos. Así que el cartel cuenta los dos casos en vez de adivinar uno, que es mejor que la
+ * pantalla muda de antes: el clic no hacía nada y no decía nada.
+ */
+const SE_CERRO_SOLO =
+  "El selector se cerró sin entregar nada. Si lo cancelaste, listo. Si no, Chrome se niega a abrir lo que está en una carpeta de sistema —Program Files, Windows, la raíz de C:— y avisa igual que si hubieras cancelado: copiá lo que necesitás a Documentos o al Escritorio y elegilo de ahí.";
+
+/** El valor que distingue «canceló o se negó» de «falló de verdad», que ya avisa `intentar`. */
+const SIN_ENTREGAR = "sin-entregar";
+
+function sinEntregar(e: unknown): typeof SIN_ENTREGAR {
+  if ((e as DOMException)?.name === "AbortError") return SIN_ENTREGAR;
   throw e;
 }
 

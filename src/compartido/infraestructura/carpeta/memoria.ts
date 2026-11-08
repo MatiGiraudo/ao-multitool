@@ -16,6 +16,7 @@ class ArchivoEnMemoria {
     readonly name: string,
     public contenido: string | Blob | Uint8Array = "",
     private permiso: PermissionState = "granted",
+    private readonly ilegible = false,
   ) {}
 
   async queryPermission(): Promise<PermissionState> {
@@ -27,6 +28,7 @@ class ArchivoEnMemoria {
   }
 
   async getFile(): Promise<File> {
+    if (this.ilegible) throw noSeDeja(this.name);
     return new File([this.contenido as BlobPart], this.name);
   }
 
@@ -46,6 +48,7 @@ class CarpetaEnMemoria {
   constructor(
     readonly name = "proyecto",
     private permiso: PermissionState = "granted",
+    private readonly ilegible = false,
   ) {}
 
   async queryPermission(): Promise<PermissionState> {
@@ -79,6 +82,7 @@ class CarpetaEnMemoria {
   }
 
   async *entries(): AsyncIterableIterator<[string, CarpetaEnMemoria | ArchivoEnMemoria]> {
+    if (this.ilegible) throw noSeDeja(this.name);
     for (const par of this.hijos) yield par;
   }
 }
@@ -140,27 +144,38 @@ export function handlesEnMemoria(): AlmacenDeHandles {
  * Una carpeta elegida por el usuario, con los archivos que le pongas.
  *
  * Las rutas pueden tener subcarpetas (`"cascos/3.png"`): el selector entrega la carpeta entera, y
- * recorrerla hasta el fondo es justo lo que hay que probar.
+ * recorrerla hasta el fondo es justo lo que hay que probar. Un `!` adelante de un nombre
+ * —`"!tomado.map"`, `"!privada/1.map"`, o el nombre mismo de la carpeta— lo deja en la lista pero
+ * sin dejarse leer: así aparecen los archivos que otro programa tiene abiertos y las carpetas que
+ * el navegador no abre.
  */
 export function carpetaElegida(nombre: string, rutas: readonly string[], permiso: PermissionState = "granted"): FileSystemDirectoryHandle {
-  const raiz = new CarpetaEnMemoria(nombre, permiso);
+  const raiz = new CarpetaEnMemoria(sinMarca(nombre), permiso, esIlegible(nombre));
   for (const ruta of rutas) {
     const partes = ruta.split("/");
     let actual = raiz;
     for (const parte of partes.slice(0, -1)) {
-      const hay = actual.hijos.get(parte);
+      const hay = actual.hijos.get(sinMarca(parte));
       if (hay instanceof CarpetaEnMemoria) {
         actual = hay;
         continue;
       }
-      const nueva = new CarpetaEnMemoria(parte);
-      actual.hijos.set(parte, nueva);
+      const nueva = new CarpetaEnMemoria(sinMarca(parte), "granted", esIlegible(parte));
+      actual.hijos.set(nueva.name, nueva);
       actual = nueva;
     }
     const hoja = partes[partes.length - 1]!;
-    actual.hijos.set(hoja, new ArchivoEnMemoria(hoja));
+    actual.hijos.set(sinMarca(hoja), new ArchivoEnMemoria(sinMarca(hoja), "", "granted", esIlegible(hoja)));
   }
   return raiz as unknown as FileSystemDirectoryHandle;
+}
+
+const esIlegible = (nombre: string) => nombre.startsWith("!");
+const sinMarca = (nombre: string) => (esIlegible(nombre) ? nombre.slice(1) : nombre);
+
+/** Lo que tira el navegador cuando el disco no entrega algo que estaba en la lista. */
+function noSeDeja(nombre: string): Error {
+  return Object.assign(new Error(`No se pudo leer «${nombre}».`), { name: "NotReadableError" });
 }
 
 export interface ArchivoElegido {

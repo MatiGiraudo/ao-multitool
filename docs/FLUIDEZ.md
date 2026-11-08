@@ -156,6 +156,35 @@ ahí que `recuperar()` distinga «está, pero falta el permiso» de «no hay nad
 ofrece un clic, con lo segundo un selector. En Firefox y Safari, que no tienen la API, los botones
 caen al `<input>` de antes: se pierde la comodidad, no la función.
 
+## 11. El clic que no hacía nada ✅ hecho el 8/11/2026
+
+«Elijo la carpeta de mundos y no me la carga ni me da ningún error.» Tres caminos distintos
+terminaban en la misma pantalla muda, y los tres se daban en el peor momento: volviendo del selector
+del sistema, que es justo cuando el aviso de arriba ya se borró.
+
+- **El selector se cierra sin entregar nada.** Chrome tira el mismo `AbortError` si cancelaste y si
+  se negó a abrir la carpeta: tiene una lista de carpetas de sistema que no entrega —`Program
+  Files`, `Windows`, la raíz de `C:`— y una instalación del AO suele estar adentro de una. Lo
+  documenta MDN y lo confirma el bug de Electron 42459: nada los distingue, y ni siquiera llega a
+  pasar por los permisos. Como no hay forma de saber cuál de los dos fue, el cartel cuenta los dos y
+  dice qué hacer con el segundo —copiar la carpeta a Documentos o al Escritorio—. Adivinar uno
+  hubiera sido peor que contar los dos: el que canceló lee una línea de más, el que no, se destraba.
+- **Un archivo que el disco no entrega.** Los `getFile()` iban en tandas de 50 con `Promise.all`,
+  así que uno solo —tomado por otro programa, borrado entre que se listó y se fue a leer— rechazaba
+  su tanda entera y la carpeta terminaba contada como perdida: «esa carpeta ya no está donde
+  estaba», se olvidaba el handle y de vuelta al selector, con los otros trescientos mapas ahí al
+  lado. Ahora se saltea lo que no se deja leer. La raíz es la excepción a propósito: si la carpeta
+  que elegiste no abre, no hay nada que abrir y eso sí hay que decirlo.
+- **La lista vacía se la guardaba el botón.** `BotonCarpetaRecordada` cortaba antes de entregarla,
+  así que el cartel que la pantalla de mapas tenía escrito para ese caso —«miré N archivos y no hay
+  ningún `.map` con su `.inf` al lado»— no se mostraba nunca. Ahora entrega siempre: cuántos
+  archivos había y qué se esperaba encontrar lo sabe quien pidió, no el botón, que no tiene idea de
+  si buscaba mapas o imágenes.
+
+Lo que queda para la próxima: un camino que termina sin hacer nada tiene que dejar algo escrito
+**donde se hizo el clic**. El aviso de arriba dura 3,2 segundos y estas cosas pasan mientras el
+usuario está mirando el selector del sistema.
+
 ---
 
 ## Por dónde conviene ir

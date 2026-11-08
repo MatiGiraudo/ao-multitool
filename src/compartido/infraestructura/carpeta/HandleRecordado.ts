@@ -85,6 +85,12 @@ export class CarpetaRecordada extends HandleRecordado<FileSystemDirectoryHandle>
    * Es exactamente lo que entrega un `<input webkitdirectory>`, y a propósito: los dos caminos
    * terminan en la misma lista de `File`, así que quien recibe no sabe —ni le importa— por cuál
    * vino. Recorre todo sin filtrar, también como el input: qué sirve lo decide quien pidió.
+   *
+   * Lo que no se puede leer se saltea. Antes bastaba un solo archivo que el disco no entregara
+   * —tomado por otro programa, borrado entre que se listó la carpeta y se lo fue a abrir— para que
+   * el `Promise.all` de su tanda rechazara, y la carpeta entera quedara contada como perdida: el
+   * editor decía «ya no está donde estaba», se olvidaba el handle y volvía al selector, con los
+   * otros trescientos mapas ahí al lado.
    */
   async archivos(): Promise<File[]> {
     const raiz = this.elegido;
@@ -92,14 +98,23 @@ export class CarpetaRecordada extends HandleRecordado<FileSystemDirectoryHandle>
     const encontrados: FileSystemFileHandle[] = [];
     const pendientes: FileSystemDirectoryHandle[] = [raiz];
     while (pendientes.length) {
-      for await (const [, hijo] of pendientes.pop()!.entries()) {
-        if (hijo.kind === "file") encontrados.push(hijo as FileSystemFileHandle);
-        else pendientes.push(hijo as FileSystemDirectoryHandle);
+      const carpeta = pendientes.pop()!;
+      try {
+        for await (const [, hijo] of carpeta.entries()) {
+          if (hijo.kind === "file") encontrados.push(hijo as FileSystemFileHandle);
+          else pendientes.push(hijo as FileSystemDirectoryHandle);
+        }
+      } catch (e) {
+        /* La raíz se recorre sin red: si la carpeta que eligió el usuario no se deja abrir, lo
+         * recordado ya no sirve y quien llame tiene que poder decirlo. Una subcarpeta sí se
+         * saltea, porque una sola que no abra no puede tapar lo que está al lado. */
+        if (carpeta === raiz) throw e;
       }
     }
     const archivos: File[] = [];
     for (let i = 0; i < encontrados.length; i += TANDA) {
-      archivos.push(...(await Promise.all(encontrados.slice(i, i + TANDA).map((h) => h.getFile()))));
+      const tanda = await Promise.all(encontrados.slice(i, i + TANDA).map((h) => h.getFile().catch(() => null)));
+      for (const archivo of tanda) if (archivo) archivos.push(archivo);
     }
     return archivos;
   }

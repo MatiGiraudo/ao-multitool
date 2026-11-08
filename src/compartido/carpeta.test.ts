@@ -236,6 +236,41 @@ describe("rutas recordadas", () => {
     expect((await recordada.archivos()).map((a) => a.name).sort()).toEqual(["1.png", "2.png", "3.png"]);
   });
 
+  it("un archivo que el disco no entrega no se lleva puesta la carpeta entera", async () => {
+    /* Alcanzaba uno —tomado por otro programa, borrado entre que se listó y se fue a leer— para
+     * que la tanda entera rechazara: el editor decía que la carpeta ya no estaba, se olvidaba el
+     * handle y volvía al selector, con los otros mapas ahí al lado. */
+    const almacen = handlesEnMemoria();
+    await almacen.guardar("carpeta-mundos", carpetaElegida("Mundos", ["1.map", "!2.map", "3.map"]));
+
+    const recordada = new CarpetaRecordada("carpeta-mundos", almacen);
+    await recordada.recuperar();
+
+    expect((await recordada.archivos()).map((a) => a.name).sort()).toEqual(["1.map", "3.map"]);
+  });
+
+  it("una subcarpeta que no se deja abrir tampoco tapa lo que está al lado", async () => {
+    const almacen = handlesEnMemoria();
+    await almacen.guardar("carpeta-mundos", carpetaElegida("Mundos", ["1.map", "!privada/2.map"]));
+
+    const recordada = new CarpetaRecordada("carpeta-mundos", almacen);
+    await recordada.recuperar();
+
+    expect((await recordada.archivos()).map((a) => a.name)).toEqual(["1.map"]);
+  });
+
+  it("pero si no se deja abrir la carpeta elegida, eso sí se cuenta", async () => {
+    /* La diferencia es la que ve el usuario: con una subcarpeta rota se abren los mapas que hay,
+     * y con la raíz rota no hay nada que abrir y el botón tiene que volver a ser el de elegir. */
+    const almacen = handlesEnMemoria();
+    await almacen.guardar("carpeta-mundos", carpetaElegida("!Mundos", ["1.map"]));
+
+    const recordada = new CarpetaRecordada("carpeta-mundos", almacen);
+    await recordada.recuperar();
+
+    await expect(recordada.archivos()).rejects.toThrow(/No se pudo leer/);
+  });
+
   it("cuando el permiso se perdió lo dice, y un clic lo recupera", async () => {
     const almacen = handlesEnMemoria();
     await almacen.guardar("carpeta-mundos", carpetaElegida("Mundos", ["1.map"], "prompt"));
