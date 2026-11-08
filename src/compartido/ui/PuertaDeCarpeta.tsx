@@ -5,6 +5,8 @@ import { CarpetaDelProyecto, type EstadoDeLaCarpeta } from "@/compartido/infraes
 import { carpetaDelProyecto, MODO_DE_DATOS } from "@/contenedor/cliente";
 import { useAplicacion } from "./Aplicacion";
 import { Cargando } from "./componentes";
+import { ProbadorDeSelector } from "./ProbadorDeSelector";
+import { abrirSelector, comoLoDijo, SelectorVacio } from "./selectorDelSistema";
 
 /*
  * La puerta del modo carpeta: hasta que no haya una carpeta elegida, no hay editor.
@@ -18,6 +20,8 @@ export function PuertaDeCarpeta({ children }: { children: ReactNode }) {
   const { telemetria } = useAplicacion();
   const [estado, setEstado] = useState<EstadoDeLaCarpeta | "mirando" | "sin-soporte">("mirando");
   const [error, setError] = useState("");
+  /** Si el intento terminó mal, abajo del cartel aparece el probador. Ver dónde se dibuja. */
+  const [seRompio, setSeRompio] = useState(false);
 
   const mirar = useCallback(async () => {
     try {
@@ -94,14 +98,31 @@ export function PuertaDeCarpeta({ children }: { children: ReactNode }) {
 
   if (estado === "lista") return <>{children}</>;
 
+  /*
+   * Acá también: el clic que no hace nada ni dice nada.
+   *
+   * Esto se tragaba el `AbortError` entero, pensando sólo en el cancelar. Pero con ese mismo error
+   * el navegador cuenta también que se negó —y hay máquinas donde se niega siempre—, así que la
+   * puerta del editor se quedaba muda justo con el único usuario que no tiene cómo entrar.
+   * `abrirSelector` separa los dos casos por el reloj y escribe el consejo que corresponde.
+   */
   const elegir = async () => {
     setError("");
+    setSeRompio(false);
     try {
-      await carpetaDelProyecto.elegir();
+      const vino = await abrirSelector(() => carpetaDelProyecto.elegir().then(() => "lista" as const));
+      if (vino instanceof SelectorVacio) {
+        setError(vino.explicacion);
+        /* También cuando el cuadro llegó a abrirse: el caso que trajo todo esto es justo ese
+         * —se abre, elegís, y vuelve vacío—, y esconderle el probador a quien más lo necesita para
+         * ahorrarle un panel al que canceló a propósito es el peor de los dos negocios. */
+        setSeRompio(true);
+        return;
+      }
       setEstado("lista");
     } catch (e) {
-      // Cancelar el selector tira AbortError, y eso no es un problema que haya que mostrar.
-      if ((e as DOMException)?.name !== "AbortError") setError(e instanceof Error ? e.message : String(e));
+      setError(comoLoDijo(e));
+      setSeRompio(true);
     }
   };
 
@@ -147,6 +168,11 @@ export function PuertaDeCarpeta({ children }: { children: ReactNode }) {
         )}
         {!!error && <p className="hint aviso">{error}</p>}
       </section>
+      {/* El probador acá y no sólo en Diagnóstico: si lo que no anda es justo elegir la carpeta,
+          Diagnóstico queda del otro lado de esta puerta y la única herramienta para averiguar por
+          qué es inalcanzable. Aparece recién cuando algo falló, para no ofrecerle un diagnóstico a
+          quien no tiene ningún problema. */}
+      {seRompio && <ProbadorDeSelector />}
     </main>
   );
 }

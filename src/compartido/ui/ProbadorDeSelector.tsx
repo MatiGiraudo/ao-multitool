@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { BotonArchivos } from "./componentes";
 
 /*
  * Un probador del selector de carpetas, para cuando el editor no puede abrir una y nadie sabe por
@@ -42,6 +43,21 @@ const VARIANTES: readonly Variante[] = [
   },
 ];
 
+/*
+ * Y los que no pasan por esa API para nada: el `<input type=file>` de toda la vida, con y sin
+ * `webkitdirectory`. Abren el mismo cuadro de Windows por otro camino del navegador, así que
+ * separan las dos preguntas que de afuera se confunden: si éstos andan y los de arriba no, lo que
+ * está roto es la File System Access API; si no anda ninguno, lo que está roto es el cuadro, y ahí
+ * hay que mirar la máquina —un antivirus, un agente de la empresa— y no el navegador.
+ *
+ * Cancelar un `<input>` no avisa en ningún navegador, así que una fila que no dice nada no quiere
+ * decir que falló: quiere decir que no volvió.
+ */
+const POR_INPUT = [
+  { clave: "input-carpeta", que: "El <input> de siempre, una carpeta", carpeta: true },
+  { clave: "input-archivo", que: "El <input> de siempre, un archivo", carpeta: false },
+] as const;
+
 /** Cuántas entradas se cuentan antes de cortar: alcanza para saber que se puede leer. */
 const SUFICIENTES = 500;
 
@@ -83,7 +99,13 @@ export function ProbadorDeSelector() {
     setProbando("");
   };
 
-  const informe = [...VARIANTES.map((v) => `${v.que}: ${resultados[v.clave] ?? "sin probar"}`), entorno].join("\n");
+  const contar = (clave: string) => (archivos: File[]) =>
+    setResultados((previos) => ({
+      ...previos,
+      [clave]: archivos.length ? `✔ ${archivos.length} archivo${archivos.length === 1 ? "" : "s"}` : "✘ no entregó nada",
+    }));
+
+  const informe = [...VARIANTES, ...POR_INPUT].map((v) => `${v.que}: ${resultados[v.clave] ?? "sin probar"}`).concat(entorno).join("\n");
 
   return (
     <section className="panel">
@@ -102,6 +124,23 @@ export function ProbadorDeSelector() {
             <button disabled={!!probando} onClick={() => void probar(variante)}>
               {probando === variante.clave ? "Esperando…" : "Probar"}
             </button>
+          </div>
+        ))}
+      </div>
+      <p className="hint">
+        Estos dos no usan esa API para nada: son el <code>&lt;input type=file&gt;</code> de toda la vida. Si éstos andan y los de arriba no, lo roto es
+        la API del navegador; si no anda ninguno, lo roto es el cuadro de Windows y hay que mirar la máquina.
+      </p>
+      <div className="olist-items">
+        {POR_INPUT.map((fila) => (
+          <div key={fila.clave} className="row between">
+            <span style={{ minWidth: 0 }}>
+              <span className="nm">{fila.que}</span>
+              <span className="meta">{resultados[fila.clave] ?? "sin probar"}</span>
+            </span>
+            <BotonArchivos carpeta={fila.carpeta} accept="" onArchivos={contar(fila.clave)}>
+              Probar
+            </BotonArchivos>
           </div>
         ))}
       </div>
