@@ -64,9 +64,9 @@ export function BotonArchivoRecordado({
   }, [recordado]);
 
   const elegir = async () => {
-    const archivo = await intentar(() => recordado.elegir(tipos).catch(sinEntregar));
-    if (archivo === SIN_ENTREGAR) {
-      avisar(SE_CERRO_SOLO);
+    const archivo = await intentar(() => abrirSelector(() => recordado.elegir(tipos)));
+    if (archivo === NO_ABRIO || archivo === CANCELADO) {
+      avisar(archivo === NO_ABRIO ? NUNCA_SE_ABRIO : QUIZAS_CANCELASTE);
       return;
     }
     if (!archivo) return;
@@ -201,9 +201,9 @@ export function BotonCarpetaRecordada({
 
   const elegir = async () => {
     empezar();
-    const elegida = await intentar(() => recordada.elegir().then(() => "elegida" as const, sinEntregar));
-    if (elegida === SIN_ENTREGAR) {
-      setNota(SE_CERRO_SOLO);
+    const elegida = await intentar(() => abrirSelector(() => recordada.elegir().then(() => "elegida" as const)));
+    if (elegida === NO_ABRIO || elegida === CANCELADO) {
+      setNota(elegida === NO_ABRIO ? NUNCA_SE_ABRIO : QUIZAS_CANCELASTE);
       return;
     }
     if (!elegida) return;
@@ -263,26 +263,41 @@ export function BotonCarpetaRecordada({
 
 const PIDE_PERMISO = "El navegador pide el permiso de nuevo en cada sesión, y sólo lo puede pedir cuando hacés clic: por eso el botón.";
 
-/**
- * El selector se cerró sin entregar nada, y no hay forma de saber por qué.
+/*
+ * Abrir un selector del sistema, distinguiendo «se cerró con tu mano» de «no se abrió nunca».
  *
- * Chrome tira el mismo `AbortError` si cancelaste y si se negó a entregar lo que elegíste: tiene
- * una lista de carpetas de sistema que no deja leer —`Program Files`, `Windows`, la raíz de `C:`—
- * y una instalación del AO suele estar justo adentro de una. Lo documenta MDN y lo confirma el bug
- * de Electron 42459: el mismo error, sin nada que los distinga, y sin que llegue a pasar por los
- * permisos. Así que el cartel cuenta los dos casos en vez de adivinar uno, que es mejor que la
- * pantalla muda de antes: el clic no hacía nada y no decía nada.
+ * Chrome tira el mismo `AbortError` en los dos casos: lo documenta MDN y lo confirma el bug de
+ * Electron 42459, que se queja de que la negativa no llega siquiera a pasar por los permisos.
+ * Nada en el error los distingue… pero el reloj sí. Cancelar es ver el cuadro, mirarlo y
+ * cerrarlo, y eso no baja del medio segundo; una negativa de Chrome vuelve en lo que tarda una
+ * llamada que no hizo nada.
+ *
+ * Vale la pena separarlos porque los consejos son opuestos. Al que no vio ningún cuadro hay que
+ * mandarlo al permiso del sitio; al que lo vio y volvió con las manos vacías, a mirar dónde está
+ * la carpeta, porque Chrome no entrega lo que vive en `Program Files`, en `Windows` o en la raíz
+ * de `C:`, y una instalación del AO suele estar justo adentro de una.
  */
-const SE_CERRO_SOLO =
-  "El selector se cerró sin entregar nada. Si lo cancelaste, listo. Si no, Chrome se niega a abrir lo que está en una carpeta de sistema —Program Files, Windows, la raíz de C:— y avisa igual que si hubieras cancelado: copiá lo que necesitás a Documentos o al Escritorio y elegilo de ahí.";
+const NO_ABRIO = "no-abrio";
+const CANCELADO = "cancelado";
 
-/** El valor que distingue «canceló o se negó» de «falló de verdad», que ya avisa `intentar`. */
-const SIN_ENTREGAR = "sin-entregar";
+/** Menos que esto no lo cerró una persona. */
+const UN_PARPADEO = 250;
 
-function sinEntregar(e: unknown): typeof SIN_ENTREGAR {
-  if ((e as DOMException)?.name === "AbortError") return SIN_ENTREGAR;
-  throw e;
+async function abrirSelector<T>(abrir: () => Promise<T>): Promise<T | typeof NO_ABRIO | typeof CANCELADO> {
+  const empezo = performance.now();
+  try {
+    return await abrir();
+  } catch (e) {
+    if ((e as DOMException)?.name !== "AbortError") throw e;
+    return performance.now() - empezo < UN_PARPADEO ? NO_ABRIO : CANCELADO;
+  }
 }
+
+const NUNCA_SE_ABRIO =
+  "El navegador cerró el selector sin llegar a abrirlo. Eso no lo decide la página: es el permiso del sitio. Tocá el candado al lado de la dirección y fijate si hay algo bloqueado ahí; si la máquina es de la empresa, puede ser una política de Chrome.";
+
+const QUIZAS_CANCELASTE =
+  "El selector se cerró sin entregar nada. Si lo cancelaste, listo. Si elegíste una carpeta y aun así no pasó nada, puede ser dónde está: Chrome no entrega lo que vive en Program Files, en Windows o en la raíz de C:. Copiala a Documentos o al Escritorio y elegí esa.";
 
 /** Los cuadraditos y un texto, para adentro de un botón. */
 function Trabajando({ children }: { children: ReactNode }) {

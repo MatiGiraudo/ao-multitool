@@ -162,13 +162,15 @@ caen al `<input>` de antes: se pierde la comodidad, no la función.
 terminaban en la misma pantalla muda, y los tres se daban en el peor momento: volviendo del selector
 del sistema, que es justo cuando el aviso de arriba ya se borró.
 
-- **El selector se cierra sin entregar nada.** Chrome tira el mismo `AbortError` si cancelaste y si
-  se negó a abrir la carpeta: tiene una lista de carpetas de sistema que no entrega —`Program
-  Files`, `Windows`, la raíz de `C:`— y una instalación del AO suele estar adentro de una. Lo
-  documenta MDN y lo confirma el bug de Electron 42459: nada los distingue, y ni siquiera llega a
-  pasar por los permisos. Como no hay forma de saber cuál de los dos fue, el cartel cuenta los dos y
-  dice qué hacer con el segundo —copiar la carpeta a Documentos o al Escritorio—. Adivinar uno
-  hubiera sido peor que contar los dos: el que canceló lee una línea de más, el que no, se destraba.
+- **El selector se cierra sin entregar nada.** Chrome tira el mismo `AbortError` si cancelaste, si
+  se negó a entregar la carpeta —tiene una lista que no entrega: `Program Files`, `Windows`, la
+  raíz de `C:`, y una instalación del AO suele estar adentro de una— y si el permiso del sitio
+  está bloqueado, que ni siquiera abre el cuadro. Lo documenta MDN y lo confirma el bug de Electron
+  42459: nada en el error los distingue, y la negativa no llega a pasar por los permisos. **Pero el
+  reloj sí los distingue.** Cancelar es ver el cuadro, mirarlo y cerrarlo, y eso no baja del medio
+  segundo; una negativa vuelve en lo que tarda una llamada que no hizo nada. Así que se mide: menos
+  de 250 ms es «no se abrió nunca» y manda al permiso del sitio, y más es «lo cerraste vos» y
+  pregunta dónde está la carpeta. Son dos consejos opuestos y antes no se daba ninguno.
 - **Un archivo que el disco no entrega.** Los `getFile()` iban en tandas de 50 con `Promise.all`,
   así que uno solo —tomado por otro programa, borrado entre que se listó y se fue a leer— rechazaba
   su tanda entera y la carpeta terminaba contada como perdida: «esa carpeta ya no está donde
