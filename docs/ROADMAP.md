@@ -201,10 +201,10 @@ Se reusa tal cual: `RanuraGrafica`, `SelectorDeAnimacion`, `DibujoDeFrame`, `Vis
 >   `0.375` y como `0,333`, y el `val()` de VB corta en la coma: esos valen 0, que el cliente
 >   convierte en 1. El editor hace lo mismo (`numeroDeVb`), porque acá no se trata de leer bien el
 >   archivo sino de leerlo igual que quien lo dibuja.
-> - **Lo que del AO20 sigue sin entrar son los binarios.** Los mapas son `.csm` (uno por mapa,
->   comprimido) y no el trío `.map`/`.inf`/`.dat`, y los `.ind` del cliente —`graficos.ind`,
->   `Personajes.ind`, `cabezas.ind`, `fxs.ind`— se generan desde los `.ini` que el editor sí lee,
->   así que después de exportar hay que regenerarlos con la herramienta del fork.
+> - **Lo que del AO20 sigue sin entrar son los `.ind`.** `graficos.ind`, `Personajes.ind`,
+>   `cabezas.ind` y `fxs.ind` se generan desde los `.ini` que el editor sí lee, así que después de
+>   exportar hay que regenerarlos con la herramienta del fork. Sus mapas `.csm` sí entran: ver la
+>   fase 5.
 >
 > **Lo que falta de esta fase**, por orden de valor:
 >
@@ -342,6 +342,14 @@ Lo que salió distinto de lo previsto, y por qué:
 El mapa sigue guardando números de GRH, que es lo único que el juego entiende, así que el camino de vuelta se cierra con **«Exportar Graficos.ini»** (en Importar): escribe la tabla entera —los del clásico y los propios— en el formato de una línea por GRH. Lo que sale de ahí, leído de nuevo, da la misma tabla.
 
 La tabla de un cliente son varios megas y el pincel la consulta todo el tiempo, así que el adaptador HTTP la deja en memoria y la refresca cuando él mismo la guarda.
+
+**Los mapas del AO20 ✅ (8/11/2026).** El `.csm` entra y sale por la misma pantalla, así que el editor convierte en las dos direcciones: se elige la carpeta y en la lista aparecen los tríos del clásico y los `.csm` sueltos, y el mapa abierto se baja en cualquiera de los dos formatos. Lo que se aprendió armándolo:
+
+- **No es el trío comprimido: es otra forma de guardar lo mismo.** El clásico escribe las 10.000 celdas tengan algo o no; el `.csm` escribe listas —cuántas celdas tienen cada cosa, y después un registro por celda con su x y su y— y mete el `.dat` del mapa adentro del mismo archivo. Por eso un mapa de agua pesa 100 KB y no 300.
+- **El orden de los bloques no es el de la cabecera.** La cabecera cuenta las luces antes que las partículas y los NPCs antes que los objetos; el archivo los escribe al revés (`Save_Map_Data`). Leerlo en el orden de la cabecera da un mapa que carga sin errores y está mal, así que el test arma un `.csm` a mano con una celda de cada cosa.
+- **Los archivos de verdad traen basura al final.** El WorldEditor los abre en binario y escribe desde el byte cero sin vaciarlos, así que queda pegada la cola de la versión anterior del mapa: en los siete mapas de ao-org que se probaron, de 150 bytes a 29 KB. Se lee lo que la cabecera dice y lo que sobra se ignora; el nuestro sale más corto a propósito, y la comparación byte a byte llega hasta ahí.
+- **Dos cosas nuevas en el dominio: las luces y los lados del bloqueo.** El `.csm` guarda una luz por celda (color y rango) y bloquea por lado, no por celda. El editor todavía no las edita, pero las guarda —en el mapa, en `data/mapas/<numero>.json` y de vuelta en el archivo—, porque abrir un mapa y guardarlo no puede apagarle las luces a nadie. Al convertir al clásico las luces se pierden: el `.map` no tiene dónde ponerlas, y es la única cosa que no viaja.
+- **Lo que el formato trae raro se devuelve como vino.** Hay mapas con traslados a `-1`, así que el dominio dejó de exigir que el mapa de destino sea positivo. Negarse a abrir el mapa habría sido peor que devolver lo que decía.
 
 Lo que hace a Mapas distinto de todo lo anterior:
 

@@ -4,6 +4,7 @@ import type { TablaDeGrhRepositorio } from "@/importacion/dominio/TablaDeGrhRepo
 import type { Mapa } from "../dominio/Mapa";
 import type { MapaGuardado, MapaRepositorio, ResumenDeMapa } from "../dominio/MapaRepositorio";
 import { FormatoMapaClasico, type AnchoDeGrafico, type ArchivosDeMapa } from "../infraestructura/FormatoMapaClasico";
+import { FormatoMapaCsm } from "../infraestructura/FormatoMapaCsm";
 
 /*
  * Los casos de uso de Mapas. Igual que Importación, este módulo coordina: necesita la tabla de
@@ -28,6 +29,24 @@ export class AbrirMapaClasico {
   /** Para la ida y vuelta: devuelve los tres archivos tal como los espera el juego. */
   escribir(mapa: Mapa, ancho: AnchoDeGrafico = 4): ArchivosDeMapa {
     return this.formato.escribir(mapa, ancho);
+  }
+}
+
+/**
+ * Abre un mapa del AO20, que es un archivo solo.
+ *
+ * No hay ancho de gráfico que detectar —en el `.csm` el número de gráfico ocupa cuatro bytes
+ * siempre—, así que un mapa que entra por acá y sale al clásico sale con gráficos de 4.
+ */
+export class AbrirMapaCsm {
+  constructor(private readonly formato = new FormatoMapaCsm()) {}
+
+  ejecutar(numero: number, csm: ArrayBuffer): Mapa {
+    return this.formato.leer(numero, csm);
+  }
+
+  escribir(mapa: Mapa): Uint8Array {
+    return this.formato.escribir(mapa);
   }
 }
 

@@ -27,14 +27,23 @@ import { CAPAS_POR_DEFECTO, LienzoDeMapa, type CapasVisibles } from "./LienzoDeM
  * Lo editado todavía no se guarda en el proyecto: la salida es la exportación a `.map`, `.inf` y
  * `.dat`, que es lo que el juego lee. El `.map` se vuelve a escribir con el mismo ancho de gráfico
  * con que vino, así un mapa que se abre y se exporta sin tocar sale idéntico byte a byte.
+ *
+ * Los mapas del AO20 (`.csm`, un archivo solo) entran por el mismo lugar y salen por su propio
+ * botón. Con los dos formatos en la misma pantalla el editor convierte en las dos direcciones;
+ * lo único que no viaja al clásico son las luces, porque el `.map` no tiene dónde ponerlas.
  */
 
-interface Trio {
+/**
+ * Un mapa del juego listo para abrir, en cualquiera de los dos formatos: el trío del clásico o el
+ * archivo único del AO20. Lo que cambia es de dónde sale el mapa; de ahí para adentro es el mismo.
+ */
+interface MapaDelJuego {
   numero: number;
   nombre: string;
-  map: File;
-  inf: File;
+  map?: File;
+  inf?: File;
   dat?: File;
+  csm?: File;
 }
 
 interface Abierto {
@@ -49,7 +58,7 @@ interface Abierto {
 
 export function PantallaMapas() {
   const { casos, avisar, intentar, telemetria } = useAplicacion();
-  const [trios, setTrios] = useState<Trio[]>([]);
+  const [trios, setTrios] = useState<MapaDelJuego[]>([]);
   const [abierto, setAbierto] = useState<Abierto | null>(null);
   const [abriendo, setAbriendo] = useState<number | null>(null);
   const [capas, setCapas] = useState<CapasVisibles>(CAPAS_POR_DEFECTO);
@@ -80,26 +89,32 @@ export function PantallaMapas() {
   const intentados = useRef(new Set<number>());
   const usadosAnteriores = useRef<number[]>([]);
 
-  /** De la carpeta elegida salen los tríos .map + .inf + .dat que estén completos. */
+  /** De la carpeta elegida salen los tríos .map + .inf + .dat completos y los .csm sueltos. */
   const elegirCarpeta = (archivos: File[]) => {
-    const porBase = new Map<string, { map?: File; inf?: File; dat?: File }>();
+    const porBase = new Map<string, { map?: File; inf?: File; dat?: File; csm?: File }>();
     for (const f of archivos) {
-      const m = /^(.*?)\.(map|inf|dat)$/i.exec(f.name);
+      const m = /^(.*?)\.(map|inf|dat|csm)$/i.exec(f.name);
       if (!m) continue;
       const base = m[1]!.toLowerCase();
       const grupo = porBase.get(base) ?? {};
-      grupo[m[2]!.toLowerCase() as "map" | "inf" | "dat"] = f;
+      grupo[m[2]!.toLowerCase() as "map" | "inf" | "dat" | "csm"] = f;
       porBase.set(base, grupo);
     }
-    const encontrados: Trio[] = [];
+    const encontrados: MapaDelJuego[] = [];
     for (const [base, g] of porBase) {
-      if (!g.map || !g.inf) continue;
-      encontrados.push({ numero: Number(base.replace(/[^0-9]/g, "")) || 0, nombre: base, map: g.map, inf: g.inf, dat: g.dat });
+      const numero = Number(base.replace(/[^0-9]/g, "")) || 0;
+      /* El .csm trae todo adentro; el trío necesita al menos el .map y el .inf. Si de un mapa
+       * están los dos formatos gana el clásico, que es el que el editor devuelve byte a byte. */
+      if (!g.map || !g.inf) {
+        if (g.csm) encontrados.push({ numero, nombre: base, csm: g.csm });
+        continue;
+      }
+      encontrados.push({ numero, nombre: base, map: g.map, inf: g.inf, dat: g.dat });
     }
     encontrados.sort((a, b) => a.numero - b.numero || a.nombre.localeCompare(b.nombre));
     setTrios(encontrados);
     setAbierto(null);
-    avisar(encontrados.length ? `${encontrados.length} mapas encontrados.` : "No encontré ningún .map con su .inf al lado.");
+    avisar(encontrados.length ? `${encontrados.length} mapas encontrados.` : "No encontré ningún .map con su .inf al lado, ni ningún .csm.");
   };
 
   /** Lo que hace falta para poner un mapa en pantalla, venga de donde venga. */
@@ -221,16 +236,20 @@ export function PantallaMapas() {
 
 
   const abrir = useCallback(
-    async (trio: Trio) => {
+    async (elegido: MapaDelJuego) => {
       if (!(await puedoDejarElMapa("Abrir otro"))) return;
-      setAbriendo(trio.numero);
+      setAbriendo(elegido.numero);
       const empezo = performance.now();
       const resultado = await intentar(async () => {
-        const [map, inf] = await Promise.all([trio.map.arrayBuffer(), trio.inf.arrayBuffer()]);
-        const dat = trio.dat ? await leerAnsi(trio.dat) : undefined;
-        const { mapa, ancho } = casos.mapas.abrir.ejecutar({ numero: trio.numero, map, inf, dat });
-        return montar(mapa, ancho, trio.nombre, empezo);
-      }, `Abriendo ${trio.nombre}`);
+        if (elegido.csm) {
+          const mapa = casos.mapas.csm.ejecutar(elegido.numero, await elegido.csm.arrayBuffer());
+          return montar(mapa, 4, elegido.nombre, empezo);
+        }
+        const [map, inf] = await Promise.all([elegido.map!.arrayBuffer(), elegido.inf!.arrayBuffer()]);
+        const dat = elegido.dat ? await leerAnsi(elegido.dat) : undefined;
+        const { mapa, ancho } = casos.mapas.abrir.ejecutar({ numero: elegido.numero, map, inf, dat });
+        return montar(mapa, ancho, elegido.nombre, empezo);
+      }, `Abriendo ${elegido.nombre}`);
       setAbriendo(null);
       if (!resultado) return;
       intentados.current.clear();
@@ -434,13 +453,25 @@ export function PantallaMapas() {
     avisar(`${base}.map, .inf y .dat descargados. Copialos a la carpeta Mundos del servidor.`);
   };
 
+  /* El otro formato del mismo mapa. Están los dos botones y no uno que adivine de dónde vino,
+   * porque convertir en las dos direcciones es justo para lo que sirve tenerlos juntos. Ojo con
+   * lo que no viaja: al clásico se le pierden las luces, que el .map no sabe guardar. */
+  const exportarCsm = () => {
+    if (!abierto) return;
+    const csm = casos.mapas.csm.escribir(abierto.mapa);
+    const base = abierto.nombreArchivo || `mapa${abierto.mapa.numero}`;
+    descargar(`${base}.csm`, new Blob([csm as BlobPart]), "application/octet-stream");
+    setSinGuardar(false);
+    avisar(`${base}.csm descargado. Va en la carpeta Mapas de los recursos del AO20.`);
+  };
+
   return (
     <main className="mapa-layout">
       <section className="panel">
         <h2>Mapas</h2>
         <BotonCarpetaRecordada
           clave="carpeta-mundos"
-          accept=".map,.inf,.dat"
+          accept=".map,.inf,.dat,.csm"
           className="primary"
           etiqueta="Elegir la carpeta Mundos…"
           onArchivos={elegirCarpeta}
@@ -509,7 +540,7 @@ export function PantallaMapas() {
                 </span>
                 <span className="meta">
                   #{t.numero}
-                  {!t.dat && <span className="pill warn">sin .dat</span>}
+                  {t.csm ? <span className="pill">.csm</span> : !t.dat && <span className="pill warn">sin .dat</span>}
                 </span>
               </span>
             </button>
@@ -561,6 +592,9 @@ export function PantallaMapas() {
                 </button>
                 <button className="primary" onClick={exportar}>
                   Exportar .map .inf .dat
+                </button>
+                <button onClick={exportarCsm} title="El formato del AO20: un archivo solo, con las luces adentro">
+                  Exportar .csm
                 </button>
               </div>
             </div>

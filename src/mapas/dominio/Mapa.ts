@@ -30,6 +30,28 @@ export interface ObjetoEnElSuelo {
   cantidad: number;
 }
 
+/**
+ * Una luz puesta en una celda: el color con el que alumbra y hasta dónde llega.
+ *
+ * Es del formato .csm del AO20; el .map del clásico no tiene luces. El editor todavía no las
+ * edita, pero las guarda y las devuelve: abrir un mapa y volver a guardarlo sin tocar nada no le
+ * puede apagar las luces a nadie.
+ */
+export interface Luz {
+  /** Como lo guarda el archivo: un entero con los tres canales adentro. */
+  color: number;
+  rango: number;
+}
+
+/**
+ * Qué lados de una celda están bloqueados.
+ *
+ * El clásico sólo sabe de bloqueada o no, y el AO20 guarda un lado por bit. Se usa el mismo
+ * arreglo para los dos: bloquear entero es prender los cuatro lados, y un .map que vuelve al
+ * clásico sólo mira si hay alguno prendido.
+ */
+export const LADOS_BLOQUEADOS = 15;
+
 /** Lo que el juego guarda del mapa aparte del terreno (el `.dat` del clásico). */
 export interface InfoDeMapa {
   nombre: string;
@@ -63,6 +85,40 @@ export interface CabeceraOriginal {
 
 export const CABECERA_VACIA: CabeceraOriginal = { version: 0, descripcion: "", crc: 0, palabraMagica: 0 };
 
+/**
+ * Lo que el .csm del AO20 guarda del mapa y el editor no tiene dónde poner.
+ *
+ * Mismo criterio que `CabeceraOriginal`: no se inventa ni se recalcula nada, se devuelve tal como
+ * vino. Son cosas del cliente (el clima, la luz ambiente, la letra del cartel) que el editor no
+ * muestra, y perderlas al guardar sería romper el mapa sin avisar.
+ */
+export interface CabeceraCsm {
+  /** Los cuatro límites del mapa, que el WorldEditor escribe en cero y nadie usa. */
+  tamanio: { xMax: number; xMin: number; yMax: number; yMin: number };
+  ambiente: string;
+  luzBase: number;
+  letraGrh: number;
+  nivel: number;
+  extra: number;
+  salida: string;
+  lluvia: number;
+  nieve: number;
+  niebla: number;
+}
+
+export const CABECERA_CSM_VACIA: CabeceraCsm = {
+  tamanio: { xMax: 0, xMin: 0, yMax: 0, yMin: 0 },
+  ambiente: "",
+  luzBase: 0,
+  letraGrh: 0,
+  nivel: 0,
+  extra: 0,
+  salida: "",
+  lluvia: 0,
+  nieve: 0,
+  niebla: 0,
+};
+
 export const INFO_VACIA: InfoDeMapa = {
   nombre: "",
   musica: 0,
@@ -81,6 +137,7 @@ export const INFO_VACIA: InfoDeMapa = {
 export class Mapa {
   /** Una por capa; el índice de cada celda es `(y - 1) * 100 + (x - 1)`. 0 = sin gráfico. */
   private readonly capas: Int32Array[];
+  /** Los lados bloqueados de cada celda; 0 es libre. Ver `LADOS_BLOQUEADOS`. */
   private readonly bloqueos: Uint8Array;
   private readonly triggers: Uint16Array;
   private readonly particulas: Uint16Array;
@@ -88,6 +145,9 @@ export class Mapa {
   private readonly traslados = new Map<number, Traslado>();
   private readonly npcs = new Map<number, number>();
   private readonly objetos = new Map<number, ObjetoEnElSuelo>();
+  /** En el mapa más alumbrado del AO20 hay cinco, así que van en un Map como lo del .inf. */
+  private readonly luces = new Map<number, Luz>();
+  private csm: CabeceraCsm = CABECERA_CSM_VACIA;
 
   private constructor(
     private numeroDeMapa: number,
@@ -113,6 +173,9 @@ export class Mapa {
   get cabeceraOriginal(): CabeceraOriginal {
     return this.cabecera;
   }
+  get cabeceraCsm(): CabeceraCsm {
+    return this.csm;
+  }
 
   conNumero(n: number): this {
     this.numeroDeMapa = numeroDeAo(n, "El número del mapa");
@@ -124,6 +187,10 @@ export class Mapa {
   }
   conCabeceraOriginal(c: CabeceraOriginal): this {
     this.cabecera = c;
+    return this;
+  }
+  conCabeceraCsm(c: CabeceraCsm): this {
+    this.csm = c;
     return this;
   }
 
@@ -155,10 +222,19 @@ export class Mapa {
   }
 
   bloqueada(x: number, y: number): boolean {
-    return this.bloqueos[this.celda(x, y)] === 1;
+    return this.bloqueos[this.celda(x, y)] !== 0;
   }
   bloquear(x: number, y: number, bloqueada: boolean): void {
-    this.bloqueos[this.celda(x, y)] = bloqueada ? 1 : 0;
+    this.bloqueos[this.celda(x, y)] = bloqueada ? LADOS_BLOQUEADOS : 0;
+  }
+
+  /** Los lados en crudo, para los formatos que los distinguen. */
+  lados(x: number, y: number): number {
+    return this.bloqueos[this.celda(x, y)]!;
+  }
+  ponerLados(x: number, y: number, lados: number): void {
+    asegurar(Number.isInteger(lados) && lados >= 0 && lados <= 255, "Los lados bloqueados tienen que entrar en un byte.");
+    this.bloqueos[this.celda(x, y)] = lados;
   }
 
   trigger(x: number, y: number): number {
@@ -177,6 +253,20 @@ export class Mapa {
     this.particulas[this.celda(x, y)] = valor;
   }
 
+  luz(x: number, y: number): Luz | null {
+    return this.luces.get(this.celda(x, y)) ?? null;
+  }
+  ponerLuz(x: number, y: number, luz: Luz | null): void {
+    const i = this.celda(x, y);
+    if (!luz || luz.rango <= 0) {
+      this.luces.delete(i);
+      return;
+    }
+    asegurar(Number.isInteger(luz.rango) && luz.rango <= 255, "El rango de la luz tiene que entrar en un byte.");
+    asegurar(Number.isInteger(luz.color) && luz.color >= 0, "El color de la luz tiene que ser un entero.");
+    this.luces.set(i, { ...luz });
+  }
+
   traslado(x: number, y: number): Traslado | null {
     return this.traslados.get(this.celda(x, y)) ?? null;
   }
@@ -186,7 +276,9 @@ export class Mapa {
       this.traslados.delete(i);
       return;
     }
-    asegurar(Number.isInteger(destino.mapa) && destino.mapa >= 0, "El mapa de destino tiene que ser un entero.");
+    /* Un entero, y nada más: hay mapas del AO20 con traslados a -1, y negarse a abrirlos sería
+     * peor que devolver lo que vino. */
+    asegurar(Number.isInteger(destino.mapa), "El mapa de destino tiene que ser un entero.");
     this.traslados.set(i, { ...destino });
   }
 
@@ -224,6 +316,7 @@ export class Mapa {
       traslados: this.traslados,
       npcs: this.npcs,
       objetos: this.objetos,
+      luces: this.luces,
     };
   }
 
@@ -245,6 +338,7 @@ export class Mapa {
       traslados: this.traslados.size,
       npcs: this.npcs.size,
       objetos: this.objetos.size,
+      luces: this.luces.size,
       graficos: this.graficosUsados().size,
     };
   }

@@ -106,6 +106,7 @@ import { GrhDeReferencias } from "@/importacion/aplicacion/GrhDeReferencias";
 import { PuenteDeGrh } from "@/importacion/aplicacion/PuenteDeGrh";
 import {
   AbrirMapaClasico,
+  AbrirMapaCsm,
   AbrirMapaGuardado,
   EliminarMapaGuardado,
   ExportarMapasAlJuego,
@@ -304,6 +305,7 @@ function crear() {
     },
     mapas: {
       abrir: new AbrirMapaClasico(),
+      csm: new AbrirMapaCsm(),
       resolverGraficos: new ResolverGraficosDelMapa(tablaDeGrh, hojas),
       listarGuardados: new ListarMapasGuardados(mapasGuardados),
       abrirGuardado: new AbrirMapaGuardado(mapasGuardados),

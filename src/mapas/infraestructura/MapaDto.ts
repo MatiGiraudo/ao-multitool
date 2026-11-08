@@ -1,4 +1,4 @@
-import { ALTO, ANCHO, CAPAS, Mapa, type CabeceraOriginal, type InfoDeMapa } from "../dominio/Mapa";
+import { ALTO, ANCHO, CAPAS, Mapa, type CabeceraCsm, type CabeceraOriginal, type InfoDeMapa } from "../dominio/Mapa";
 import type { MapaGuardado, ResumenDeMapa } from "../dominio/MapaRepositorio";
 
 /*
@@ -34,6 +34,13 @@ export interface ObjetoDto {
   cantidad: number;
 }
 
+export interface LuzDto {
+  x: number;
+  y: number;
+  color: number;
+  rango: number;
+}
+
 export interface MapaDto {
   formato: "ao-mapa";
   version: 1;
@@ -43,14 +50,21 @@ export interface MapaDto {
   info: InfoDeMapa;
   /** Lo que vino en la cabecera del `.map` original; en un mapa nuevo, todo en cero. */
   cabecera: CabeceraOriginal;
+  /**
+   * Lo que sólo trae el `.csm` del AO20 y el editor no muestra. No está en los mapas guardados
+   * antes de que el editor leyera ese formato, y por eso es opcional.
+   */
+  cabeceraCsm?: CabeceraCsm;
   /** Una por capa, comprimidas: `[valor, repeticiones, valor, repeticiones, …]`. */
   capas: number[][];
+  /** Los lados bloqueados de cada celda; los mapas del clásico tienen los cuatro o ninguno. */
   bloqueos: number[];
   triggers: number[];
   particulas: number[];
   traslados: TrasladoDto[];
   npcs: NpcDto[];
   objetos: ObjetoDto[];
+  luces?: LuzDto[];
 }
 
 /** `[1, 1, 1, 0, 0]` → `[1, 3, 0, 2]`. */
@@ -92,6 +106,7 @@ export const MapaMapper = {
       anchoDeGrafico,
       info: { ...mapa.info },
       cabecera: { ...mapa.cabeceraOriginal },
+      cabeceraCsm: { ...mapa.cabeceraCsm, tamanio: { ...mapa.cabeceraCsm.tamanio } },
       capas: crudo.capas.map(comprimir),
       bloqueos: comprimir(crudo.bloqueos),
       triggers: comprimir(crudo.triggers),
@@ -105,11 +120,15 @@ export const MapaMapper = {
       objetos: [...crudo.objetos.entries()]
         .sort(([a], [b]) => a - b)
         .map(([i, o]) => ({ ...celda(i), objeto: o.objeto, cantidad: o.cantidad })),
+      luces: [...crudo.luces.entries()]
+        .sort(([a], [b]) => a - b)
+        .map(([i, l]) => ({ ...celda(i), color: l.color, rango: l.rango })),
     };
   },
 
   aDominio(dto: MapaDto): MapaGuardado {
     const mapa = Mapa.vacio(dto.numero, dto.info, dto.cabecera);
+    if (dto.cabeceraCsm) mapa.conCabeceraCsm(dto.cabeceraCsm);
     for (let capa = 0; capa < CAPAS; capa++) {
       const valores = descomprimir(dto.capas[capa] ?? [], CELDAS);
       for (let i = 0; i < CELDAS; i++) {
@@ -118,12 +137,13 @@ export const MapaMapper = {
         mapa.ponerGrafico(x, y, capa + 1, valores[i]!);
       }
     }
-    escribirPorCelda(descomprimir(dto.bloqueos ?? [], CELDAS), (x, y, v) => mapa.bloquear(x, y, v === 1));
+    escribirPorCelda(descomprimir(dto.bloqueos ?? [], CELDAS), (x, y, v) => mapa.ponerLados(x, y, v));
     escribirPorCelda(descomprimir(dto.triggers ?? [], CELDAS), (x, y, v) => mapa.ponerTrigger(x, y, v));
     escribirPorCelda(descomprimir(dto.particulas ?? [], CELDAS), (x, y, v) => mapa.ponerParticula(x, y, v));
     for (const t of dto.traslados ?? []) mapa.ponerTraslado(t.x, t.y, { mapa: t.mapa, x: t.destinoX, y: t.destinoY });
     for (const n of dto.npcs ?? []) mapa.ponerNpc(n.x, n.y, n.npc);
     for (const o of dto.objetos ?? []) mapa.ponerObjeto(o.x, o.y, { objeto: o.objeto, cantidad: o.cantidad });
+    for (const l of dto.luces ?? []) mapa.ponerLuz(l.x, l.y, { color: l.color, rango: l.rango });
     return { mapa, anchoDeGrafico: dto.anchoDeGrafico === 2 ? 2 : 4, nombreArchivo: dto.nombreArchivo || `Mapa${dto.numero}` };
   },
 

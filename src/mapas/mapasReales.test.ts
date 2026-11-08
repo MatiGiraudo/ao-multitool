@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { Mapa } from "./dominio/Mapa";
 import { FormatoMapaClasico } from "./infraestructura/FormatoMapaClasico";
+import { FormatoMapaCsm } from "./infraestructura/FormatoMapaCsm";
 import { MapaMapper } from "./infraestructura/MapaDto";
 
 /**
@@ -17,15 +18,23 @@ import { MapaMapper } from "./infraestructura/MapaDto";
  */
 const CARPETA = process.env.AO_MAPAS_DIR;
 
-describe.skipIf(!CARPETA)("mapas reales del juego", () => {
+/* Los dos formatos se revisan con la misma variable: la carpeta puede ser la `Mundos` del clásico
+ * o la `Mapas` del AO20, y cada grupo de tests se enciende solo si encuentra los suyos. */
+const ARCHIVOS = CARPETA ? readdirSync(CARPETA) : [];
+const CLASICOS = ARCHIVOS.filter((n) => n.toLowerCase().endsWith(".map"));
+const CSM = ARCHIVOS.filter((n) => n.toLowerCase().endsWith(".csm"));
+
+describe.skipIf(!CARPETA)("la carpeta que apunta AO_MAPAS_DIR", () => {
+  it("tiene mapas de alguno de los dos formatos", () => {
+    expect(CLASICOS.length + CSM.length).toBeGreaterThan(0);
+  });
+});
+
+describe.skipIf(!CLASICOS.length)("mapas reales del juego", () => {
   const formato = new FormatoMapaClasico();
   // `skipIf` saltea los tests, pero el cuerpo del describe se ejecuta igual: sin carpeta, vacío.
   const carpeta = CARPETA ?? "";
-  const nombres = carpeta ? readdirSync(carpeta).filter((n) => n.toLowerCase().endsWith(".map")) : [];
-
-  it("hay mapas para revisar", () => {
-    expect(nombres.length).toBeGreaterThan(0);
-  });
+  const nombres = CLASICOS;
 
   it("todos se leen y se vuelven a escribir idénticos", () => {
     const distintos: string[] = [];
@@ -105,6 +114,40 @@ describe.skipIf(!CARPETA)("mapas reales del juego", () => {
     expect(() => mapa.grafico(101, 1, 1)).toThrow();
     expect(Mapa.indice(100, 100)).toBe(9999);
   });
+});
+
+/*
+ * Lo mismo para el formato del AO20, apuntando `AO_MAPAS_DIR` a su carpeta `Mapas`.
+ *
+ * La comparación llega hasta donde el archivo dice que llega, y no hasta el final: los .csm de
+ * verdad traen pegada la cola de la versión anterior del mapa —el WorldEditor los abre en binario
+ * y escribe desde el byte cero sin vaciarlos—, así que el nuestro sale más corto a propósito. En
+ * los mapas de ao-org esa cola va de 150 bytes a 29 KB.
+ */
+describe.skipIf(!CSM.length)("mapas .csm del AO20", () => {
+  const formato = new FormatoMapaCsm();
+  const carpeta = CARPETA ?? "";
+  const nombres = CSM;
+
+  it("todos se leen y se vuelven a escribir idénticos", () => {
+    const distintos: string[] = [];
+    let luces = 0;
+    let colas = 0;
+
+    for (const nombre of nombres) {
+      const crudo = readFileSync(join(carpeta, nombre));
+      const numero = Number(nombre.replace(/[^0-9]/g, "")) || 1;
+
+      const mapa = formato.leer(numero, aBuffer(crudo));
+      const escrito = formato.escribir(mapa);
+      if (Buffer.compare(Buffer.from(escrito), crudo.subarray(0, escrito.length)) !== 0) distintos.push(nombre);
+      luces += mapa.contar().luces;
+      colas += crudo.length - escrito.length;
+    }
+
+    expect({ distintos: distintos.slice(0, 10), cuantos: distintos.length }).toEqual({ distintos: [], cuantos: 0 });
+    console.log(`  ${nombres.length} mapas .csm · ${luces} luces · ${colas} bytes de cola vieja ignorados`);
+  }, 120_000);
 });
 
 /** `readFileSync` devuelve un Buffer que puede compartir memoria con otros: hay que recortarlo. */
