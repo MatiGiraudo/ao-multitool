@@ -2,7 +2,7 @@
   "repositorio": "MatiGiraudo/ao-multitool",
   "estrellas": 0,
   "forks": 0,
-  "dias": 17,
+  "dias": 24,
   "porDia": {
     "2026-10-16": {
       "clones": 0,
@@ -103,6 +103,48 @@
     "2026-11-01": {
       "clones": 74,
       "clonesUnicos": 33,
+      "visitas": 0,
+      "visitantesUnicos": 0
+    },
+    "2026-11-02": {
+      "clones": 23,
+      "clonesUnicos": 14,
+      "visitas": 0,
+      "visitantesUnicos": 0
+    },
+    "2026-11-03": {
+      "clones": 3,
+      "clonesUnicos": 3,
+      "visitas": 0,
+      "visitantesUnicos": 0
+    },
+    "2026-11-04": {
+      "clones": 12,
+      "clonesUnicos": 7,
+      "visitas": 0,
+      "visitantesUnicos": 0
+    },
+    "2026-11-05": {
+      "clones": 1,
+      "clonesUnicos": 1,
+      "visitas": 0,
+      "visitantesUnicos": 0
+    },
+    "2026-11-06": {
+      "clones": 1,
+      "clonesUnicos": 1,
+      "visitas": 0,
+      "visitantesUnicos": 0
+    },
+    "2026-11-07": {
+      "clones": 1,
+      "clonesUnicos": 1,
+      "visitas": 0,
+      "visitantesUnicos": 0
+    },
+    "2026-11-08": {
+      "clones": 72,
+      "clonesUnicos": 30,
       "visitas": 0,
       "visitantesUnicos": 0
     }
